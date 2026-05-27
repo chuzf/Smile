@@ -4,10 +4,10 @@ struct EditGroupSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    var group: Group
+    let group: Group
 
     @State private var name: String
-    @State private var pickedColor: Color
+    @State private var pickedColorHex: String
     @State private var pickedSymbol: String
 
     private let symbols = ["heart", "leaf", "star", "moon", "sun.max",
@@ -16,7 +16,7 @@ struct EditGroupSheet: View {
     init(group: Group) {
         self.group = group
         _name = State(initialValue: group.name)
-        _pickedColor = State(initialValue: Color(hex: group.colorHex))
+        _pickedColorHex = State(initialValue: group.colorHex)
         _pickedSymbol = State(initialValue: group.iconSymbol)
     }
 
@@ -29,12 +29,13 @@ struct EditGroupSheet: View {
                 Section("颜色") {
                     LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 6)) {
                         ForEach(AppColors.customGroupPalette, id: \.self) { color in
+                            let hex = color.toHexString()
                             Circle().fill(color)
                                 .frame(width: 28, height: 28)
                                 .overlay(
-                                    Circle().stroke(.white, lineWidth: pickedColor == color ? 3 : 0)
+                                    Circle().stroke(.white, lineWidth: pickedColorHex == hex ? 3 : 0)
                                 )
-                                .onTapGesture { pickedColor = color }
+                                .onTapGesture { pickedColorHex = hex }
                         }
                     }
                 }
@@ -72,7 +73,7 @@ struct EditGroupSheet: View {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         group.name = trimmed
-        group.colorHex = pickedColor.toHexString()
+        group.colorHex = pickedColorHex
         group.iconSymbol = pickedSymbol
         try? context.save()
         dismiss()
