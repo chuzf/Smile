@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppColors {
     /// 暖橙 — 微笑罐主色 / 主 CTA
@@ -38,5 +39,13 @@ extension Color {
         let g = Double((rgb >> 8) & 0xFF) / 255
         let b = Double(rgb & 0xFF) / 255
         self.init(red: r, green: g, blue: b)
+    }
+
+    func toHexString() -> String {
+        let uic = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        uic.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(format: "#%02X%02X%02X",
+                      Int(r * 255), Int(g * 255), Int(b * 255))
     }
 }
