@@ -50,14 +50,14 @@ struct MeTabView: View {
                                     .foregroundStyle(Color(hex: g.colorHex))
                                 TextField("分组名称", text: $draftName)
                                     .focused($isEditFocused)
-                                    .onSubmit { commitEdit(for: g) }
+                                    .onSubmit { commitEdit() }
                                 Spacer()
                                 Button { cancelEdit() } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(AppColors.textSecondary)
                                 }
                                 .buttonStyle(.plain)
-                                Button { commitEdit(for: g) } label: {
+                                Button { commitEdit() } label: {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundStyle(AppColors.warmOrange)
                                 }
@@ -115,10 +115,14 @@ struct MeTabView: View {
     private func startEdit(_ group: Group) {
         draftName = group.name
         editingGroupID = group.id
-        isEditFocused = true
+        Task { @MainActor in
+            isEditFocused = true
+        }
     }
 
-    private func commitEdit(for group: Group) {
+    private func commitEdit() {
+        guard let id = editingGroupID,
+              let group = groups.first(where: { $0.id == id }) else { return }
         let trimmed = draftName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         group.name = trimmed
