@@ -98,7 +98,7 @@ struct GroupSelector: View {
                 Image(systemName: group.iconSymbol)
                 Text(group.name)
             }
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: 12, weight: .medium))
             .foregroundColor(isSelected ? .white : groupColor)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
