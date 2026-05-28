@@ -114,6 +114,10 @@ struct iOSNoteEditorView: View {
             }
         }
         .onAppear { initialize() }
+        .onDisappear {
+            model.reset()
+            thumbnails.removeAll()
+        }
         .onChange(of: photoPickerItems) { _, newItems in
             Task { await loadPickedItems(newItems) }
         }
@@ -151,10 +155,15 @@ struct iOSNoteEditorView: View {
     }
 
     private func initialize() {
-        if let editID = editingEntryID,
-           let entry = try? context.fetch(FetchDescriptor<Entry>()).first(where: { $0.persistentModelID == editID }) {
-            model.load(from: entry)
-            entryDraftID = entry.id
+        if let editID = editingEntryID {
+            var descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { $0.persistentModelID == editID })
+            descriptor.fetchLimit = 1
+            if let entry = try? context.fetch(descriptor).first {
+                model.load(from: entry)
+                entryDraftID = entry.id
+            } else {
+                model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
+            }
         } else {
             model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
         }
@@ -176,9 +185,15 @@ struct iOSNoteEditorView: View {
 
     @MainActor
     private func save() async {
-        guard let groupID = model.selectedGroupID,
-              let group = allGroups.first(where: { $0.persistentModelID == groupID })
-        else { return }
+        guard let groupID = model.selectedGroupID else {
+            print("Save failed: no group selected")
+            return
+        }
+
+        guard let group = allGroups.first(where: { $0.persistentModelID == groupID }) else {
+            print("Save failed: group not found with ID \(groupID)")
+            return
+        }
 
         model.isSaving = true
         defer { model.isSaving = false }
@@ -187,14 +202,29 @@ struct iOSNoteEditorView: View {
 
         // 创建或更新 Entry
         let entry: Entry
-        if let editID = editingEntryID,
-           let existing = try? context.fetch(FetchDescriptor<Entry>()).first(where: { $0.persistentModelID == editID }) {
-            existing.title = title.isEmpty ? LocalTitleService.dateFallback(date: existing.createdAt, groupName: group.name) : title
-            existing.titleSource = .manual
-            existing.bodyText = body
-            existing.group = group
-            existing.updatedAt = .now
-            entry = existing
+        if let editID = editingEntryID {
+            var descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { $0.persistentModelID == editID })
+            descriptor.fetchLimit = 1
+            if let existing = try? context.fetch(descriptor).first {
+                existing.title = title.isEmpty ? LocalTitleService.dateFallback(date: existing.createdAt, groupName: group.name) : title
+                existing.titleSource = .manual
+                existing.bodyText = body
+                existing.group = group
+                existing.updatedAt = .now
+                entry = existing
+            } else {
+                let new = Entry(
+                    id: entryDraftID,
+                    title: title.isEmpty ? LocalTitleService.dateFallback(date: model.createdAt, groupName: group.name) : title,
+                    titleSource: .manual,
+                    bodyText: body,
+                    createdAt: model.createdAt,
+                    updatedAt: .now,
+                    group: group
+                )
+                context.insert(new)
+                entry = new
+            }
         } else {
             let new = Entry(
                 id: entryDraftID,
@@ -238,6 +268,8 @@ struct iOSNoteEditorView: View {
 
     @MainActor
     private func loadPickedItems(_ items: [PhotosPickerItem]) async {
+        defer { photoPickerItems.removeAll() }
+
         let mediaStore = MediaStore.production()
         for item in items {
             guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
@@ -255,7 +287,6 @@ struct iOSNoteEditorView: View {
             draft.persistedID = nil
             model.attachments.append(draft)
         }
-        photoPickerItems.removeAll()
     }
 
     private func removeAttachment(_ draft: DraftAttachment) {
