@@ -68,7 +68,7 @@ struct EntryDetailView: View {
             }
         }
         .sheet(isPresented: $showEditor) {
-            EntryEditorView(editingEntryID: entry.persistentModelID)
+            iOSNoteEditorView(editingEntryID: entry.persistentModelID)
         }
         .sheet(item: Binding<ShareImageWrapper?>(
             get: { sharedImage.map { ShareImageWrapper(image: $0) } },

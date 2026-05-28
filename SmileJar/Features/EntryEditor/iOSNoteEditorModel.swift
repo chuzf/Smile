@@ -92,11 +92,11 @@ import SwiftData
         // Load attachments
         attachments = entry.attachments.map { attachment in
             DraftAttachment(
+                persistedID: attachment.persistentModelID,
                 kind: attachment.kind,
                 relativePath: attachment.relativePath,
                 transcript: attachment.transcript,
-                durationSeconds: attachment.durationSeconds,
-                persistedID: attachment.persistentModelID
+                durationSeconds: attachment.durationSeconds
             )
         }
 

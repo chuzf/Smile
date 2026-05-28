@@ -25,7 +25,7 @@ struct RootView: View {
         .tint(AppColors.warmOrange)
         .preferredColorScheme(.light)
         .sheet(isPresented: $showEntryEditor, onDismiss: handleEditorDismiss) {
-            EntryEditorView(onSaved: { groupID, entryID in
+            iOSNoteEditorView(onSaved: { groupID, entryID in
                 pendingGroupID = groupID
                 pendingEntryID = entryID
                 selectedTab = 0   // switch before dismiss so HomeView shows under the sheet

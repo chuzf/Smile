@@ -14,9 +14,15 @@ struct iOSNoteEditorView: View {
            sort: [SortDescriptor(\Group.sortOrder)])
     private var customGroups: [Group]
 
-    let editingEntryID: PersistentIdentifier?
-    let initialGroupID: PersistentIdentifier?
-    let onSaved: ((UUID, UUID) -> Void)?
+    let editingEntryID: PersistentIdentifier? = nil
+    let initialGroupID: PersistentIdentifier? = nil
+    let onSaved: ((UUID, UUID) -> Void)? = nil
+
+    init(editingEntryID: PersistentIdentifier? = nil, initialGroupID: PersistentIdentifier? = nil, onSaved: ((UUID, UUID) -> Void)? = nil) {
+        self.editingEntryID = editingEntryID
+        self.initialGroupID = initialGroupID
+        self.onSaved = onSaved
+    }
 
     @State private var model = iOSNoteEditorModel()
     @State private var photoPickerItems: [PhotosPickerItem] = []

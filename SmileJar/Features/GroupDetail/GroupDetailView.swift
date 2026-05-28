@@ -143,7 +143,7 @@ struct GroupDetailView: View {
                 pendingHighlightID = nil
             }
         }) {
-            EntryEditorView(
+            iOSNoteEditorView(
                 initialGroupID: group.persistentModelID,
                 onSaved: { _, entryID in pendingHighlightID = entryID }
             )
