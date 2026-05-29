@@ -14,9 +14,9 @@ struct iOSNoteEditorView: View {
            sort: [SortDescriptor(\Group.sortOrder)])
     private var customGroups: [Group]
 
-    let editingEntryID: PersistentIdentifier? = nil
-    let initialGroupID: PersistentIdentifier? = nil
-    let onSaved: ((UUID, UUID) -> Void)? = nil
+    let editingEntryID: PersistentIdentifier?
+    let initialGroupID: PersistentIdentifier?
+    let onSaved: ((UUID, UUID) -> Void)?
 
     init(editingEntryID: PersistentIdentifier? = nil, initialGroupID: PersistentIdentifier? = nil, onSaved: ((UUID, UUID) -> Void)? = nil) {
         self.editingEntryID = editingEntryID
@@ -37,9 +37,7 @@ struct iOSNoteEditorView: View {
     var body: some View {
         ZStack {
             AppColors.backgroundGradient.ignoresSafeArea()
-
             VStack(spacing: 0) {
-                // 导航栏
                 iOSNoteEditorNavBar(
                     dateLabel: dateLabel,
                     isSaving: model.isSaving,
@@ -47,103 +45,85 @@ struct iOSNoteEditorView: View {
                     onComplete: handleComplete,
                     canComplete: canSave
                 )
-
                 Divider()
-
-                // 分组选择
                 GroupSelector(
                     selectedGroupID: $model.selectedGroupID,
                     builtinGroups: builtinGroups,
                     customGroups: customGroups
                 )
-
                 Divider()
-
-                // 主编辑区
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        TextEditor(text: $model.editorText)
-                            .scrollContentBackground(.hidden)
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundStyle(AppColors.textPrimary)
-                            .padding(16)
-                            .onChange(of: model.editorText) { _, _ in
-                                model.scheduleAutoSave()
-                            }
-
-                        // 图片展示区
-                        if !model.attachments.isEmpty {
-                            VStack(spacing: 8) {
-                                ForEach(model.attachments) { draft in
-                                    MediaAttachmentRow(
-                                        draft: draft,
-                                        thumbnail: thumbnails[draft.id],
-                                        onDelete: { removeAttachment(draft) }
-                                    )
-                                }
-                            }
-                            .padding(16)
-                        }
-                    }
-                }
-
+                editorScrollView
                 Divider()
-
-                // 工具栏（集成 PhotosPicker）
-                HStack(spacing: 18) {
-                    PhotosPicker(
-                        selection: $photoPickerItems,
-                        maxSelectionCount: 9,
-                        matching: .images
-                    ) {
-                        Label("照片", systemImage: "photo")
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppColors.warmOrange)
-                    }
-
-                    Button { showVoiceRecorder = true } label: {
-                        Label("语音", systemImage: "mic")
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppColors.warmOrange)
-                    }
-
-                    Button { showTagPicker = true } label: {
-                        Label("标签", systemImage: "number")
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppColors.warmOrange)
-                    }
-
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                toolbarRow
             }
         }
         .onAppear { initialize() }
-        .onDisappear {
-            model.reset()
-            thumbnails.removeAll()
-        }
-        .onChange(of: photoPickerItems) { _, newItems in
-            Task { await loadPickedItems(newItems) }
-        }
+        .onDisappear { model.reset(); thumbnails.removeAll() }
+        .onChange(of: photoPickerItems) { _, newItems in Task { await loadPickedItems(newItems) } }
         .sheet(isPresented: $showVoiceRecorder) {
-            VoiceRecorderView(entryDraftID: entryDraftID) { draft in
-                model.attachments.append(draft)
-            }
+            VoiceRecorderView(entryDraftID: entryDraftID) { draft in model.attachments.append(draft) }
         }
-        .sheet(isPresented: $showTagPicker) {
-            TagPickerSheet(selected: $model.selectedTags)
-        }
+        .sheet(isPresented: $showTagPicker) { TagPickerSheet(selected: $model.selectedTags) }
         .alert("未保存的修改", isPresented: $showUnsavedAlert) {
             Button("放弃", role: .destructive) { dismiss() }
-            Button("保存", role: .default) {
-                Task { await save() }
-            }
+            Button("保存") { Task { await save() } }
             Button("继续编辑", role: .cancel) { }
-        } message: {
-            Text("有未保存的修改，确定放弃吗？")
+        } message: { Text("有未保存的修改，确定放弃吗？") }
+    }
+
+    @ViewBuilder
+    private var editorScrollView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                TextEditor(text: $model.editorText)
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(AppColors.textPrimary)
+                    .padding(16)
+                    .onChange(of: model.editorText) { _, _ in model.scheduleAutoSave() }
+                attachmentsList
+            }
         }
+    }
+
+    @ViewBuilder
+    private var attachmentsList: some View {
+        if !model.attachments.isEmpty {
+            VStack(spacing: 8) {
+                ForEach(model.attachments) { draft in
+                    MediaAttachmentRow(
+                        draft: draft,
+                        thumbnail: thumbnails[draft.id],
+                        onDelete: { removeAttachment(draft) }
+                    )
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    @ViewBuilder
+    private var toolbarRow: some View {
+        HStack(spacing: 18) {
+            PhotosPicker(selection: $photoPickerItems, maxSelectionCount: 9, matching: .images) {
+                Label("照片", systemImage: "photo")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColors.warmOrange)
+            }
+            Button { showVoiceRecorder = true } label: {
+                Label("语音", systemImage: "mic")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColors.warmOrange)
+            }
+            Button { showTagPicker = true } label: {
+                Label("标签", systemImage: "number")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColors.warmOrange)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Private Methods
