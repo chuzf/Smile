@@ -188,22 +188,32 @@ struct PhotoLibraryPickerView: View {
 
     private func confirmSelection() {
         let ordered = assets.filter { selectedIDs.contains($0.localIdentifier) }
-        var loaded: [UIImage] = []
+        guard !ordered.isEmpty else { return }
+
+        var loaded: [Int: UIImage] = [:]
+        let lock = NSLock()
         let group = DispatchGroup()
         let opts = PHImageRequestOptions()
         opts.deliveryMode = .highQualityFormat
         opts.isSynchronous = false
         opts.isNetworkAccessAllowed = true
-        for asset in ordered {
+
+        for (i, asset) in ordered.enumerated() {
             group.enter()
             PHImageManager.default().requestImage(
                 for: asset, targetSize: PHImageManagerMaximumSize,
                 contentMode: .aspectFit, options: opts
             ) { img, _ in
-                if let img { loaded.append(img) }
+                if let img {
+                    lock.withLock { loaded[i] = img }
+                }
                 group.leave()
             }
         }
-        group.notify(queue: .main) { onSelect(loaded) }
+
+        group.notify(queue: .main) {
+            let imgs = (0..<ordered.count).compactMap { loaded[$0] }
+            self.onSelect(imgs)
+        }
     }
 }
