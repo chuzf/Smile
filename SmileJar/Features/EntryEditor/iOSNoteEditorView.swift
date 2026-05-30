@@ -97,10 +97,18 @@ struct iOSNoteEditorView: View {
     private func segmentView(_ segment: EditorSegment) -> some View {
         switch segment {
         case .text(let id, _, let alignment):
-            VStack(alignment: .leading, spacing: 0) {
-                if focusedSegmentID == id {
-                    HStack {
-                        Spacer()
+            TextEditor(text: textBinding(for: id))
+                .scrollContentBackground(.hidden)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(AppColors.textPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+                .frame(minHeight: 80)
+                .focused($focusedSegmentID, equals: id)
+                .multilineTextAlignment(alignment)
+                .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
+                .overlay(alignment: .topTrailing) {
+                    if focusedSegmentID == id {
                         HStack(spacing: 2) {
                             alignButton(icon: "text.alignleft",   align: .leading, current: alignment, segmentID: id)
                             alignButton(icon: "text.aligncenter", align: .center,  current: alignment, segmentID: id)
@@ -113,17 +121,6 @@ struct iOSNoteEditorView: View {
                         .padding(.top, 4)
                     }
                 }
-                TextEditor(text: textBinding(for: id))
-                    .scrollContentBackground(.hidden)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(AppColors.textPrimary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
-                    .frame(minHeight: 80)
-                    .focused($focusedSegmentID, equals: id)
-                    .multilineTextAlignment(alignment)
-                    .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
-            }
         case .photo(let draft):
             MediaAttachmentRow(
                 draft: draft,
