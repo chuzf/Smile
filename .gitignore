@@ -17,6 +17,8 @@ Package.resolved
 
 # Brainstorm workspace
 .superpowers/
+docs/
 
 # Claude local
-.claude/settings.local.json
+.claude
+

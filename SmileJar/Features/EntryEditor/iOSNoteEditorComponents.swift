@@ -42,7 +42,7 @@ struct iOSNoteEditorNavBar: View {
                     Button(action: onComplete) {
                         Text("完成")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.black.opacity(0.9))
                     }
                     .disabled(!canComplete)
                     .opacity(canComplete ? 1.0 : 0.5)
@@ -89,25 +89,29 @@ struct GroupSelector: View {
     @ViewBuilder
     private func groupPill(_ group: Group) -> some View {
         let groupColor = Color(hex: group.colorHex)
-        let isSelected = selectedGroupID == group.id
+        let isSelected = selectedGroupID == group.persistentModelID
 
         Button(action: {
-            selectedGroupID = group.id
+            selectedGroupID = group.persistentModelID
         }) {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Image(systemName: group.iconSymbol)
+                    .font(.system(size: isSelected ? 13 : 11))
                 Text(group.name)
             }
-            .font(.system(size: 12, weight: .medium))
-            .foregroundColor(isSelected ? .white : groupColor)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+            .foregroundColor(isSelected ? .white : AppColors.textSecondary)
+            .padding(.horizontal, isSelected ? 14 : 12)
+            .padding(.vertical, isSelected ? 9 : 7)
             .background(
                 isSelected
                     ? groupColor
-                    : groupColor.opacity(0.15)
+                    : Color(UIColor.systemGray5)
             )
             .cornerRadius(20)
+            .shadow(color: isSelected ? groupColor.opacity(0.45) : .clear, radius: 6, x: 0, y: 3)
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
         }
     }
 }

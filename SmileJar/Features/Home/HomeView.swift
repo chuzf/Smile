@@ -75,7 +75,7 @@ struct HomeView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "plus")
-                                Text("添加分组")
+                                Text("添加储蓄罐")
                             }
                             .font(.system(size: 13))
                             .foregroundStyle(AppColors.textSecondary)

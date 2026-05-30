@@ -43,7 +43,7 @@ struct GroupDetailView: View {
             let q = searchText
             list = list.filter { entry in
                 entry.title.localizedStandardContains(q) ||
-                entry.bodyText.localizedStandardContains(q) ||
+                iOSNoteEditorModel.plainText(from: entry.bodyText).localizedStandardContains(q) ||
                 entry.attachments.contains { $0.transcript?.localizedStandardContains(q) ?? false } ||
                 entry.tags.contains { $0.name.localizedStandardContains(q) }
             }
