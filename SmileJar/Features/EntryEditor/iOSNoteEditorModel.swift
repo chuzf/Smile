@@ -94,7 +94,7 @@ enum EditorSegment: Identifiable {
         for i in segments.indices {
             if case .text(let id, let content, _) = segments[i], id == segmentID {
                 segments[i] = .text(id: id, content: content, alignment: alignment)
-                isDirty = true
+                scheduleAutoSave()
                 return
             }
         }
