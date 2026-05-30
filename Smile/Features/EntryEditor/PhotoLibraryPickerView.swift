@@ -132,7 +132,7 @@ struct PhotoLibraryPickerView: View {
         VStack(spacing: 16) {
             Text("无法访问相册")
                 .font(.headline)
-            Text("请在"设置 → 隐私 → 照片"中允许访问")
+            Text("请在「设置 → 隐私 → 照片」中允许访问")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
