@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PhotoCropView: View {
     let image: UIImage
