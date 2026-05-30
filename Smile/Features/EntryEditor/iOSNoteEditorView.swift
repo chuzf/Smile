@@ -32,6 +32,7 @@ struct iOSNoteEditorView: View {
     @State private var showVoiceRecorder = false
     @State private var showTagPicker = false
     @State private var showUnsavedAlert = false
+    @State private var showInsertPhotoError = false
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -95,6 +96,11 @@ struct iOSNoteEditorView: View {
             Button("保存") { Task { await save() } }
             Button("继续编辑", role: .cancel) { }
         } message: { Text("有未保存的修改，确定放弃吗？") }
+        .alert("照片插入失败", isPresented: $showInsertPhotoError) {
+            Button("好", role: .cancel) { }
+        } message: {
+            Text("部分照片无法保存，请检查存储空间是否充足。")
+        }
     }
 
     @ViewBuilder
@@ -332,7 +338,10 @@ struct iOSNoteEditorView: View {
         guard let data = image.jpegData(compressionQuality: 0.9) else { return }
         let mediaStore = MediaStore.production()
         let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
-        guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { return }
+        guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else {
+            showInsertPhotoError = true
+            return
+        }
         var draft = DraftAttachment(kind: .photo, relativePath: relPath)
         draft.persistedID = nil
         if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
@@ -349,10 +358,11 @@ struct iOSNoteEditorView: View {
         let anchor = focusedSegmentID
         var drafts: [DraftAttachment] = []
         let mediaStore = MediaStore.production()
+        var hadFailure = false
         for image in images {
-            guard let data = image.jpegData(compressionQuality: 0.9) else { continue }
+            guard let data = image.jpegData(compressionQuality: 0.9) else { hadFailure = true; continue }
             let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
-            guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { continue }
+            guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { hadFailure = true; continue }
             var draft = DraftAttachment(kind: .photo, relativePath: relPath)
             draft.persistedID = nil
             if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
@@ -361,6 +371,7 @@ struct iOSNoteEditorView: View {
             }
             drafts.append(draft)
         }
+        if hadFailure { showInsertPhotoError = true }
         guard !drafts.isEmpty else { return }
         model.insertPhotos(drafts, afterSegmentID: anchor)
         model.isDirty = true
