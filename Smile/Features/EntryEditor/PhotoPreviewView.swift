@@ -61,15 +61,17 @@ struct PhotoPreviewView: View {
     }
 
     @ViewBuilder private func checkButton() -> some View {
-        let id = currentAsset.localIdentifier
-        let checked = selectedIDs.contains(id)
-        Button {
-            if checked { selectedIDs.remove(id) } else { selectedIDs.insert(id) }
-        } label: {
-            Image(systemName: checked ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 26))
-                .foregroundStyle(checked ? Color.blue : Color.white)
-                .padding()
+        if let asset = currentAsset {
+            let id = asset.localIdentifier
+            let checked = selectedIDs.contains(id)
+            Button {
+                if checked { selectedIDs.remove(id) } else { selectedIDs.insert(id) }
+            } label: {
+                Image(systemName: checked ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 26))
+                    .foregroundStyle(checked ? Color.blue : Color.white)
+                    .padding()
+            }
         }
     }
 
@@ -106,10 +108,14 @@ struct PhotoPreviewView: View {
 
     // MARK: - Helpers
 
-    private var currentAsset: PHAsset { assets[currentIndex] }
+    private var currentAsset: PHAsset? {
+        guard !assets.isEmpty, currentIndex < assets.count else { return nil }
+        return assets[currentIndex]
+    }
 
     private var canEdit: Bool {
-        let id = currentAsset.localIdentifier
+        guard let asset = currentAsset else { return false }
+        let id = asset.localIdentifier
         return selectedIDs.isEmpty || (selectedIDs.count == 1 && selectedIDs.contains(id))
     }
 
