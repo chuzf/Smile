@@ -85,7 +85,8 @@ struct EntryDetailView: View {
                                 .font(.system(size: 15))
                                 .foregroundStyle(AppColors.textPrimary.opacity(0.9))
                                 .lineSpacing(4)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .multilineTextAlignment(seg.textAlignment)
+                                .frame(maxWidth: .infinity, alignment: seg.frameAlignment)
                         }
                     case .photo:
                         if let path = seg.path,
