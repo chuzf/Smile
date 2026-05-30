@@ -15,6 +15,7 @@ struct PhotoCropView: View {
     // Crop frame (view coords)
     @State private var cropRect: CGRect = .zero
     @State private var containerSize: CGSize = .zero
+    @State private var prevDelta: CGSize = .zero
     private let minCrop: CGFloat = 60
     private let handleHit: CGFloat = 32
 
@@ -111,7 +112,15 @@ struct PhotoCropView: View {
             .position(point)
             .gesture(
                 DragGesture()
-                    .onChanged { v in onDrag(v.translation) }
+                    .onChanged { v in
+                        let inc = CGSize(
+                            width: v.translation.width - prevDelta.width,
+                            height: v.translation.height - prevDelta.height
+                        )
+                        prevDelta = v.translation
+                        onDrag(inc)
+                    }
+                    .onEnded { _ in prevDelta = .zero }
             )
     }
 
