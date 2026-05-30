@@ -203,7 +203,9 @@ struct PhotoLibraryPickerView: View {
             PHImageManager.default().requestImage(
                 for: asset, targetSize: PHImageManagerMaximumSize,
                 contentMode: .aspectFit, options: opts
-            ) { img, _ in
+            ) { img, info in
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                guard !isDegraded else { return }
                 if let img {
                     lock.withLock { loaded[i] = img }
                 }
