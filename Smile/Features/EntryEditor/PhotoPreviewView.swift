@@ -9,6 +9,7 @@ struct PhotoPreviewView: View {
     var onConfirm: (UIImage) -> Void        // 当前图直接插入
     var onEdit: (UIImage) -> Void           // 当前图进裁剪
     var onDismiss: () -> Void
+    var onConfirmBatch: (() -> Void)?
 
     @State private var currentIndex: Int = 0
     @State private var images: [Int: UIImage] = [:]
@@ -82,9 +83,14 @@ struct PhotoPreviewView: View {
                 .foregroundStyle(.white)
             }
             Spacer()
-            Button("确定") {
-                guard let img = images[currentIndex] else { return }
-                onConfirm(img)
+            let isMultiSelected = selectedIDs.count > 1
+            Button(isMultiSelected ? "确定（\(selectedIDs.count)）" : "确定") {
+                if isMultiSelected, let confirmBatch = onConfirmBatch {
+                    confirmBatch()
+                } else {
+                    guard let img = images[currentIndex] else { return }
+                    onConfirm(img)
+                }
             }
             .foregroundStyle(.white)
         }

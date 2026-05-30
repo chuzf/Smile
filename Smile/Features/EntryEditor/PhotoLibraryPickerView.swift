@@ -58,7 +58,11 @@ struct PhotoLibraryPickerView: View {
                         previewIndex = nil
                         editImage = img
                     },
-                    onDismiss: { previewIndex = nil }
+                    onDismiss: { previewIndex = nil },
+                    onConfirmBatch: {
+                        previewIndex = nil
+                        confirmSelection()
+                    }
                 )
             }
         }
