@@ -77,7 +77,7 @@ struct iOSNoteEditorView: View {
         .sheet(isPresented: $showPhotoPicker) {
             PhotoLibraryPickerView { images in
                 showPhotoPicker = false
-                Task { for img in images { await insertPhoto(img) } }
+                Task { await insertPhotos(images) }
             } onCancel: {
                 showPhotoPicker = false
             }
@@ -341,6 +341,28 @@ struct iOSNoteEditorView: View {
         }
         let anchorID = focusedSegmentID
         model.insertPhoto(draft, afterSegmentID: anchorID)
+        model.isDirty = true
+    }
+
+    @MainActor
+    private func insertPhotos(_ images: [UIImage]) async {
+        let anchor = focusedSegmentID
+        var drafts: [DraftAttachment] = []
+        let mediaStore = MediaStore.production()
+        for image in images {
+            guard let data = image.jpegData(compressionQuality: 0.9) else { continue }
+            let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
+            guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { continue }
+            var draft = DraftAttachment(kind: .photo, relativePath: relPath)
+            draft.persistedID = nil
+            if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
+               let img = UIImage(data: thumbData) {
+                thumbnails[draft.id] = img
+            }
+            drafts.append(draft)
+        }
+        guard !drafts.isEmpty else { return }
+        model.insertPhotos(drafts, afterSegmentID: anchor)
         model.isDirty = true
     }
 

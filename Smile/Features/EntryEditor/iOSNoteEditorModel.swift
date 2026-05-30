@@ -113,6 +113,24 @@ enum EditorSegment: Identifiable {
         segments.insert(.text(id: UUID(), content: "", alignment: .leading), at: anchorIdx + 2)
     }
 
+    func insertPhotos(_ drafts: [DraftAttachment], afterSegmentID: UUID?) {
+        guard !drafts.isEmpty else { return }
+        if let anchorID = afterSegmentID,
+           let anchorIdx = segments.firstIndex(where: { $0.id == anchorID }) {
+            var offset = 1
+            for draft in drafts {
+                segments.insert(.photo(draft), at: anchorIdx + offset)
+                segments.insert(.text(id: UUID(), content: "", alignment: .leading), at: anchorIdx + offset + 1)
+                offset += 2
+            }
+        } else {
+            for draft in drafts {
+                segments.append(.photo(draft))
+                segments.append(.text(id: UUID(), content: "", alignment: .leading))
+            }
+        }
+    }
+
     func removePhoto(id: UUID) {
         guard let idx = segments.firstIndex(where: { $0.id == id }) else { return }
         segments.remove(at: idx)
