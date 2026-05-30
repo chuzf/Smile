@@ -31,7 +31,7 @@ struct iOSNoteEditorView: View {
     @State private var showVoiceRecorder = false
     @State private var showTagPicker = false
     @State private var showUnsavedAlert = false
-    @FocusState private var editorFocused: Bool
+    @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
 
@@ -61,13 +61,17 @@ struct iOSNoteEditorView: View {
         .onAppear {
             initialize()
             if editingEntryID == nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { editorFocused = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    if case .text(let id, _, _) = model.segments.first {
+                        focusedSegmentID = id
+                    }
+                }
             }
         }
         .onDisappear { model.reset(); thumbnails.removeAll() }
         .onChange(of: photoPickerItems) { _, newItems in Task { await loadPickedItems(newItems) } }
         .sheet(isPresented: $showVoiceRecorder) {
-            VoiceRecorderView(entryDraftID: entryDraftID) { draft in model.attachments.append(draft) }
+            VoiceRecorderView(entryDraftID: entryDraftID) { draft in model.voiceAttachments.append(draft) }
         }
         .sheet(isPresented: $showTagPicker) { TagPickerSheet(selected: $model.selectedTags) }
         .alert("未保存的修改", isPresented: $showUnsavedAlert) {
@@ -81,29 +85,47 @@ struct iOSNoteEditorView: View {
     private var editorScrollView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                TextEditor(text: $model.editorText)
-                    .scrollContentBackground(.hidden)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(AppColors.textPrimary)
-                    .padding(16)
-                    .frame(minHeight: 260)
-                    .focused($editorFocused)
-                    .onChange(of: model.editorText) { _, _ in model.scheduleAutoSave() }
-                attachmentsList
+                ForEach(model.segments) { segment in
+                    segmentView(segment)
+                }
+                voiceAttachmentsList
             }
         }
-        .onTapGesture { editorFocused = true }
     }
 
     @ViewBuilder
-    private var attachmentsList: some View {
-        if !model.attachments.isEmpty {
+    private func segmentView(_ segment: EditorSegment) -> some View {
+        switch segment {
+        case .text(let id, _, _):
+            TextEditor(text: textBinding(for: id))
+                .scrollContentBackground(.hidden)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(AppColors.textPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+                .frame(minHeight: 80)
+                .focused($focusedSegmentID, equals: id)
+                .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
+        case .photo(let draft):
+            MediaAttachmentRow(
+                draft: draft,
+                thumbnail: thumbnails[draft.id],
+                onDelete: { removePhoto(draft) }
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+    }
+
+    @ViewBuilder
+    private var voiceAttachmentsList: some View {
+        if !model.voiceAttachments.isEmpty {
             VStack(spacing: 8) {
-                ForEach(model.attachments) { draft in
+                ForEach(model.voiceAttachments) { draft in
                     MediaAttachmentRow(
                         draft: draft,
-                        thumbnail: thumbnails[draft.id],
-                        onDelete: { removeAttachment(draft) }
+                        thumbnail: nil,
+                        onDelete: { removeVoice(draft) }
                     )
                 }
             }
@@ -135,7 +157,14 @@ struct iOSNoteEditorView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Private Methods
+    // MARK: - Helpers
+
+    private func textBinding(for id: UUID) -> Binding<String> {
+        Binding(
+            get: { model.textContent(for: id) },
+            set: { model.updateText($0, for: id) }
+        )
+    }
 
     private var dateLabel: String {
         let f = DateFormatter()
@@ -145,9 +174,10 @@ struct iOSNoteEditorView: View {
     }
 
     private var canSave: Bool {
-        model.selectedGroupID != nil &&
-        (!model.editorText.isEmpty || !model.attachments.isEmpty)
+        model.selectedGroupID != nil && model.hasContent
     }
+
+    // MARK: - Lifecycle
 
     private func initialize() {
         if let editID = editingEntryID {
@@ -168,7 +198,7 @@ struct iOSNoteEditorView: View {
     @MainActor
     private func loadExistingThumbnails() async {
         let mediaStore = MediaStore.production()
-        for draft in model.attachments where draft.kind == .photo {
+        for draft in model.photoDrafts {
             guard thumbnails[draft.id] == nil,
                   let data = try? mediaStore.loadData(relativePath: draft.relativePath) else { continue }
             if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
@@ -181,37 +211,22 @@ struct iOSNoteEditorView: View {
     }
 
     private func handleBack() {
-        if model.isDirty {
-            showUnsavedAlert = true
-        } else {
-            dismiss()
-        }
+        if model.isDirty { showUnsavedAlert = true } else { dismiss() }
     }
 
-    private func handleComplete() {
-        Task {
-            await save()
-        }
-    }
+    private func handleComplete() { Task { await save() } }
 
     @MainActor
     private func save() async {
-        guard let groupID = model.selectedGroupID else {
-            print("Save failed: no group selected")
-            return
-        }
-
-        guard let group = allGroups.first(where: { $0.persistentModelID == groupID }) else {
-            print("Save failed: group not found with ID \(groupID)")
-            return
-        }
+        guard let groupID = model.selectedGroupID,
+              let group = allGroups.first(where: { $0.persistentModelID == groupID }) else { return }
 
         model.isSaving = true
         defer { model.isSaving = false }
 
-        let (title, body) = model.extractTitleAndBody()
+        let title = model.extractTitle()
+        let body = iOSNoteEditorModel.encodeBodySegments(model.buildBodySegments())
 
-        // 创建或更新 Entry
         let entry: Entry
         if let editID = editingEntryID {
             var descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { $0.persistentModelID == editID })
@@ -250,16 +265,15 @@ struct iOSNoteEditorView: View {
             entry = new
         }
 
-        // 处理标签
         let allTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
         entry.tags = allTags.filter { model.selectedTags.contains($0.persistentModelID) }
 
-        // 处理附件
-        let modelDraftIDs = Set(model.attachments.compactMap { $0.persistedID })
+        let allDrafts = model.allAttachments
+        let modelDraftIDs = Set(allDrafts.compactMap { $0.persistedID })
         for existing in entry.attachments where !modelDraftIDs.contains(existing.persistentModelID) {
             context.delete(existing)
         }
-        for (idx, draft) in model.attachments.enumerated() where draft.persistedID == nil {
+        for (idx, draft) in allDrafts.enumerated() where draft.persistedID == nil {
             let att = MediaAttachment(
                 kind: draft.kind,
                 relativePath: draft.relativePath,
@@ -280,31 +294,34 @@ struct iOSNoteEditorView: View {
     @MainActor
     private func loadPickedItems(_ items: [PhotosPickerItem]) async {
         defer { photoPickerItems.removeAll() }
-
         let mediaStore = MediaStore.production()
+        let anchorID = focusedSegmentID
         for item in items {
             guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
             let filename = "photo-\(UUID().uuidString.prefix(8)).heic"
             guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { continue }
-
             var draft = DraftAttachment(kind: .photo, relativePath: relPath)
-
-            if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data) {
-                if let img = UIImage(data: thumbData) {
-                    thumbnails[draft.id] = img
-                }
-            }
-
             draft.persistedID = nil
-            model.attachments.append(draft)
+            if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
+               let img = UIImage(data: thumbData) {
+                thumbnails[draft.id] = img
+            }
+            model.insertPhoto(draft, afterSegmentID: anchorID)
+            // After first insertion, anchor to the new text segment that follows
         }
     }
 
-    private func removeAttachment(_ draft: DraftAttachment) {
+    private func removePhoto(_ draft: DraftAttachment) {
         let mediaStore = MediaStore.production()
         try? mediaStore.delete(relativePath: draft.relativePath)
         thumbnails.removeValue(forKey: draft.id)
-        model.attachments.removeAll { $0.id == draft.id }
+        model.removePhoto(id: draft.id)
+    }
+
+    private func removeVoice(_ draft: DraftAttachment) {
+        let mediaStore = MediaStore.production()
+        try? mediaStore.delete(relativePath: draft.relativePath)
+        model.voiceAttachments.removeAll { $0.id == draft.id }
     }
 }
 

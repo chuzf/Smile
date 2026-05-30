@@ -29,14 +29,7 @@ struct EntryDetailView: View {
                         }
                     }
 
-                    if !entry.bodyText.isEmpty {
-                        Text(entry.bodyText)
-                            .font(.system(size: 15))
-                            .foregroundStyle(AppColors.textPrimary.opacity(0.9))
-                            .lineSpacing(4)
-                    }
-
-                    inlinePhotos
+                    bodyContent
 
                     ForEach(voiceAttachments) { att in
                         VoicePlayerRow(attachment: att)
@@ -79,22 +72,43 @@ struct EntryDetailView: View {
     }
 
     @ViewBuilder
-    private var inlinePhotos: some View {
-        let photos = photoAttachments
-        if !photos.isEmpty {
-            VStack(spacing: 12) {
-                ForEach(photos) { att in
-                    if let data = try? MediaStore.production().loadData(relativePath: att.relativePath),
-                       let img = UIImage(data: data) {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+    private var bodyContent: some View {
+        let segs = parseBodySegments()
+        if !segs.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(segs.indices, id: \.self) { idx in
+                    let seg = segs[idx]
+                    switch seg.kind {
+                    case .text:
+                        if let text = seg.content, !text.isEmpty {
+                            Text(text)
+                                .font(.system(size: 15))
+                                .foregroundStyle(AppColors.textPrimary.opacity(0.9))
+                                .lineSpacing(4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    case .photo:
+                        if let path = seg.path,
+                           let data = try? MediaStore.production().loadData(relativePath: path),
+                           let img = UIImage(data: data) {
+                            Image(uiImage: img)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
                     }
                 }
             }
         }
+    }
+
+    private func parseBodySegments() -> [BodySegment] {
+        if let segs = iOSNoteEditorModel.decodeBodySegments(from: entry.bodyText) {
+            return segs
+        }
+        if entry.bodyText.isEmpty { return [] }
+        return [BodySegment(kind: .text, content: entry.bodyText, path: nil, alignment: nil)]
     }
 
     private var photoAttachments: [MediaAttachment] {

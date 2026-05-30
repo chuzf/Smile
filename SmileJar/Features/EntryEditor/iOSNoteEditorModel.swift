@@ -1,105 +1,211 @@
 import SwiftUI
 import SwiftData
 
-/// Observable model for the iOS note editor
+// MARK: - BodySegment (persisted in entry.bodyText as JSON)
+
+struct BodySegment {
+    enum Kind: String, Codable { case text, photo }
+    let kind: Kind
+    var content: String?
+    var path: String?
+    var alignment: String?  // nil = leading, "center" = center
+}
+
+extension BodySegment: Codable {
+    enum CodingKeys: String, CodingKey { case kind, content, path, alignment }
+}
+
+extension BodySegment {
+    var textAlignment: TextAlignment {
+        alignment == "center" ? .center : .leading
+    }
+    var frameAlignment: Alignment {
+        alignment == "center" ? .center : .leading
+    }
+}
+
+// MARK: - EditorSegment (in-memory editor state)
+
+enum EditorSegment: Identifiable {
+    case text(id: UUID, content: String, alignment: TextAlignment)
+    case photo(DraftAttachment)
+
+    var id: UUID {
+        switch self {
+        case .text(let id, _, _): return id
+        case .photo(let d): return d.id
+        }
+    }
+}
+
+// MARK: - iOSNoteEditorModel
+
 @Observable final class iOSNoteEditorModel {
-    /// Unified editor text (title + body, separated by first newline)
-    var editorText: String = ""
-
-    /// Currently selected group ID
+    var segments: [EditorSegment] = [.text(id: UUID(), content: "", alignment: .leading)]
+    var voiceAttachments: [DraftAttachment] = []
     var selectedGroupID: PersistentIdentifier?
-
-    /// Set of selected tag IDs
     var selectedTags: Set<PersistentIdentifier> = []
-
-    /// Draft attachments
-    var attachments: [DraftAttachment] = []
-
-    /// When this note was created
     var createdAt: Date = Date()
-
-    /// When this note was last updated
     var updatedAt: Date = Date()
-
-    /// Whether the note has unsaved changes
     var isDirty: Bool = false
-
-    /// Whether an auto-save is currently in progress
     var isSaving: Bool = false
-
-    /// Timestamp of last auto-save
     var lastAutoSaveTime: Date = Date.distantPast
 
-    /// Private task for scheduling auto-save (managed internally)
     private var autoSaveTask: Task<Void, Never>?
 
-    /// Initialize a new editor model
     public init() {}
 
-    /// Extract title and body from editor text
-    /// - Returns: Tuple of (title, body) split on first newline
-    func extractTitleAndBody() -> (title: String, body: String) {
-        let lines = editorText.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
-        let title = String(lines.first ?? "")
-        let body = lines.count > 1 ? String(lines[1]) : ""
-        return (title, body)
+    // MARK: Computed helpers
+
+    var photoDrafts: [DraftAttachment] {
+        segments.compactMap {
+            if case .photo(let d) = $0 { return d } else { return nil }
+        }
     }
 
-    /// Schedule an auto-save operation
-    /// - Sets isDirty to true
-    /// - Cancels any previous auto-save task
-    /// - Schedules new save with 3-second debounce
-    func scheduleAutoSave() {
-        isDirty = true
+    var allAttachments: [DraftAttachment] { photoDrafts + voiceAttachments }
 
-        // Cancel the existing auto-save task if it exists
-        autoSaveTask?.cancel()
+    var hasContent: Bool {
+        let hasText = segments.contains {
+            if case .text(_, let c, _) = $0 { return !c.isEmpty } else { return false }
+        }
+        return hasText || !photoDrafts.isEmpty || !voiceAttachments.isEmpty
+    }
 
-        // Schedule new auto-save with 3-second debounce
-        autoSaveTask = Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+    // MARK: Text segment access
 
-            // Check if task was cancelled during sleep
-            if !Task.isCancelled {
-                await performAutoSave()
+    func textContent(for segmentID: UUID) -> String {
+        for seg in segments {
+            if case .text(let id, let content, _) = seg, id == segmentID { return content }
+        }
+        return ""
+    }
+
+    func updateText(_ content: String, for segmentID: UUID) {
+        for i in segments.indices {
+            if case .text(let id, _, let alignment) = segments[i], id == segmentID {
+                segments[i] = .text(id: id, content: content, alignment: alignment)
+                return
             }
         }
     }
 
-    /// Perform the actual auto-save operation
-    @MainActor
-    func performAutoSave() async {
-        isSaving = true
-        defer { isSaving = false }
-
-        // Update auto-save timestamp
-        lastAutoSaveTime = Date()
-        isDirty = false
-        updatedAt = Date()
-
-        // Note: The actual saving to SwiftData is handled by the View
-        // This method manages the state flags and timing
+    func updateAlignment(_ alignment: TextAlignment, for segmentID: UUID) {
+        for i in segments.indices {
+            if case .text(let id, let content, _) = segments[i], id == segmentID {
+                segments[i] = .text(id: id, content: content, alignment: alignment)
+                isDirty = true
+                return
+            }
+        }
     }
 
-    /// Load state from an existing Entry for editing
-    /// - Parameter entry: The Entry to load
-    func load(from entry: Entry) {
-        // Combine title and body with newline separator
-        editorText = entry.title + "\n" + entry.bodyText
-        selectedGroupID = entry.group?.persistentModelID
-        selectedTags = Set(entry.tags.map { $0.persistentModelID })
+    // MARK: Photo insertion / removal
 
-        // Load attachments
-        attachments = entry.attachments.map { attachment in
-            DraftAttachment(
-                persistedID: attachment.persistentModelID,
-                kind: attachment.kind,
-                relativePath: attachment.relativePath,
-                transcript: attachment.transcript,
-                durationSeconds: attachment.durationSeconds
-            )
+    func insertPhoto(_ draft: DraftAttachment, afterSegmentID: UUID?) {
+        guard let anchorID = afterSegmentID,
+              let anchorIdx = segments.firstIndex(where: { $0.id == anchorID }) else {
+            segments.append(.photo(draft))
+            segments.append(.text(id: UUID(), content: "", alignment: .leading))
+            return
+        }
+        segments.insert(.photo(draft), at: anchorIdx + 1)
+        segments.insert(.text(id: UUID(), content: "", alignment: .leading), at: anchorIdx + 2)
+    }
+
+    func removePhoto(id: UUID) {
+        guard let idx = segments.firstIndex(where: { $0.id == id }) else { return }
+        segments.remove(at: idx)
+        collapseAdjacentTextSegments()
+    }
+
+    // MARK: Title extraction (for saving)
+
+    func extractTitle() -> String {
+        for seg in segments {
+            if case .text(_, let content, _) = seg {
+                let firstLine = content.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
+                return firstLine
+            }
+        }
+        return ""
+    }
+
+    // MARK: Body segment building (for saving as JSON)
+
+    func buildBodySegments() -> [BodySegment] {
+        var result: [BodySegment] = []
+        var titleLineConsumed = false
+        for seg in segments {
+            switch seg {
+            case .text(_, let content, let alignment):
+                let alignStr: String? = alignment == .center ? "center" : nil
+                if !titleLineConsumed {
+                    titleLineConsumed = true
+                    let parts = content.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+                    let body = parts.count > 1 ? String(parts[1]) : ""
+                    if !body.isEmpty {
+                        result.append(BodySegment(kind: .text, content: body, path: nil, alignment: alignStr))
+                    }
+                } else if !content.isEmpty {
+                    result.append(BodySegment(kind: .text, content: content, path: nil, alignment: alignStr))
+                }
+            case .photo(let draft):
+                result.append(BodySegment(kind: .photo, content: nil, path: draft.relativePath, alignment: nil))
+            }
+        }
+        return result
+    }
+
+    // MARK: Static encode/decode
+
+    static func encodeBodySegments(_ segs: [BodySegment]) -> String {
+        if segs.isEmpty { return "" }
+        guard let data = try? JSONEncoder().encode(segs),
+              let str = String(data: data, encoding: .utf8) else { return "" }
+        return str
+    }
+
+    static func decodeBodySegments(from bodyText: String) -> [BodySegment]? {
+        guard bodyText.hasPrefix("["),
+              let data = bodyText.data(using: .utf8),
+              let segs = try? JSONDecoder().decode([BodySegment].self, from: data) else { return nil }
+        return segs
+    }
+
+    static func plainText(from bodyText: String) -> String {
+        if let segs = decodeBodySegments(from: bodyText) {
+            return segs.compactMap { $0.content }.joined(separator: "\n")
+        }
+        return bodyText
+    }
+
+    // MARK: Load from Entry
+
+    func load(from entry: Entry) {
+        let sortedAttachments = entry.attachments.sorted { $0.sortOrder < $1.sortOrder }
+        let voices = sortedAttachments.filter { $0.kind == .voice }
+
+        if let bodySegs = Self.decodeBodySegments(from: entry.bodyText) {
+            segments = buildEditorSegments(title: entry.title, bodySegs: bodySegs, allAttachments: sortedAttachments)
+        } else {
+            // Plain-text fallback for old entries
+            let photos = sortedAttachments.filter { $0.kind == .photo }
+            let firstText = entry.title + (entry.bodyText.isEmpty ? "" : "\n" + entry.bodyText)
+            var built: [EditorSegment] = [.text(id: UUID(), content: firstText, alignment: .leading)]
+            for p in photos {
+                built.append(.photo(DraftAttachment(persistedID: p.persistentModelID, kind: p.kind, relativePath: p.relativePath, transcript: p.transcript, durationSeconds: p.durationSeconds)))
+                built.append(.text(id: UUID(), content: "", alignment: .leading))
+            }
+            segments = built
         }
 
+        voiceAttachments = voices.map {
+            DraftAttachment(persistedID: $0.persistentModelID, kind: $0.kind, relativePath: $0.relativePath, transcript: $0.transcript, durationSeconds: $0.durationSeconds)
+        }
+
+        selectedGroupID = entry.group?.persistentModelID
+        selectedTags = Set(entry.tags.map { $0.persistentModelID })
         createdAt = entry.createdAt
         updatedAt = entry.updatedAt
         isDirty = false
@@ -107,37 +213,93 @@ import SwiftData
         lastAutoSaveTime = Date.distantPast
     }
 
-    /// Select a default group from available groups
-    /// - Parameters:
-    ///   - groups: Available groups to choose from
-    ///   - initialGroupID: Optional preferred group ID
+    // MARK: Other
+
     func selectDefaultGroup(from groups: [Group], initialGroupID: PersistentIdentifier?) {
-        // If an initial group ID is provided and exists in the list, use it
-        if let initialGroupID = initialGroupID,
-           groups.contains(where: { $0.persistentModelID == initialGroupID }) {
-            selectedGroupID = initialGroupID
+        if let id = initialGroupID, groups.contains(where: { $0.persistentModelID == id }) {
+            selectedGroupID = id
             return
         }
-
-        // Otherwise, select the first available group
         selectedGroupID = groups.first?.persistentModelID
     }
 
-    /// Reset all state to defaults
+    func scheduleAutoSave() {
+        isDirty = true
+        autoSaveTask?.cancel()
+        autoSaveTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled { await performAutoSave() }
+        }
+    }
+
+    @MainActor
+    func performAutoSave() async {
+        isSaving = true
+        defer { isSaving = false }
+        lastAutoSaveTime = Date()
+        isDirty = false
+        updatedAt = Date()
+    }
+
     func reset() {
-        // Cancel any pending auto-save task
         autoSaveTask?.cancel()
         autoSaveTask = nil
-
-        // Reset all state
-        editorText = ""
+        segments = [.text(id: UUID(), content: "", alignment: .leading)]
+        voiceAttachments = []
         selectedGroupID = nil
         selectedTags = []
-        attachments = []
         createdAt = Date()
         updatedAt = Date()
         isDirty = false
         isSaving = false
         lastAutoSaveTime = Date.distantPast
+    }
+
+    // MARK: Private
+
+    private func buildEditorSegments(title: String, bodySegs: [BodySegment], allAttachments: [MediaAttachment]) -> [EditorSegment] {
+        // Merge title with first body text segment (if it leads)
+        let firstBodyIsText = bodySegs.first.map { $0.kind == .text } ?? false
+        let leadingText = firstBodyIsText ? (bodySegs.first?.content ?? "") : ""
+        let firstEditorText = title + (leadingText.isEmpty ? "" : "\n" + leadingText)
+
+        let firstAlignment: TextAlignment = firstBodyIsText ? (bodySegs.first?.textAlignment ?? .leading) : .leading
+        var built: [EditorSegment] = [.text(id: UUID(), content: firstEditorText, alignment: firstAlignment)]
+        let remaining = firstBodyIsText ? Array(bodySegs.dropFirst()) : bodySegs
+
+        for bodySeg in remaining {
+            switch bodySeg.kind {
+            case .text:
+                built.append(.text(id: UUID(), content: bodySeg.content ?? "", alignment: bodySeg.textAlignment))
+            case .photo:
+                if let path = bodySeg.path {
+                    let att = allAttachments.first { $0.relativePath == path }
+                    let draft = DraftAttachment(persistedID: att?.persistentModelID, kind: .photo, relativePath: path, transcript: att?.transcript, durationSeconds: att?.durationSeconds)
+                    built.append(.photo(draft))
+                }
+            }
+        }
+
+        // Always end with a text segment so user can type after last photo
+        if case .photo = built.last {
+            built.append(.text(id: UUID(), content: "", alignment: .leading))
+        }
+
+        return built
+    }
+
+    private func collapseAdjacentTextSegments() {
+        var result: [EditorSegment] = []
+        for seg in segments {
+            if case .text(_, let newContent, _) = seg,
+               let last = result.last, case .text(let lastID, let lastContent, let lastAlignment) = last {
+                // Deliberate: keep the earlier segment's alignment; mixing alignments on merge is not supported.
+                result[result.count - 1] = .text(id: lastID, content: lastContent + newContent, alignment: lastAlignment)
+            } else {
+                result.append(seg)
+            }
+        }
+        if result.isEmpty { result = [.text(id: UUID(), content: "", alignment: .leading)] }
+        segments = result
     }
 }
