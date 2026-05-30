@@ -96,16 +96,34 @@ struct iOSNoteEditorView: View {
     @ViewBuilder
     private func segmentView(_ segment: EditorSegment) -> some View {
         switch segment {
-        case .text(let id, _, _):
-            TextEditor(text: textBinding(for: id))
-                .scrollContentBackground(.hidden)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(AppColors.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
-                .frame(minHeight: 80)
-                .focused($focusedSegmentID, equals: id)
-                .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
+        case .text(let id, _, let alignment):
+            VStack(alignment: .leading, spacing: 0) {
+                if focusedSegmentID == id {
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 2) {
+                            alignButton(icon: "text.alignleft",   align: .leading, current: alignment, segmentID: id)
+                            alignButton(icon: "text.aligncenter", align: .center,  current: alignment, segmentID: id)
+                        }
+                        .padding(4)
+                        .background(.thinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                        .padding(.trailing, 16)
+                        .padding(.top, 4)
+                    }
+                }
+                TextEditor(text: textBinding(for: id))
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(AppColors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
+                    .frame(minHeight: 80)
+                    .focused($focusedSegmentID, equals: id)
+                    .multilineTextAlignment(alignment)
+                    .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
+            }
         case .photo(let draft):
             MediaAttachmentRow(
                 draft: draft,
@@ -322,6 +340,21 @@ struct iOSNoteEditorView: View {
         let mediaStore = MediaStore.production()
         try? mediaStore.delete(relativePath: draft.relativePath)
         model.voiceAttachments.removeAll { $0.id == draft.id }
+    }
+
+    @ViewBuilder
+    private func alignButton(icon: String, align: TextAlignment, current: TextAlignment, segmentID: UUID) -> some View {
+        Button {
+            model.updateAlignment(align, for: segmentID)
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(current == align ? Color.white : AppColors.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(current == align ? AppColors.warmOrange : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
     }
 }
 
