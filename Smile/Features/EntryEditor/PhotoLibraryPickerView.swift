@@ -13,6 +13,7 @@ struct PhotoLibraryPickerView: View {
     @State private var editImage: UIImage? = nil
     @State private var thumbnails: [String: UIImage] = [:]
 
+    private let maxSelection = 9
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
     var body: some View {
@@ -117,11 +118,14 @@ struct PhotoLibraryPickerView: View {
 
                 // Checkmark — tap to select
                 Button {
-                    if checked { selectedIDs.remove(id) } else { selectedIDs.insert(id) }
+                    if checked { selectedIDs.remove(id) } else if selectedIDs.count < maxSelection { selectedIDs.insert(id) }
                 } label: {
                     Image(systemName: checked ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
-                        .foregroundStyle(checked ? Color.blue : Color.white)
+                        .foregroundStyle(
+                            checked ? Color.blue :
+                            (!checked && selectedIDs.count >= maxSelection) ? Color.white.opacity(0.3) : Color.white
+                        )
                         .shadow(color: .black.opacity(0.4), radius: 2)
                         .padding(6)
                 }
