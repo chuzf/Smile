@@ -29,8 +29,6 @@ struct EntryDetailView: View {
                         }
                     }
 
-                    PhotoCarousel(photoPaths: photoAttachments.map { $0.relativePath })
-
                     if !entry.bodyText.isEmpty {
                         Text(entry.bodyText)
                             .font(.system(size: 15))
@@ -38,12 +36,14 @@ struct EntryDetailView: View {
                             .lineSpacing(4)
                     }
 
+                    inlinePhotos
+
                     ForEach(voiceAttachments) { att in
                         VoicePlayerRow(attachment: att)
                     }
 
                     if !entry.tags.isEmpty {
-                        HStack {
+                        HStack(spacing: 6) {
                             ForEach(entry.tags) { tag in
                                 TagChip(name: tag.name,
                                         color: Color(hex: tag.colorHex),
@@ -75,6 +75,25 @@ struct EntryDetailView: View {
             set: { _ in sharedImage = nil }
         )) { wrapper in
             ShareSheet(image: wrapper.image)
+        }
+    }
+
+    @ViewBuilder
+    private var inlinePhotos: some View {
+        let photos = photoAttachments
+        if !photos.isEmpty {
+            VStack(spacing: 12) {
+                ForEach(photos) { att in
+                    if let data = try? MediaStore.production().loadData(relativePath: att.relativePath),
+                       let img = UIImage(data: data) {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
         }
     }
 

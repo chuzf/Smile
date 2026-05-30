@@ -31,6 +31,7 @@ struct iOSNoteEditorView: View {
     @State private var showVoiceRecorder = false
     @State private var showTagPicker = false
     @State private var showUnsavedAlert = false
+    @FocusState private var editorFocused: Bool
 
     private var allGroups: [Group] { builtinGroups + customGroups }
 
@@ -57,7 +58,12 @@ struct iOSNoteEditorView: View {
                 toolbarRow
             }
         }
-        .onAppear { initialize() }
+        .onAppear {
+            initialize()
+            if editingEntryID == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { editorFocused = true }
+            }
+        }
         .onDisappear { model.reset(); thumbnails.removeAll() }
         .onChange(of: photoPickerItems) { _, newItems in Task { await loadPickedItems(newItems) } }
         .sheet(isPresented: $showVoiceRecorder) {
@@ -80,10 +86,13 @@ struct iOSNoteEditorView: View {
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(AppColors.textPrimary)
                     .padding(16)
+                    .frame(minHeight: 260)
+                    .focused($editorFocused)
                     .onChange(of: model.editorText) { _, _ in model.scheduleAutoSave() }
                 attachmentsList
             }
         }
+        .onTapGesture { editorFocused = true }
     }
 
     @ViewBuilder
