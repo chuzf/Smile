@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import PhotosUI
 
 struct iOSNoteEditorView: View {
     @Environment(\.modelContext) private var context
@@ -25,7 +24,8 @@ struct iOSNoteEditorView: View {
     }
 
     @State private var model = iOSNoteEditorModel()
-    @State private var photoPickerItems: [PhotosPickerItem] = []
+    @State private var showPhotoPicker = false
+    @State private var showCamera = false
     @State private var thumbnails: [UUID: UIImage] = [:]
     @State private var entryDraftID = UUID()
     @State private var showVoiceRecorder = false
@@ -69,11 +69,26 @@ struct iOSNoteEditorView: View {
             }
         }
         .onDisappear { model.reset(); thumbnails.removeAll() }
-        .onChange(of: photoPickerItems) { _, newItems in Task { await loadPickedItems(newItems) } }
         .sheet(isPresented: $showVoiceRecorder) {
             VoiceRecorderView(entryDraftID: entryDraftID) { draft in model.voiceAttachments.append(draft) }
         }
         .sheet(isPresented: $showTagPicker) { TagPickerSheet(selected: $model.selectedTags) }
+        .sheet(isPresented: $showPhotoPicker) {
+            PhotoLibraryPickerView { images in
+                showPhotoPicker = false
+                Task { for img in images { await insertPhoto(img) } }
+            } onCancel: {
+                showPhotoPicker = false
+            }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraFlow { img in
+                showCamera = false
+                Task { await insertPhoto(img) }
+            } onCancel: {
+                showCamera = false
+            }
+        }
         .alert("未保存的修改", isPresented: $showUnsavedAlert) {
             Button("放弃", role: .destructive) { dismiss() }
             Button("保存") { Task { await save() } }
@@ -151,8 +166,13 @@ struct iOSNoteEditorView: View {
     @ViewBuilder
     private var toolbarRow: some View {
         HStack(spacing: 18) {
-            PhotosPicker(selection: $photoPickerItems, maxSelectionCount: 9, matching: .images) {
-                Label("照片", systemImage: "photo")
+            Button { showPhotoPicker = true } label: {
+                Label("相册", systemImage: "photo.on.rectangle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColors.warmOrange)
+            }
+            Button { showCamera = true } label: {
+                Label("拍摄", systemImage: "camera")
                     .font(.system(size: 13))
                     .foregroundStyle(AppColors.warmOrange)
             }
@@ -307,23 +327,20 @@ struct iOSNoteEditorView: View {
     }
 
     @MainActor
-    private func loadPickedItems(_ items: [PhotosPickerItem]) async {
-        defer { photoPickerItems.removeAll() }
+    private func insertPhoto(_ image: UIImage) async {
+        guard let data = image.jpegData(compressionQuality: 0.9) else { return }
         let mediaStore = MediaStore.production()
-        let anchorID = focusedSegmentID
-        for item in items {
-            guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-            let filename = "photo-\(UUID().uuidString.prefix(8)).heic"
-            guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { continue }
-            var draft = DraftAttachment(kind: .photo, relativePath: relPath)
-            draft.persistedID = nil
-            if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
-               let img = UIImage(data: thumbData) {
-                thumbnails[draft.id] = img
-            }
-            model.insertPhoto(draft, afterSegmentID: anchorID)
-            // After first insertion, anchor to the new text segment that follows
+        let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
+        guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { return }
+        var draft = DraftAttachment(kind: .photo, relativePath: relPath)
+        draft.persistedID = nil
+        if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
+           let img = UIImage(data: thumbData) {
+            thumbnails[draft.id] = img
         }
+        let anchorID = focusedSegmentID
+        model.insertPhoto(draft, afterSegmentID: anchorID)
+        model.isDirty = true
     }
 
     private func removePhoto(_ draft: DraftAttachment) {
