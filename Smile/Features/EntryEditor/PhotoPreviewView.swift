@@ -85,8 +85,14 @@ struct PhotoPreviewView: View {
             Spacer()
             let isMultiSelected = selectedIDs.count > 1
             Button(isMultiSelected ? "确定（\(selectedIDs.count)）" : "确定") {
-                if isMultiSelected, let confirmBatch = onConfirmBatch {
-                    confirmBatch()
+                if isMultiSelected {
+                    if let confirmBatch = onConfirmBatch {
+                        confirmBatch()
+                    } else {
+                        assertionFailure("onConfirmBatch must be provided when multi-selection is possible")
+                        guard let img = images[currentIndex] else { return }
+                        onConfirm(img)
+                    }
                 } else {
                     guard let img = images[currentIndex] else { return }
                     onConfirm(img)
