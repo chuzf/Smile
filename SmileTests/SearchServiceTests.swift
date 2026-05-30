@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
-@testable import SmileJar
+@testable import Smile
 
 @Suite("SearchService", .serialized)
 @MainActor

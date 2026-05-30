@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import SmileJar
+@testable import Smile
 
 @Suite("LocalTitleService")
 struct LocalTitleServiceTests {

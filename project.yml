@@ -1,4 +1,4 @@
-name: SmileJar
+name: Smile
 options:
   deploymentTarget:
     iOS: "17.0"
@@ -16,17 +16,17 @@ settings:
     CODE_SIGNING_REQUIRED: NO
     CODE_SIGN_IDENTITY: "-"
 targets:
-  SmileJar:
+  Smile:
     type: application
     platform: iOS
     sources:
-      - path: SmileJar
-        excludes: [Info.plist, SmileJar.entitlements]
+      - path: Smile
+        excludes: [Info.plist, Smile.entitlements]
     settings:
       base:
-        CODE_SIGN_ENTITLEMENTS: SmileJar/SmileJar.entitlements
+        CODE_SIGN_ENTITLEMENTS: Smile/Smile.entitlements
     info:
-      path: SmileJar/Info.plist
+      path: Smile/Info.plist
       properties:
         CFBundleDisplayName: 微笑储蓄罐
         NSCameraUsageDescription: "用于拍摄记录"
@@ -37,16 +37,16 @@ targets:
           UIColorName: AccentColor
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
     dependencies: []
-  SmileJarTests:
+  SmileTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [SmileJarTests]
+    sources: [SmileTests]
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
     dependencies:
-      - target: SmileJar
+      - target: Smile
       - package: swift-snapshot-testing
         product: SnapshotTesting
 packages:

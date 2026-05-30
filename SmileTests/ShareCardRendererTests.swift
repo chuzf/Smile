@@ -1,6 +1,6 @@
 import Testing
 import UIKit
-@testable import SmileJar
+@testable import Smile
 
 @Suite("ShareCardRenderer", .serialized)
 @MainActor

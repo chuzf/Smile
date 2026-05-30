@@ -1,7 +1,7 @@
 import Testing
 import SwiftUI
 import SnapshotTesting
-@testable import SmileJar
+@testable import Smile
 
 @Suite("Snapshot", .serialized)
 @MainActor

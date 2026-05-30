@@ -1,6 +1,6 @@
 import Testing
 import SwiftData
-@testable import SmileJar
+@testable import Smile
 
 @Suite("DataModel")
 struct DataModelTests {
@@ -65,7 +65,7 @@ struct DataModelTests {
     }
 
     @Test("无初始分组时默认选微笑储蓄罐")
-    @MainActor func defaultsToSmileJarWhenNoInitialGroup() throws {
+    @MainActor func defaultsToSmileWhenNoInitialGroup() throws {
         let container = try ModelContainerFactory.makeInMemory()
         ModelContainerFactory.seedIfNeeded(context: container.mainContext)
         let groups = try container.mainContext.fetch(FetchDescriptor<Group>())

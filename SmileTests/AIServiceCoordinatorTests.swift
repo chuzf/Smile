@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import SmileJar
+@testable import Smile
 
 struct StubFailingService: AIService {
     func generateTitle(text: String, context: TitleContext) async throws -> String {

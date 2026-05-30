@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 import SwiftData
-@testable import SmileJar
+@testable import Smile
 
 @Suite("iOS Note Editor Model")
 struct iOSNoteEditorModelTests {

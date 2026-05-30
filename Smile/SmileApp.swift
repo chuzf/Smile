@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct SmileJarApp: App {
+struct SmileApp: App {
     let container: ModelContainer
 
     init() {

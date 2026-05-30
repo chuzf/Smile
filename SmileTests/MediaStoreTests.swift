@@ -1,12 +1,12 @@
 import Testing
 import Foundation
-@testable import SmileJar
+@testable import Smile
 
 @Suite("MediaStore")
 struct MediaStoreTests {
     func tempRoot() -> URL {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("SmileJarTest_\(UUID().uuidString)")
+            .appendingPathComponent("SmileTest_\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }

@@ -4,7 +4,7 @@
 <dict>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)com.smilejar.SmileJar</string>
+		<string>$(AppIdentifierPrefix)com.smilejar.Smile</string>
 	</array>
 </dict>
 </plist>
