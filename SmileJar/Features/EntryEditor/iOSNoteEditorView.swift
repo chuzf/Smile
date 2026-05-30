@@ -156,11 +156,27 @@ struct iOSNoteEditorView: View {
             if let entry = try? context.fetch(descriptor).first {
                 model.load(from: entry)
                 entryDraftID = entry.id
+                Task { await loadExistingThumbnails() }
             } else {
                 model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
             }
         } else {
             model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
+        }
+    }
+
+    @MainActor
+    private func loadExistingThumbnails() async {
+        let mediaStore = MediaStore.production()
+        for draft in model.attachments where draft.kind == .photo {
+            guard thumbnails[draft.id] == nil,
+                  let data = try? mediaStore.loadData(relativePath: draft.relativePath) else { continue }
+            if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
+               let img = UIImage(data: thumbData) {
+                thumbnails[draft.id] = img
+            } else if let img = UIImage(data: data) {
+                thumbnails[draft.id] = img
+            }
         }
     }
 
