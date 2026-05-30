@@ -42,6 +42,31 @@ final class PhotoCropTests: XCTestCase {
         XCTAssertEqual(result.size.height, 100, accuracy: 1)
     }
 
+    func testCropRightOrientationImage() {
+        // Simulate a camera photo with .right orientation.
+        // Use scale:1 format so cgImage pixels == points (no 3x screen scaling).
+        let cgSize = CGSize(width: 300, height: 200) // raw cgImage is landscape (300 wide, 200 tall)
+        let fmt = UIGraphicsImageRendererFormat()
+        fmt.scale = 1
+        let cgImg = UIGraphicsImageRenderer(size: cgSize, format: fmt)
+            .image { ctx in UIColor.blue.setFill(); ctx.fill(CGRect(origin: .zero, size: cgSize)) }
+            .cgImage!
+        // Wrap with .right orientation → UIKit treats it as portrait: size = (200, 300)
+        let source = UIImage(cgImage: cgImg, scale: 1.0, orientation: .right)
+        // source.size == (200, 300) in points
+        XCTAssertEqual(source.size.width,  200, accuracy: 1, "pre-check: source width")
+        XCTAssertEqual(source.size.height, 300, accuracy: 1, "pre-check: source height")
+
+        // imageRect matches source.size (200×300), cropRect selects a 100×100 region
+        let imageRect = CGRect(x: 0, y: 0, width: 200, height: 300)
+        let cropRect  = CGRect(x: 50, y: 100, width: 100, height: 100)
+        let result = PhotoCropView.cropImage(source, cropRect: cropRect, imageRect: imageRect)
+        // Expected: 100×100 pt result, not the original 200×300
+        XCTAssertEqual(result.size.width,  100, accuracy: 2, "Width should match crop, not original")
+        XCTAssertEqual(result.size.height, 100, accuracy: 2, "Height should match crop, not original")
+        XCTAssertFalse(result.size == source.size, "Should not return source unchanged")
+    }
+
     private func makeImage(size: CGSize) -> UIImage {
         UIGraphicsImageRenderer(size: size).image { ctx in
             UIColor.red.setFill()

@@ -194,21 +194,24 @@ struct PhotoCropView: View {
 
     static func cropImage(_ source: UIImage, cropRect: CGRect, imageRect: CGRect) -> UIImage {
         guard imageRect.width > 0, imageRect.height > 0 else { return source }
-        // source.size is in points; cgImage dimensions are in pixels, so multiply by scale
-        let s = source.scale
-        let scaleX = source.size.width  / imageRect.width  * s
-        let scaleY = source.size.height / imageRect.height * s
-        let pixelBounds = CGRect(origin: .zero, size: CGSize(width: source.size.width * s,
-                                                              height: source.size.height * s))
-        let pixRect = CGRect(
+
+        let scaleX = source.size.width  / imageRect.width
+        let scaleY = source.size.height / imageRect.height
+        let imageCrop = CGRect(
             x: (cropRect.minX - imageRect.minX) * scaleX,
             y: (cropRect.minY - imageRect.minY) * scaleY,
             width:  cropRect.width  * scaleX,
             height: cropRect.height * scaleY
-        ).intersection(pixelBounds)
+        ).intersection(CGRect(origin: .zero, size: source.size))
 
-        guard !pixRect.isEmpty, let cg = source.cgImage?.cropping(to: pixRect) else { return source }
-        return UIImage(cgImage: cg, scale: source.scale, orientation: source.imageOrientation)
+        guard !imageCrop.isEmpty else { return source }
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = source.scale
+        let renderer = UIGraphicsImageRenderer(size: imageCrop.size, format: format)
+        return renderer.image { _ in
+            source.draw(at: CGPoint(x: -imageCrop.minX, y: -imageCrop.minY))
+        }
     }
 }
 
