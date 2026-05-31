@@ -5,11 +5,13 @@
 ## 特性
 
 - 两个内置分组:**微笑储蓄罐** / **优势储蓄罐**,可添加自定义分组
-- 文本 + 照片 + 视频 + 语音的混合记录
+- 文本(类备忘录富文本编辑器)+ 照片(支持裁剪)+ 视频 + 语音的混合记录
 - 语音自动转写(本地 Speech 框架)
 - 可选 AI 自动标题(Claude Haiku 4.5,需自备 API Key)
 - 全文搜索 + 标签 + 时间筛选
-- 单条记录生成分享图、全库 zip 备份导出
+- **随机回忆**:随机取出一颗过往的微笑
+- 单条记录生成分享图
+- 全库 zip 备份**导出 / 导入恢复**,支持从其他 App「打开方式」直接导入备份
 - 纯本地存储,不接 iCloud,无任何提醒推送
 - 罐子充实动画随记录数量变化
 
@@ -17,6 +19,7 @@
 
 - iOS 17+ · Swift 5.10 · SwiftUI · SwiftData
 - Xcode 26+ · XcodeGen
+- ZIPFoundation(备份导出/导入)
 - Anthropic API(可选)
 
 ## 构建
@@ -34,7 +37,7 @@ xcodegen generate
 open Smile.xcodeproj
 ```
 
-Xcode 中选择模拟器 (iPhone 15 或更新),Cmd+R 运行。
+Xcode 中选择任一 iOS 17+ 模拟器,Cmd+R 运行。
 
 ## 配置 AI 自动标题(可选)
 
@@ -60,7 +63,7 @@ Smile/
 
 ```bash
 xcodebuild -project Smile.xcodeproj -scheme Smile \
-  -destination 'platform=iOS Simulator,name=iPhone 15' test
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
 覆盖:数据模型 + 全部 Core 服务 + 关键视图 snapshot。
@@ -69,7 +72,9 @@ xcodebuild -project Smile.xcodeproj -scheme Smile \
 
 - 所有记录与媒体文件**仅存于本机沙盒**
 - 媒体文件路径:`Documents/Media/<entry-uuid>/`
-- 不接入 iCloud(可在"我 → 设置 → 导出全部记录"手动备份成 zip)
+- 不接入 iCloud,手动备份/恢复:
+  - 导出:"我 → 设置 → 导出全部记录",生成 zip
+  - 导入:"我 → 设置 → 导入备份",或在其他 App 中对备份 zip 选择「打开方式 → 微笑储蓄罐」
 - App 本身不加锁,依赖系统锁屏保护
 
 ## License
