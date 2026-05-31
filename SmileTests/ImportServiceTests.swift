@@ -160,4 +160,74 @@ struct ImportServiceTests {
         #expect(tags.count == 1)
         #expect(tags[0].colorHex == "#D8A3C4")
     }
+
+    // MARK: - insertEntry / updateEntry
+
+    @MainActor
+    @Test func insertEntryCreatesRecord() throws {
+        let srcContainer = try ModelContainerFactory.makeInMemory()
+        let srcCtx = srcContainer.mainContext
+        ModelContainerFactory.seedIfNeeded(context: srcCtx)
+        let groups = try srcCtx.fetch(FetchDescriptor<Smile.Group>())
+        let builtIn = groups.first(where: \.isBuiltIn)!
+        let tag = Smile.Tag(name: "开心", colorHex: "#FF0")
+        srcCtx.insert(tag)
+        let entry = Entry(id: UUID(), title: "测试标题", titleSource: .manual,
+                          bodyText: "内容", group: builtIn)
+        entry.tags = [tag]
+        srcCtx.insert(entry)
+        try srcCtx.save()
+        let dto = ExportService.EntryDTO(entry)
+
+        let dstContainer = try ModelContainerFactory.makeInMemory()
+        let dstCtx = dstContainer.mainContext
+        ModelContainerFactory.seedIfNeeded(context: dstCtx)
+        let dstGroups = try dstCtx.fetch(FetchDescriptor<Smile.Group>())
+        let dstBuiltIn = dstGroups.first(where: { $0.name == builtIn.name })!
+        let dstTag = Smile.Tag(name: "开心", colorHex: "#FF0")
+        dstCtx.insert(dstTag)
+
+        let groupMap: [UUID: Smile.Group] = [builtIn.id: dstBuiltIn]
+        let tagMap: [String: Smile.Tag] = ["开心": dstTag]
+
+        ImportService.insertEntry(from: dto, groupMap: groupMap,
+                                  tagMap: tagMap, context: dstCtx)
+        try dstCtx.save()
+
+        let entries = try dstCtx.fetch(FetchDescriptor<Entry>())
+        #expect(entries.count == 1)
+        #expect(entries[0].id == entry.id)
+        #expect(entries[0].title == "测试标题")
+        #expect(entries[0].bodyText == "内容")
+        #expect(entries[0].group?.id == dstBuiltIn.id)
+        #expect(entries[0].tags.map(\.name).contains("开心"))
+    }
+
+    @MainActor
+    @Test func updateEntryOverwritesWhenNewer() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let oldDate = Date(timeIntervalSince1970: 1000)
+        let newDate = Date(timeIntervalSince1970: 2000)
+        let entry = Entry(id: UUID(), title: "旧标题", bodyText: "旧内容",
+                          updatedAt: oldDate)
+        ctx.insert(entry)
+        try ctx.save()
+
+        // Build DTO from a source entry with newer updatedAt
+        let srcContainer = try ModelContainerFactory.makeInMemory()
+        let srcCtx = srcContainer.mainContext
+        let srcEntry = Entry(id: entry.id, title: "新标题", bodyText: "新内容",
+                             updatedAt: newDate)
+        srcCtx.insert(srcEntry)
+        try srcCtx.save()
+        let dto = ExportService.EntryDTO(srcEntry)
+
+        ImportService.updateEntry(entry, from: dto, groupMap: [:],
+                                  tagMap: [:], context: ctx)
+
+        #expect(entry.title == "新标题")
+        #expect(entry.bodyText == "新内容")
+        #expect(entry.updatedAt == newDate)
+    }
 }

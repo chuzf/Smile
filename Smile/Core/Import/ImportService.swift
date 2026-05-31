@@ -208,7 +208,32 @@ enum ImportService {
         groupMap: [UUID: Group],
         tagMap: [String: Tag],
         context: ModelContext
-    ) {}
+    ) {
+        let group: Group? = dto.groupID.flatMap { groupMap[$0] }
+        let entry = Entry(
+            id: dto.id,
+            title: dto.title,
+            titleSource: TitleSource(rawValue: dto.titleSource) ?? .auto,
+            bodyText: dto.bodyText,
+            createdAt: dto.createdAt,
+            updatedAt: dto.updatedAt,
+            group: group
+        )
+        context.insert(entry)
+        entry.tags = dto.tagNames.compactMap { tagMap[$0] }
+
+        for attDTO in dto.attachments {
+            let att = MediaAttachment(
+                kind: MediaKind(rawValue: attDTO.kind) ?? .photo,
+                relativePath: attDTO.relativePath,
+                durationSeconds: attDTO.durationSeconds,
+                transcript: attDTO.transcript,
+                sortOrder: attDTO.sortOrder,
+                entry: entry
+            )
+            context.insert(att)
+        }
+    }
 
     @MainActor
     static func updateEntry(
@@ -217,7 +242,29 @@ enum ImportService {
         groupMap: [UUID: Group],
         tagMap: [String: Tag],
         context: ModelContext
-    ) {}
+    ) {
+        entry.title = dto.title
+        entry.titleSourceRaw = dto.titleSource
+        entry.bodyText = dto.bodyText
+        entry.updatedAt = dto.updatedAt
+        entry.group = dto.groupID.flatMap { groupMap[$0] }
+        entry.tags = dto.tagNames.compactMap { tagMap[$0] }
+
+        let oldAtts = entry.attachments
+        for att in oldAtts { context.delete(att) }
+
+        for attDTO in dto.attachments {
+            let att = MediaAttachment(
+                kind: MediaKind(rawValue: attDTO.kind) ?? .photo,
+                relativePath: attDTO.relativePath,
+                durationSeconds: attDTO.durationSeconds,
+                transcript: attDTO.transcript,
+                sortOrder: attDTO.sortOrder,
+                entry: entry
+            )
+            context.insert(att)
+        }
+    }
 
     static func copyMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {}
     static func replaceMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {}
