@@ -6,6 +6,7 @@ struct SettingsView: View {
 
     @State private var exportURL: URL?
     @State private var exporting = false
+    @State private var exportError: String?
 
     var body: some View {
         Form {
@@ -35,6 +36,14 @@ struct SettingsView: View {
         )) { w in
             ShareSheetForURL(url: w.url)
         }
+        .alert("导出失败", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
+        }
     }
 
     @MainActor
@@ -47,7 +56,7 @@ struct SettingsView: View {
             )
             exportURL = url
         } catch {
-            print("导出失败: \(error)")
+            exportError = error.localizedDescription
         }
     }
 }
