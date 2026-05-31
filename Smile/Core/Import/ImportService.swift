@@ -139,7 +139,44 @@ enum ImportService {
         dtos: [ExportService.GroupDTO],
         existing: [Group],
         context: ModelContext
-    ) -> ([UUID: Group], Int) { ([:], 0) }
+    ) -> ([UUID: Group], Int) {
+        let builtInByName = Dictionary(
+            uniqueKeysWithValues: existing.filter(\.isBuiltIn).map { ($0.name, $0) })
+        let customByID = Dictionary(
+            uniqueKeysWithValues: existing.filter { !$0.isBuiltIn }.map { ($0.id, $0) })
+
+        var map: [UUID: Group] = [:]
+        var newCount = 0
+
+        for dto in dtos {
+            if dto.isBuiltIn {
+                if let match = builtInByName[dto.name] {
+                    map[dto.id] = match
+                } else {
+                    let g = Group(id: dto.id, name: dto.name,
+                                  iconSymbol: dto.iconSymbol, colorHex: dto.colorHex,
+                                  isBuiltIn: true, sortOrder: dto.sortOrder,
+                                  createdAt: dto.createdAt)
+                    context.insert(g)
+                    map[dto.id] = g
+                    newCount += 1
+                }
+            } else {
+                if let match = customByID[dto.id] {
+                    map[dto.id] = match
+                } else {
+                    let g = Group(id: dto.id, name: dto.name,
+                                  iconSymbol: dto.iconSymbol, colorHex: dto.colorHex,
+                                  isBuiltIn: false, sortOrder: dto.sortOrder,
+                                  createdAt: dto.createdAt)
+                    context.insert(g)
+                    map[dto.id] = g
+                    newCount += 1
+                }
+            }
+        }
+        return (map, newCount)
+    }
 
     @MainActor
     static func buildTagMap(

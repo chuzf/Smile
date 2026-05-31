@@ -39,4 +39,66 @@ struct ImportServiceTests {
             try ImportService.importBackup(from: zipURL, context: ctx, mediaStore: store)
         }
     }
+
+    // MARK: - buildGroupMap
+
+    @MainActor
+    @Test func builtInGroupRemappedByName() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        ModelContainerFactory.seedIfNeeded(context: ctx)
+        let existing = try ctx.fetch(FetchDescriptor<Group>())
+        let builtIn = existing.first(where: \.isBuiltIn)!
+
+        // Simulate A's built-in group having a different UUID than B's
+        let srcGroup = Group(id: UUID(), name: builtIn.name,
+                             iconSymbol: builtIn.iconSymbol, colorHex: builtIn.colorHex,
+                             isBuiltIn: true, sortOrder: builtIn.sortOrder)
+        let dto = ExportService.GroupDTO(srcGroup)
+
+        let (map, newCount) = ImportService.buildGroupMap(
+            dtos: [dto], existing: existing, context: ctx)
+
+        #expect(map[dto.id]?.id == builtIn.id)  // maps to B's group, not A's UUID
+        #expect(newCount == 0)
+    }
+
+    @MainActor
+    @Test func existingCustomGroupSkipped() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let customGroup = Group(id: UUID(), name: "旅行", iconSymbol: "airplane",
+                                colorHex: "#4A90E2", isBuiltIn: false, sortOrder: 5)
+        ctx.insert(customGroup)
+        try ctx.save()
+        let existing = try ctx.fetch(FetchDescriptor<Group>())
+
+        let dto = ExportService.GroupDTO(customGroup)  // same UUID
+        let (map, newCount) = ImportService.buildGroupMap(
+            dtos: [dto], existing: existing, context: ctx)
+
+        #expect(map[dto.id]?.id == customGroup.id)
+        #expect(newCount == 0)
+        let groups = try ctx.fetch(FetchDescriptor<Group>())
+        #expect(groups.count == 1)  // no duplicate inserted
+    }
+
+    @MainActor
+    @Test func newCustomGroupInserted() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        // B has no groups
+        let srcGroup = Group(id: UUID(), name: "旅行", iconSymbol: "airplane",
+                             colorHex: "#4A90E2", isBuiltIn: false, sortOrder: 5)
+        let dto = ExportService.GroupDTO(srcGroup)
+
+        let (map, newCount) = ImportService.buildGroupMap(
+            dtos: [dto], existing: [], context: ctx)
+
+        #expect(map[dto.id] != nil)
+        #expect(newCount == 1)
+        let groups = try ctx.fetch(FetchDescriptor<Group>())
+        #expect(groups.count == 1)
+        #expect(groups[0].name == "旅行")
+    }
 }
