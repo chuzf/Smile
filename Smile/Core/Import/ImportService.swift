@@ -266,6 +266,24 @@ enum ImportService {
         }
     }
 
-    static func copyMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {}
-    static func replaceMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {}
+    static func copyMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {
+        let src = mediaDir.appendingPathComponent(entryID.uuidString)
+        guard FileManager.default.fileExists(atPath: src.path) else { return }
+        let dst = mediaStore.directoryURL(for: entryID)
+        guard !FileManager.default.fileExists(atPath: dst.path) else { return }
+        try? FileManager.default.createDirectory(at: mediaStore.rootURL, withIntermediateDirectories: true)
+        try? FileManager.default.copyItem(at: src, to: dst)
+    }
+
+    static func replaceMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {
+        let dst = mediaStore.directoryURL(for: entryID)
+        if FileManager.default.fileExists(atPath: dst.path) {
+            try? FileManager.default.removeItem(at: dst)
+        }
+        let src = mediaDir.appendingPathComponent(entryID.uuidString)
+        if FileManager.default.fileExists(atPath: src.path) {
+            try? FileManager.default.createDirectory(at: mediaStore.rootURL, withIntermediateDirectories: true)
+            try? FileManager.default.copyItem(at: src, to: dst)
+        }
+    }
 }
