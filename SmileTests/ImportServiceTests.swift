@@ -280,4 +280,90 @@ struct ImportServiceTests {
         try? FileManager.default.removeItem(at: storeRoot)
         try? FileManager.default.removeItem(at: mediaDir)
     }
+
+    // MARK: - Integration
+
+    @MainActor
+    @Test func exportThenImportRoundTrip() throws {
+        // ── Source device: create data and export ──
+        let srcContainer = try ModelContainerFactory.makeInMemory()
+        let srcCtx = srcContainer.mainContext
+        ModelContainerFactory.seedIfNeeded(context: srcCtx)
+        let srcGroups = try srcCtx.fetch(FetchDescriptor<Smile.Group>())
+        let srcBuiltIn = srcGroups.first(where: \.isBuiltIn)!
+
+        let tag = Smile.Tag(name: "快乐", colorHex: "#FFCC00")
+        srcCtx.insert(tag)
+        let entry = Entry(id: UUID(), title: "美好的一天", bodyText: "今天很开心",
+                          group: srcBuiltIn)
+        entry.tags = [tag]
+        srcCtx.insert(entry)
+        try srcCtx.save()
+
+        let srcStore = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("src-store-\(UUID())"))
+        let zipURL = try ExportService.exportAll(context: srcCtx, mediaStore: srcStore)
+        defer {
+            try? FileManager.default.removeItem(at: zipURL)
+            try? FileManager.default.removeItem(at: srcStore.rootURL)
+        }
+
+        // ── Destination device: has only built-in groups, import ──
+        let dstContainer = try ModelContainerFactory.makeInMemory()
+        let dstCtx = dstContainer.mainContext
+        ModelContainerFactory.seedIfNeeded(context: dstCtx)
+        let dstStore = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("dst-store-\(UUID())"))
+        defer { try? FileManager.default.removeItem(at: dstStore.rootURL) }
+
+        let result = try ImportService.importBackup(
+            from: zipURL, context: dstCtx, mediaStore: dstStore)
+
+        #expect(result.newEntries == 1)
+        #expect(result.skippedEntries == 0)
+        #expect(result.updatedEntries == 0)
+        #expect(result.newTags == 1)
+        #expect(result.newGroups == 0)  // built-in groups already exist on dst
+
+        let dstEntries = try dstCtx.fetch(FetchDescriptor<Entry>())
+        #expect(dstEntries.count == 1)
+        #expect(dstEntries[0].title == "美好的一天")
+        #expect(dstEntries[0].group?.name == srcBuiltIn.name)
+        #expect(dstEntries[0].tags.map(\.name).contains("快乐"))
+    }
+
+    @MainActor
+    @Test func secondImportSkipsDuplicates() throws {
+        let srcContainer = try ModelContainerFactory.makeInMemory()
+        let srcCtx = srcContainer.mainContext
+        ModelContainerFactory.seedIfNeeded(context: srcCtx)
+        let entry = Entry(id: UUID(), title: "唯一记录", bodyText: "只有一条")
+        srcCtx.insert(entry)
+        try srcCtx.save()
+
+        let srcStore = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("src2-\(UUID())"))
+        let zipURL = try ExportService.exportAll(context: srcCtx, mediaStore: srcStore)
+        defer {
+            try? FileManager.default.removeItem(at: zipURL)
+            try? FileManager.default.removeItem(at: srcStore.rootURL)
+        }
+
+        let dstContainer = try ModelContainerFactory.makeInMemory()
+        let dstCtx = dstContainer.mainContext
+        ModelContainerFactory.seedIfNeeded(context: dstCtx)
+        let dstStore = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("dst2-\(UUID())"))
+        defer { try? FileManager.default.removeItem(at: dstStore.rootURL) }
+
+        // First import
+        _ = try ImportService.importBackup(from: zipURL, context: dstCtx, mediaStore: dstStore)
+        // Second import of same backup
+        let result2 = try ImportService.importBackup(from: zipURL, context: dstCtx, mediaStore: dstStore)
+
+        #expect(result2.newEntries == 0)
+        #expect(result2.skippedEntries == 1)
+        let entries = try dstCtx.fetch(FetchDescriptor<Entry>())
+        #expect(entries.count == 1)  // no duplicate
+    }
 }
