@@ -62,7 +62,7 @@ enum ExportService {
     }
 
     /// 用 FileManager 的 NSFileCoordinator + .forUploading 把目录压成 zip
-    private static func zipDirectory(_ src: URL, to dst: URL) throws {
+    static func zipDirectory(_ src: URL, to dst: URL) throws {
         let coord = NSFileCoordinator()
         var coordError: NSError?
         var thrown: Error?

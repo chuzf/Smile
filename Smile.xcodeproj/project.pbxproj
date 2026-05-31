@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		06ACD74C68A8292C3455AEA1 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */; };
+		6A95A1604BE745379E1CA3C3 /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E272DA2D81334C7D8B84F150 /* ImportService.swift */; };
+		08FCE16924AB417396A13541 /* ImportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 296FE6B7AC0340C79BA1BB29 /* ImportServiceTests.swift */; };
+		831DFE4EF08C4994AF8D4258 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = B7E4A19302F5C86D94B2E3F8 /* ZIPFoundation */; };
 		09C59CF54B517E03587A2F34 /* VoiceRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331CBCE6E4FC6CB1567AE6AE /* VoiceRecorderView.swift */; };
 		0BD3B25FB0887ED69F42D6CF /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */; };
 		0CA99BEE805B3AA347DDAE00 /* MediaStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */; };
@@ -103,6 +106,8 @@
 		24F779ACC98F942E5D86E15E /* SmileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmileApp.swift; sourceTree = "<group>"; };
 		253EC0E70DEB9160C7BED8F7 /* AIServiceCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceCoordinator.swift; sourceTree = "<group>"; };
 		26DD5BF496437A5780C5E9F3 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		E272DA2D81334C7D8B84F150 /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
+		296FE6B7AC0340C79BA1BB29 /* ImportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportServiceTests.swift; sourceTree = "<group>"; };
 		2AF911FDBE3B4D692BBC512A /* AddGroupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddGroupSheet.swift; sourceTree = "<group>"; };
 		2DC5C44440FDC68ADF4A6EF6 /* ShareCardRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardRendererTests.swift; sourceTree = "<group>"; };
 		2F91A085A1A4AFEF6ABE0D18 /* MediaAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaAttachment.swift; sourceTree = "<group>"; };
@@ -174,6 +179,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBBE638A5360402997CEF508 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				831DFE4EF08C4994AF8D4258 /* ZIPFoundation in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -223,6 +236,7 @@
 				C49945DBC60B9856D7F9E6F7 /* AIService */,
 				705A1C2B130DC3CFC9DA8398 /* DataModel */,
 				C8DB3380C95E3F1A2ADA14E0 /* Export */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* Import */,
 				6B57C1B4F58C269D8B38FD73 /* MediaStore */,
 				A2A2E4344F0974D404CE4166 /* Search */,
 				E90302097FA2701285253FC1 /* Security */,
@@ -248,6 +262,7 @@
 				56B5E03F31318ED588E9D82E /* DataModelTests.swift */,
 				684EA47237B84091AACF82DA /* EditorModelTests.swift */,
 				DD392C71EA93BA09D38A03A1 /* ExportServiceTests.swift */,
+				296FE6B7AC0340C79BA1BB29 /* ImportServiceTests.swift */,
 				942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */,
 				498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */,
 				46BDDD6A676EE307D7466154 /* LocalTitleServiceTests.swift */,
@@ -363,6 +378,14 @@
 			path = Export;
 			sourceTree = "<group>";
 		};
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				E272DA2D81334C7D8B84F150 /* ImportService.swift */,
+			);
+			path = Import;
+			sourceTree = "<group>";
+		};
 		CAE91775A12400F9234B4876 = {
 			isa = PBXGroup;
 			children = (
@@ -469,6 +492,7 @@
 			buildPhases = (
 				AEACEAFC358F34C532794194 /* Sources */,
 				080E93970CCBC6C27F6AEF91 /* Resources */,
+				CBBE638A5360402997CEF508 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -567,6 +591,7 @@
 				F189B72050C9ECE4CCE5734C /* EntryEditorView.swift in Sources */,
 				39D7528E9C035CE5C7D21495 /* Enums.swift in Sources */,
 				388F6CA3B04967C02538BD1A /* ExportService.swift in Sources */,
+				6A95A1604BE745379E1CA3C3 /* ImportService.swift in Sources */,
 				47C4A9BDFFF39DE272203670 /* Group.swift in Sources */,
 				C01FB4AF18C5834BAD279D0B /* GroupDetailView.swift in Sources */,
 				0EB232627D80C2A0C3A50386 /* HomeView.swift in Sources */,
@@ -613,6 +638,7 @@
 				4EF35058653B8DBD15FAE99F /* DataModelTests.swift in Sources */,
 				635597BDE54B4FB6A7072C4F /* EditorModelTests.swift in Sources */,
 				CD16756A4E0C0691BAA5E143 /* ExportServiceTests.swift in Sources */,
+				08FCE16924AB417396A13541 /* ImportServiceTests.swift in Sources */,
 				1747B9824BB814546F42CB3D /* KeychainServiceTests.swift in Sources */,
 				D12706F66B8A02CFBC174D6D /* LocalTitleServiceTests.swift in Sources */,
 				0CA99BEE805B3AA347DDAE00 /* MediaStoreTests.swift in Sources */,
