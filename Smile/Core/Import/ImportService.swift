@@ -187,7 +187,20 @@ enum ImportService {
         dtos: [ExportService.TagDTO],
         existing: [Tag],
         context: ModelContext
-    ) -> ([String: Tag], Int) { ([:], 0) }
+    ) -> ([String: Tag], Int) {
+        var map: [String: Tag] = Dictionary(
+            existing.map { ($0.name, $0) },
+            uniquingKeysWith: { first, _ in first })
+        var newCount = 0
+
+        for dto in dtos where map[dto.name] == nil {
+            let t = Tag(name: dto.name, colorHex: dto.colorHex, createdAt: dto.createdAt)
+            context.insert(t)
+            map[dto.name] = t
+            newCount += 1
+        }
+        return (map, newCount)
+    }
 
     @MainActor
     static func insertEntry(

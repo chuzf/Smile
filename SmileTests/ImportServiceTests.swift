@@ -120,4 +120,44 @@ struct ImportServiceTests {
         #expect(groups.count == 1)
         #expect(groups[0].isBuiltIn == true)
     }
+
+    // MARK: - buildTagMap
+
+    @MainActor
+    @Test func existingTagSkipped() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let existing = Smile.Tag(name: "开心", colorHex: "#FF0000")
+        ctx.insert(existing)
+        try ctx.save()
+
+        let srcTag = Smile.Tag(name: "开心", colorHex: "#00FF00")  // same name, different color
+        let dto = ExportService.TagDTO(srcTag)
+
+        let (map, newCount) = ImportService.buildTagMap(
+            dtos: [dto], existing: [existing], context: ctx)
+
+        #expect(map["开心"] === existing)
+        #expect(newCount == 0)
+        let tags = try ctx.fetch(FetchDescriptor<Smile.Tag>())
+        #expect(tags.count == 1)  // no duplicate
+    }
+
+    @MainActor
+    @Test func newTagInserted() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+
+        let srcTag = Smile.Tag(name: "感恩", colorHex: "#D8A3C4")
+        let dto = ExportService.TagDTO(srcTag)
+
+        let (map, newCount) = ImportService.buildTagMap(
+            dtos: [dto], existing: [], context: ctx)
+
+        #expect(map["感恩"] != nil)
+        #expect(newCount == 1)
+        let tags = try ctx.fetch(FetchDescriptor<Smile.Tag>())
+        #expect(tags.count == 1)
+        #expect(tags[0].colorHex == "#D8A3C4")
+    }
 }
