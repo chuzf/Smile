@@ -132,7 +132,7 @@ enum ImportService {
         return try decoder.decode(type, from: Data(contentsOf: url))
     }
 
-    // MARK: - Stubs (implemented in later tasks)
+    // MARK: - Group mapping
 
     @MainActor
     static func buildGroupMap(
@@ -141,9 +141,11 @@ enum ImportService {
         context: ModelContext
     ) -> ([UUID: Group], Int) {
         let builtInByName = Dictionary(
-            uniqueKeysWithValues: existing.filter(\.isBuiltIn).map { ($0.name, $0) })
+            existing.filter(\.isBuiltIn).map { ($0.name, $0) },
+            uniquingKeysWith: { first, _ in first })
         let customByID = Dictionary(
-            uniqueKeysWithValues: existing.filter { !$0.isBuiltIn }.map { ($0.id, $0) })
+            existing.filter { !$0.isBuiltIn }.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first })
 
         var map: [UUID: Group] = [:]
         var newCount = 0
@@ -177,6 +179,8 @@ enum ImportService {
         }
         return (map, newCount)
     }
+
+    // MARK: - Stubs (implemented in later tasks)
 
     @MainActor
     static func buildTagMap(

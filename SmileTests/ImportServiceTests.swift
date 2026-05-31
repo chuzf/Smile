@@ -101,4 +101,23 @@ struct ImportServiceTests {
         #expect(groups.count == 1)
         #expect(groups[0].name == "旅行")
     }
+
+    @MainActor
+    @Test func unknownBuiltInGroupInserted() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        // B has no existing groups
+        let srcGroup = Group(id: UUID(), name: "新内置分组", iconSymbol: "star",
+                             colorHex: "#FF0000", isBuiltIn: true, sortOrder: 10)
+        let dto = ExportService.GroupDTO(srcGroup)
+
+        let (map, newCount) = ImportService.buildGroupMap(
+            dtos: [dto], existing: [], context: ctx)
+
+        #expect(map[dto.id] != nil)
+        #expect(newCount == 1)
+        let groups = try ctx.fetch(FetchDescriptor<Group>())
+        #expect(groups.count == 1)
+        #expect(groups[0].isBuiltIn == true)
+    }
 }
