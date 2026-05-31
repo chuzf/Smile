@@ -35,7 +35,7 @@ struct ImportServiceTests {
         let store = MediaStore(rootURL: FileManager.default.temporaryDirectory
             .appendingPathComponent("media-\(UUID().uuidString)"))
 
-        #expect(throws: ImportService.ImportError.self) {
+        #expect(throws: ImportService.ImportError.unsupportedVersion(99)) {
             try ImportService.importBackup(from: zipURL, context: ctx, mediaStore: store)
         }
     }

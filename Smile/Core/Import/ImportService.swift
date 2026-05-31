@@ -4,7 +4,7 @@ import ZIPFoundation
 
 enum ImportService {
 
-    struct ImportResult {
+    struct ImportResult: Equatable {
         let newGroups: Int
         let newEntries: Int
         let updatedEntries: Int
@@ -26,6 +26,8 @@ enum ImportService {
         }
     }
 
+    private static let supportedVersion = 1
+
     @MainActor
     static func importBackup(
         from zipURL: URL,
@@ -40,7 +42,7 @@ enum ImportService {
 
         let manifest = try readJSON(ExportService.ExportManifest.self,
                                     filename: "manifest.json", in: staging)
-        guard manifest.version == 1 else {
+        guard manifest.version <= supportedVersion else {
             throw ImportError.unsupportedVersion(manifest.version)
         }
 
@@ -96,8 +98,26 @@ enum ImportService {
     // MARK: - Private: zip + JSON helpers
 
     private static func unzip(_ zipURL: URL, to destination: URL) throws {
-        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        try FileManager.default.unzipItem(at: zipURL, to: destination)
+        let fm = FileManager.default
+        try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+        try fm.unzipItem(at: zipURL, to: destination)
+        // NSFileCoordinator(.forUploading) wraps contents in a top-level subdirectory;
+        // if that is the only item, promote its children up one level.
+        let items = try fm.contentsOfDirectory(at: destination,
+                                               includingPropertiesForKeys: [.isDirectoryKey],
+                                               options: .skipsHiddenFiles)
+        if items.count == 1,
+           let isDir = try? items[0].resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+           isDir == true {
+            let wrapper = items[0]
+            let children = try fm.contentsOfDirectory(at: wrapper,
+                                                      includingPropertiesForKeys: nil,
+                                                      options: .skipsHiddenFiles)
+            for child in children {
+                try fm.moveItem(at: child, to: destination.appendingPathComponent(child.lastPathComponent))
+            }
+            try fm.removeItem(at: wrapper)
+        }
     }
 
     private static func readJSON<T: Decodable>(
