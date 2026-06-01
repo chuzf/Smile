@@ -201,6 +201,10 @@ struct PhotoLibraryPickerView: View {
         var loaded: [Int: UIImage] = [:]
         let lock = NSLock()
         let group = DispatchGroup()
+        // Track which indices have already called group.leave() to guarantee
+        // exactly one leave() per enter(), even when the callback fires multiple
+        // times (e.g. degraded preview + final for iCloud photos).
+        var completedIndices = Set<Int>()
         let opts = PHImageRequestOptions()
         opts.deliveryMode = .highQualityFormat
         opts.isSynchronous = false
@@ -213,11 +217,16 @@ struct PhotoLibraryPickerView: View {
                 contentMode: .aspectFit, options: opts
             ) { img, info in
                 let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                guard !isDegraded else { return }
-                if let img {
-                    lock.withLock { loaded[i] = img }
+                if isDegraded { return }  // wait for final result
+                var shouldLeave = false
+                lock.lock()
+                if !completedIndices.contains(i) {
+                    completedIndices.insert(i)
+                    if let img { loaded[i] = img }
+                    shouldLeave = true
                 }
-                group.leave()
+                lock.unlock()
+                if shouldLeave { group.leave() }
             }
         }
 

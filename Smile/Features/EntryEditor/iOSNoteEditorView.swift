@@ -33,6 +33,7 @@ struct iOSNoteEditorView: View {
     @State private var showTagPicker = false
     @State private var showUnsavedAlert = false
     @State private var showInsertPhotoError = false
+    @State private var showSaveError = false
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -71,6 +72,18 @@ struct iOSNoteEditorView: View {
             }
         }
         .onDisappear { model.reset(); thumbnails.removeAll() }
+        .onChange(of: model.autoSaveSignal) { _, signal in
+            guard signal > 0 else { return }
+            Task { await performLightAutosave() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .voiceTranscribed)) { note in
+            guard let draftID = note.userInfo?["draftID"] as? UUID,
+                  let transcript = note.userInfo?["transcript"] as? String else { return }
+            if let idx = model.voiceAttachments.firstIndex(where: { $0.id == draftID }) {
+                model.voiceAttachments[idx].transcript = transcript
+                model.isDirty = true
+            }
+        }
         .sheet(isPresented: $showVoiceRecorder) {
             VoiceRecorderView(entryDraftID: entryDraftID) { draft in model.voiceAttachments.append(draft) }
         }
@@ -100,6 +113,11 @@ struct iOSNoteEditorView: View {
             Button("好", role: .cancel) { }
         } message: {
             Text("部分照片无法保存，请检查存储空间是否充足。")
+        }
+        .alert("保存失败", isPresented: $showSaveError) {
+            Button("好的", role: .cancel) { }
+        } message: {
+            Text("记录保存失败，请检查存储空间是否充足后重试。")
         }
     }
 
@@ -327,7 +345,12 @@ struct iOSNoteEditorView: View {
             context.insert(att)
         }
 
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            showSaveError = true
+            return
+        }
         onSaved?(group.id, entry.id)
         model.isDirty = false
         dismiss()
@@ -388,6 +411,57 @@ struct iOSNoteEditorView: View {
         let mediaStore = MediaStore.production()
         try? mediaStore.delete(relativePath: draft.relativePath)
         model.voiceAttachments.removeAll { $0.id == draft.id }
+    }
+
+    /// Autosave path: persists text+body to an existing entry without dismissing.
+    /// For new entries (editingEntryID == nil), checks if one was already created by a prior autosave.
+    @MainActor
+    private func performLightAutosave() async {
+        guard let groupID = model.selectedGroupID,
+              let group = allGroups.first(where: { $0.persistentModelID == groupID }),
+              model.hasContent else { return }
+
+        let title = model.extractTitle()
+        let body = iOSNoteEditorModel.encodeBodySegments(model.buildBodySegments())
+        let fallbackTitle = LocalTitleService.dateFallback(date: model.createdAt, groupName: group.name)
+
+        let entry: Entry
+        if let editID = editingEntryID {
+            var descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.persistentModelID == editID })
+            descriptor.fetchLimit = 1
+            guard let existing = try? context.fetch(descriptor).first else { return }
+            existing.title = title.isEmpty ? fallbackTitle : title
+            existing.bodyText = body
+            existing.updatedAt = .now
+            entry = existing
+        } else {
+            // For new entries, look up by entryDraftID (stable across the editing session).
+            let draftID = entryDraftID
+            var descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == draftID })
+            descriptor.fetchLimit = 1
+            if let existing = try? context.fetch(descriptor).first {
+                existing.title = title.isEmpty ? fallbackTitle : title
+                existing.bodyText = body
+                existing.updatedAt = .now
+                entry = existing
+            } else {
+                let new = Entry(
+                    id: entryDraftID,
+                    title: title.isEmpty ? fallbackTitle : title,
+                    titleSource: .manual,
+                    bodyText: body,
+                    createdAt: model.createdAt,
+                    updatedAt: .now,
+                    group: group
+                )
+                context.insert(new)
+                entry = new
+            }
+        }
+
+        let allTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
+        entry.tags = allTags.filter { model.selectedTags.contains($0.persistentModelID) }
+        try? context.save()
     }
 
     @ViewBuilder

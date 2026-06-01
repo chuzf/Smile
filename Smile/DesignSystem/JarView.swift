@@ -56,6 +56,12 @@ struct JarView: View {
                 wave = .pi * 2
             }
         }
+        .onDisappear {
+            // Stop the repeat animation when the view leaves the screen.
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { wave = 0 }
+        }
     }
 }
 

@@ -50,6 +50,8 @@ enum EditorSegment: Identifiable {
     var isDirty: Bool = false
     var isSaving: Bool = false
     var lastAutoSaveTime: Date = Date.distantPast
+    // Incremented each time performAutoSave fires so the view can react and persist.
+    private(set) var autoSaveSignal: Int = 0
 
     private var autoSaveTask: Task<Void, Never>?
 
@@ -255,8 +257,9 @@ enum EditorSegment: Identifiable {
         isSaving = true
         defer { isSaving = false }
         lastAutoSaveTime = Date()
-        isDirty = false
         updatedAt = Date()
+        isDirty = false
+        autoSaveSignal += 1   // signal view to call its real save path
     }
 
     func reset() {
@@ -271,6 +274,7 @@ enum EditorSegment: Identifiable {
         isDirty = false
         isSaving = false
         lastAutoSaveTime = Date.distantPast
+        autoSaveSignal = 0
     }
 
     // MARK: Private

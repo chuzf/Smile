@@ -36,13 +36,20 @@ actor TranscriptionService {
         request.shouldReportPartialResults = false
 
         return try await withCheckedThrowingContinuation { cont in
-            recognizer.recognitionTask(with: request) { result, error in
+            // Capture recognizer to keep it alive for the duration of the task.
+            recognizer.recognitionTask(with: request) { [recognizer] result, error in
+                _ = recognizer  // retain until callback fires
                 if let error = error {
                     cont.resume(throwing: TranscriptionError.recognitionFailed(error))
-                    return
+                } else if let result = result {
+                    if result.isFinal {
+                        cont.resume(returning: result.bestTranscription.formattedString)
+                    }
+                    // partial result: wait for isFinal
+                } else {
+                    // nil result + nil error: recognition ended with no output
+                    cont.resume(returning: "")
                 }
-                guard let result = result, result.isFinal else { return }
-                cont.resume(returning: result.bestTranscription.formattedString)
             }
         }
     }

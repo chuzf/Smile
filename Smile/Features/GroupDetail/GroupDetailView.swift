@@ -31,18 +31,27 @@ struct GroupDetailView: View {
     @State private var dateFrom: Date?
     @State private var dateTo: Date?
     @State private var showTimeFilter = false
+    // Cache decoded bodyText plain strings to avoid re-decoding JSON on every render.
+    @State private var plainTextCache: [UUID: String] = [:]
 
     private var fillRatio: Double {
         min(1.0, Double(entries.count) / 50.0)
     }
 
+    private func cachedPlainText(for entry: Entry) -> String {
+        if let cached = plainTextCache[entry.id] { return cached }
+        let text = iOSNoteEditorModel.plainText(from: entry.bodyText)
+        plainTextCache[entry.id] = text
+        return text
+    }
+
     private var filteredEntries: [Entry] {
         var list = entries
-        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let q = searchText
             list = list.filter { entry in
                 entry.title.localizedStandardContains(q) ||
-                iOSNoteEditorModel.plainText(from: entry.bodyText).localizedStandardContains(q) ||
+                cachedPlainText(for: entry).localizedStandardContains(q) ||
                 entry.attachments.contains { $0.transcript?.localizedStandardContains(q) ?? false } ||
                 entry.tags.contains { $0.name.localizedStandardContains(q) }
             }
@@ -156,6 +165,15 @@ struct GroupDetailView: View {
         }
         .navigationDestination(item: $selectedEntry) { entry in
             EntryDetailView(entry: entry)
+        }
+        .onChange(of: entries) { _, newEntries in
+            // If the selected entry was deleted, clear navigation to avoid dangling reference.
+            if let sel = selectedEntry, !newEntries.contains(where: { $0.id == sel.id }) {
+                selectedEntry = nil
+            }
+            // Invalidate plainText cache for entries that no longer exist or have been updated.
+            let currentIDs = Set(newEntries.map { $0.id })
+            plainTextCache = plainTextCache.filter { currentIDs.contains($0.key) }
         }
     }
 }

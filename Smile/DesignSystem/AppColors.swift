@@ -33,6 +33,10 @@ extension Color {
     init(hex: String) {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, s.allSatisfy(\.isHexDigit) else {
+            self.init(red: 0.5, green: 0.5, blue: 0.5)
+            return
+        }
         var rgb: UInt64 = 0
         Scanner(string: s).scanHexInt64(&rgb)
         let r = Double((rgb >> 16) & 0xFF) / 255

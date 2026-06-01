@@ -56,7 +56,7 @@ struct HomeView: View {
 
                         ForEach(customGroups) { group in
                             jarCard(group)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                .contextMenu {
                                     Button(role: .destructive) {
                                         if group.canDelete {
                                             context.delete(group)
@@ -65,7 +65,7 @@ struct HomeView: View {
                                             deleteBlockedGroup = group
                                         }
                                     } label: {
-                                        Label("删除", systemImage: "trash")
+                                        Label("删除储蓄罐", systemImage: "trash")
                                     }
                                 }
                         }

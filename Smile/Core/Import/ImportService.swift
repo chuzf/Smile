@@ -65,13 +65,15 @@ enum ImportService {
         let existingByID = Dictionary(uniqueKeysWithValues: existingEntries.map { ($0.id, $0) })
         let mediaDir = staging.appendingPathComponent("media")
         var newCount = 0, updatedCount = 0, skippedCount = 0
+        // Track which entries need media copied AFTER a successful DB save.
+        var mediaToCopy: [(UUID, Bool)] = []   // (entryID, isNew)
 
         for dto in entryDTOs {
             if let existing = existingByID[dto.id] {
                 if dto.updatedAt > existing.updatedAt {
                     updateEntry(existing, from: dto,
                                 groupMap: groupMap, tagMap: tagMap, context: context)
-                    replaceMedia(entryID: dto.id, from: mediaDir, mediaStore: mediaStore)
+                    mediaToCopy.append((dto.id, false))
                     updatedCount += 1
                 } else {
                     skippedCount += 1
@@ -79,12 +81,22 @@ enum ImportService {
             } else {
                 insertEntry(from: dto, groupMap: groupMap,
                             tagMap: tagMap, context: context)
-                copyMedia(entryID: dto.id, from: mediaDir, mediaStore: mediaStore)
+                mediaToCopy.append((dto.id, true))
                 newCount += 1
             }
         }
 
+        // Save DB first — if this throws, no media files are copied, preventing orphans.
         try context.save()
+
+        // Copy media only after a successful DB save.
+        for (entryID, isNew) in mediaToCopy {
+            if isNew {
+                copyMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+            } else {
+                replaceMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+            }
+        }
 
         return ImportResult(
             newGroups: newGroupCount,
@@ -226,6 +238,7 @@ enum ImportService {
             let att = MediaAttachment(
                 kind: MediaKind(rawValue: attDTO.kind) ?? .photo,
                 relativePath: attDTO.relativePath,
+                thumbnailPath: attDTO.thumbnailPath,
                 durationSeconds: attDTO.durationSeconds,
                 transcript: attDTO.transcript,
                 sortOrder: attDTO.sortOrder,
@@ -257,6 +270,7 @@ enum ImportService {
             let att = MediaAttachment(
                 kind: MediaKind(rawValue: attDTO.kind) ?? .photo,
                 relativePath: attDTO.relativePath,
+                thumbnailPath: attDTO.thumbnailPath,
                 durationSeconds: attDTO.durationSeconds,
                 transcript: attDTO.transcript,
                 sortOrder: attDTO.sortOrder,
@@ -270,7 +284,8 @@ enum ImportService {
         let src = mediaDir.appendingPathComponent(entryID.uuidString)
         guard FileManager.default.fileExists(atPath: src.path) else { return }
         let dst = mediaStore.directoryURL(for: entryID)
-        guard !FileManager.default.fileExists(atPath: dst.path) else { return }
+        // Remove stale destination (e.g. residue from a previous failed import) before copying.
+        try? FileManager.default.removeItem(at: dst)
         try? FileManager.default.createDirectory(at: mediaStore.rootURL, withIntermediateDirectories: true)
         try? FileManager.default.copyItem(at: src, to: dst)
     }

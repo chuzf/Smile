@@ -8,6 +8,7 @@ struct EntryDetailView: View {
 
     @State private var showEditor = false
     @State private var sharedImage: UIImage?
+    @State private var showShareSheet = false
 
     var body: some View {
         ZStack {
@@ -63,11 +64,10 @@ struct EntryDetailView: View {
         .sheet(isPresented: $showEditor) {
             iOSNoteEditorView(editingEntryID: entry.persistentModelID)
         }
-        .sheet(item: Binding<ShareImageWrapper?>(
-            get: { sharedImage.map { ShareImageWrapper(image: $0) } },
-            set: { _ in sharedImage = nil }
-        )) { wrapper in
-            ShareSheet(image: wrapper.image)
+        .sheet(isPresented: $showShareSheet, onDismiss: { sharedImage = nil }) {
+            if let img = sharedImage {
+                ShareSheet(image: img)
+            }
         }
     }
 
@@ -140,10 +140,11 @@ struct EntryDetailView: View {
             groupName: entry.group?.name ?? "微笑储蓄罐",
             dateText: f.string(from: entry.createdAt),
             title: entry.title.isEmpty ? "(无标题)" : entry.title,
-            bodySnippet: String(entry.bodyText.prefix(120)),
+            bodySnippet: String(iOSNoteEditorModel.plainText(from: entry.bodyText).prefix(120)),
             primaryImage: primary
         )
         sharedImage = ShareCardRenderer.render(data)
+        showShareSheet = true
     }
 
     private func deleteEntry() {

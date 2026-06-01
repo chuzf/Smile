@@ -116,12 +116,13 @@ enum ExportService {
     struct AttachmentDTO: Codable {
         let kind: String
         let relativePath: String
+        let thumbnailPath: String?
         let transcript: String?
         let durationSeconds: Double?
         let sortOrder: Int
         init(_ a: MediaAttachment) {
-            kind = a.kindRaw; relativePath = a.relativePath; transcript = a.transcript
-            durationSeconds = a.durationSeconds; sortOrder = a.sortOrder
+            kind = a.kindRaw; relativePath = a.relativePath; thumbnailPath = a.thumbnailPath
+            transcript = a.transcript; durationSeconds = a.durationSeconds; sortOrder = a.sortOrder
         }
     }
 

@@ -28,7 +28,12 @@ struct MediaStore {
     }
 
     func absoluteURL(relativePath: String) -> URL {
-        rootURL.appendingPathComponent(relativePath)
+        let url = rootURL.appendingPathComponent(relativePath).standardized
+        // Reject path traversal attempts (e.g. "../") that escape the media root.
+        guard url.path.hasPrefix(rootURL.standardized.path) else {
+            return rootURL
+        }
+        return url
     }
 
     func loadData(relativePath: String) throws -> Data {

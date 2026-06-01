@@ -19,6 +19,8 @@ struct KeychainService {
 
         var add = query
         add[kSecValueData as String] = data
+        // ThisDeviceOnly prevents API keys syncing via iCloud Keychain or encrypted backups.
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess else {
             throw KeychainError.osStatus(status)

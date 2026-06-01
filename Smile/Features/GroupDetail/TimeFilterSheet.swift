@@ -27,8 +27,12 @@ struct TimeFilterSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("应用") {
                         if enableRange {
-                            from = localFrom
-                            to = localTo
+                            // Swap if user set start > end
+                            let start = min(localFrom, localTo)
+                            let end   = max(localFrom, localTo)
+                            from = Calendar.current.startOfDay(for: start)
+                            // Set end to 23:59:59 so today's records are included
+                            to = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: end) ?? end
                         } else {
                             from = nil
                             to = nil

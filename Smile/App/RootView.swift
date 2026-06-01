@@ -77,10 +77,12 @@ struct RootView: View {
     }
 
     private func handleEditorDismiss() {
+        // 关闭编辑器后总是回到“罐”列表页（无论保存还是取消），
+        // 避免取消时停留在中间 + 号那个空白 tab。
+        selectedTab = 0
         guard let gid = pendingGroupID, let eid = pendingEntryID else { return }
         pendingGroupID = nil
         pendingEntryID = nil
-        selectedTab = 0
         groupNav = GroupNavigation(groupID: gid, highlightEntryID: eid)
     }
 

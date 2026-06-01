@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import UIKit
 
 struct VoicePlayerRow: View {
     let attachment: MediaAttachment
@@ -9,6 +10,7 @@ struct VoicePlayerRow: View {
     @State private var progress: Double = 0
     @State private var timer: Timer?
     @State private var showTranscript = true
+    @State private var playbackError = false
 
     private let mediaStore = MediaStore.production()
 
@@ -29,6 +31,12 @@ struct VoicePlayerRow: View {
                 Text(durationLabel)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(AppColors.textSecondary)
+            }
+
+            if playbackError {
+                Text("播放失败，请检查文件是否存在")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red.opacity(0.8))
             }
 
             if let transcript = attachment.transcript, !transcript.isEmpty {
@@ -67,16 +75,22 @@ struct VoicePlayerRow: View {
     private func startPlayback() {
         let url = mediaStore.absoluteURL(relativePath: attachment.relativePath)
         do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
             player = try AVAudioPlayer(contentsOf: url)
             player?.prepareToPlay()
             player?.play()
             isPlaying = true
+            playbackError = false
             timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
                 guard let p = player else { return }
                 progress = p.duration > 0 ? p.currentTime / p.duration : 0
                 if !p.isPlaying { stopPlayback() }
             }
-        } catch { print("播放失败: \(error)") }
+        } catch {
+            isPlaying = false
+            playbackError = true
+        }
     }
 
     private func stopPlayback() {
@@ -86,5 +100,6 @@ struct VoicePlayerRow: View {
         timer = nil
         isPlaying = false
         progress = 0
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
