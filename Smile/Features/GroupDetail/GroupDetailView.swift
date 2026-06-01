@@ -23,7 +23,6 @@ struct GroupDetailView: View {
     @State private var highlightedEntryID: UUID?
     @State private var pendingHighlightID: UUID?
     @State private var showAddEntry = false
-    @State private var showRandomRecall = false
     @State private var randomEntry: Entry?
     @State private var selectedEntry: Entry?
 
@@ -83,7 +82,6 @@ struct GroupDetailView: View {
                     PrimaryButton(title: entries.isEmpty ? "还没有可以取出的微笑" : "随机看一颗") {
                         if !entries.isEmpty {
                             randomEntry = entries.randomElement()
-                            showRandomRecall = true
                         }
                     }
                     .disabled(entries.isEmpty)
@@ -148,12 +146,10 @@ struct GroupDetailView: View {
                 onSaved: { _, entryID in pendingHighlightID = entryID }
             )
         }
-        .sheet(isPresented: $showRandomRecall) {
-            if let entry = randomEntry {
-                RandomRecallSheet(entry: entry, onNext: {
-                    randomEntry = entries.randomElement()
-                })
-            }
+        .sheet(item: $randomEntry) { entry in
+            RandomRecallSheet(entry: entry, onNext: {
+                randomEntry = entries.randomElement()
+            })
         }
         .sheet(isPresented: $showTimeFilter) {
             TimeFilterSheet(from: $dateFrom, to: $dateTo)

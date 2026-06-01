@@ -20,11 +20,10 @@ struct RandomRecallSheet: View {
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundStyle(AppColors.textPrimary)
 
-                        if !entry.bodyText.isEmpty {
-                            Text(entry.bodyText)
-                                .font(.system(size: 15))
-                                .foregroundStyle(AppColors.textPrimary.opacity(0.85))
-                                .lineSpacing(4)
+                        bodyContent
+
+                        ForEach(voiceAttachments) { att in
+                            VoicePlayerRow(attachment: att)
                         }
 
                         if !entry.tags.isEmpty {
@@ -57,6 +56,53 @@ struct RandomRecallSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - Body rendering
+
+    @ViewBuilder
+    private var bodyContent: some View {
+        let segs = parseBodySegments()
+        if !segs.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(segs.indices, id: \.self) { idx in
+                    let seg = segs[idx]
+                    switch seg.kind {
+                    case .text:
+                        if let text = seg.content, !text.isEmpty {
+                            Text(text)
+                                .font(.system(size: 15))
+                                .foregroundStyle(AppColors.textPrimary.opacity(0.85))
+                                .lineSpacing(4)
+                                .multilineTextAlignment(seg.textAlignment)
+                                .frame(maxWidth: .infinity, alignment: seg.frameAlignment)
+                        }
+                    case .photo:
+                        if let path = seg.path,
+                           let data = try? MediaStore.production().loadData(relativePath: path),
+                           let img = UIImage(data: data) {
+                            Image(uiImage: img)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func parseBodySegments() -> [BodySegment] {
+        if let segs = iOSNoteEditorModel.decodeBodySegments(from: entry.bodyText) {
+            return segs
+        }
+        if entry.bodyText.isEmpty { return [] }
+        return [BodySegment(kind: .text, content: entry.bodyText, path: nil, alignment: nil)]
+    }
+
+    private var voiceAttachments: [MediaAttachment] {
+        entry.attachments.filter { $0.kind == .voice }.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     static func formattedDate(_ date: Date) -> String {
