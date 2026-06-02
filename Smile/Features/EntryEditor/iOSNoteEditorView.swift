@@ -90,6 +90,11 @@ struct iOSNoteEditorView: View {
             guard signal > 0 else { return }
             Task { await performLightAutosave() }
         }
+        .onChange(of: dictationService.error) { _, newError in
+            guard let newError else { return }
+            model.finalizeDictation()
+            dictationError = newError
+        }
         .onReceive(NotificationCenter.default.publisher(for: .voiceTranscribed)) { note in
             guard let draftID = note.userInfo?["draftID"] as? UUID,
                   let transcript = note.userInfo?["transcript"] as? String else { return }

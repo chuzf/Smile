@@ -3,11 +3,23 @@ import Speech
 
 @Observable @MainActor final class DictationService {
 
-    enum DictationError: Error, LocalizedError {
+    enum DictationError: Error, LocalizedError, Equatable {
         case microphoneDenied
         case speechRecognitionDenied
         case recognizerUnavailable
         case recognitionFailed(Error)
+
+        static func == (lhs: DictationError, rhs: DictationError) -> Bool {
+            switch (lhs, rhs) {
+            case (.microphoneDenied, .microphoneDenied),
+                 (.speechRecognitionDenied, .speechRecognitionDenied),
+                 (.recognizerUnavailable, .recognizerUnavailable),
+                 (.recognitionFailed, .recognitionFailed):
+                return true
+            default:
+                return false
+            }
+        }
 
         var errorDescription: String? {
             switch self {
@@ -39,6 +51,7 @@ import Speech
         guard !isActive, !isStarting else { return }
         isStarting = true
         defer { isStarting = false }
+        error = nil
 
         // 1. 麦克风权限
         let micGranted = await AVAudioApplication.requestRecordPermission()
