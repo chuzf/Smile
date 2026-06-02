@@ -38,6 +38,7 @@
 		4F78CCC4C99C0DC0011098D3 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 64E19F4C2596F285C9524497 /* SnapshotTesting */; };
 		520905D61AF750DE07650D35 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE27C427CEC93DA20396BFBE /* KeychainService.swift */; };
 		52D73568A20F33A9762C7896 /* AppColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0DBCDA57028F5636C7948D /* AppColors.swift */; };
+		55C5636FF30F8AA8B69A3641 /* iOSNoteEditorModelDictationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */; };
 		5AD04A57C319B2A30C25B8E3 /* SmileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F779ACC98F942E5D86E15E /* SmileApp.swift */; };
 		5FF1EB880DC24104A087BEDB /* iOSNoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9DC628A664D31EF6D5B28E2 /* iOSNoteEditorView.swift */; };
 		6115EE9DD9C4B21DF9EA76ED /* TagFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB007998789F54991CFC4435 /* TagFilterBar.swift */; };
@@ -127,7 +128,7 @@
 		554EEB21B4A169D76D891B43 /* AIServiceCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceCoordinatorTests.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
-		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
 		6E79A9117FFC741528407136 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -142,6 +143,7 @@
 		8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8D6481AF95E4B15A05FCE18E /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
 		942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelTests.swift; sourceTree = "<group>"; };
+		95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelDictationTests.swift; sourceTree = "<group>"; };
 		98137F68B7D0E64DF6398BCD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainerFactory.swift; sourceTree = "<group>"; };
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
@@ -265,6 +267,7 @@
 				452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */,
 				DD392C71EA93BA09D38A03A1 /* ExportServiceTests.swift */,
 				2BC3238C38829DADE0A922D2 /* ImportServiceTests.swift */,
+				95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */,
 				942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */,
 				498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */,
 				46BDDD6A676EE307D7466154 /* LocalTitleServiceTests.swift */,
@@ -651,6 +654,7 @@
 				D6AD382BBB9B18F654AD0984 /* ShareCardRendererTests.swift in Sources */,
 				2D9423DC21AC89477F6508F6 /* SmokeTests.swift in Sources */,
 				71DCCF0E91C2A0C1C292C9A8 /* SnapshotTests.swift in Sources */,
+				55C5636FF30F8AA8B69A3641 /* iOSNoteEditorModelDictationTests.swift in Sources */,
 				C6F6DB46202CC06355D58AC6 /* iOSNoteEditorModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -690,7 +694,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J3X5545WTD;
 				INFOPLIST_FILE = Smile/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -708,7 +711,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J3X5545WTD;
 				INFOPLIST_FILE = Smile/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
