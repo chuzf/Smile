@@ -22,6 +22,7 @@
 		182632DE5FF018A5F4676E13 /* shareCardSnapshot.1.png in Resources */ = {isa = PBXBuildFile; fileRef = F8F9B6B9E597B31F4522CD76 /* shareCardSnapshot.1.png */; };
 		194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */; };
 		1C4163D8F94DB75E59DC4739 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B2D5874221409B0BC19C8C /* AIService.swift */; };
+		1CAEC017F9E4BFBC94955243 /* DictationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0E6ECCE5E82FA4B0537FF6 /* DictationService.swift */; };
 		21AEA5F72A1412962A12F416 /* EditorModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */; };
 		23BF8CA885772E2B031C141E /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 196DB5A96F52E0B4FFC83292 /* ZIPFoundation */; };
 		2D9423DC21AC89477F6508F6 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D2CF6A020F0310D846BDF6 /* SmokeTests.swift */; };
@@ -38,6 +39,7 @@
 		4F78CCC4C99C0DC0011098D3 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 64E19F4C2596F285C9524497 /* SnapshotTesting */; };
 		520905D61AF750DE07650D35 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE27C427CEC93DA20396BFBE /* KeychainService.swift */; };
 		52D73568A20F33A9762C7896 /* AppColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0DBCDA57028F5636C7948D /* AppColors.swift */; };
+		55C5636FF30F8AA8B69A3641 /* iOSNoteEditorModelDictationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */; };
 		5AD04A57C319B2A30C25B8E3 /* SmileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F779ACC98F942E5D86E15E /* SmileApp.swift */; };
 		5FF1EB880DC24104A087BEDB /* iOSNoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9DC628A664D31EF6D5B28E2 /* iOSNoteEditorView.swift */; };
 		6115EE9DD9C4B21DF9EA76ED /* TagFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB007998789F54991CFC4435 /* TagFilterBar.swift */; };
@@ -81,6 +83,7 @@
 		F159ED17491E9257BDC78BC5 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8536370776994B527AD1869B /* SearchService.swift */; };
 		F189B72050C9ECE4CCE5734C /* EntryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531684AD5683F033B966D87D /* EntryEditorView.swift */; };
 		F59653CFE3B014776D95E0F6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B82C1211D32BD2B9696089 /* RootView.swift */; };
+		F9933DF72EE1488C78F3D1DE /* DictationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60BE0D421C3D9DC5AE360BF /* DictationServiceTests.swift */; };
 		FD7EA05B8682A61D2D51B22A /* CameraPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FC1B4752D2938A2F5E19F6 /* CameraPickerView.swift */; };
 /* End PBXBuildFile section */
 
@@ -99,6 +102,7 @@
 		01760ABA660828F8A33F655F /* LocalTitleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalTitleService.swift; sourceTree = "<group>"; };
 		04C8F65472AF08ABA7DAB988 /* TagPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPickerSheet.swift; sourceTree = "<group>"; };
 		08310C14B4826AECD380A70B /* ClaudeAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAIService.swift; sourceTree = "<group>"; };
+		0D0E6ECCE5E82FA4B0537FF6 /* DictationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationService.swift; sourceTree = "<group>"; };
 		11ED55795EC7FBBEF4253681 /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
 		16D07B579C730148F997628D /* iOSNoteEditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModel.swift; sourceTree = "<group>"; };
 		1A0DBCDA57028F5636C7948D /* AppColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppColors.swift; sourceTree = "<group>"; };
@@ -127,7 +131,7 @@
 		554EEB21B4A169D76D891B43 /* AIServiceCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceCoordinatorTests.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
-		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
 		6E79A9117FFC741528407136 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -142,6 +146,7 @@
 		8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8D6481AF95E4B15A05FCE18E /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
 		942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelTests.swift; sourceTree = "<group>"; };
+		95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelDictationTests.swift; sourceTree = "<group>"; };
 		98137F68B7D0E64DF6398BCD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainerFactory.swift; sourceTree = "<group>"; };
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
@@ -152,6 +157,7 @@
 		B1EBDAC89DBB17F16E633AC4 /* EntryEditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEditorModel.swift; sourceTree = "<group>"; };
 		B235B1F1F195485F9889BA92 /* SnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
 		B295A4C6BD146287F00A7346 /* TimelineList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineList.swift; sourceTree = "<group>"; };
+		B60BE0D421C3D9DC5AE360BF /* DictationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationServiceTests.swift; sourceTree = "<group>"; };
 		B776FE2C097D81C9CC3D328B /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStoreTests.swift; sourceTree = "<group>"; };
 		C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPreviewView.swift; sourceTree = "<group>"; };
@@ -237,6 +243,7 @@
 			children = (
 				C49945DBC60B9856D7F9E6F7 /* AIService */,
 				705A1C2B130DC3CFC9DA8398 /* DataModel */,
+				8DF698B43801F1408C10AD4B /* Dictation */,
 				C8DB3380C95E3F1A2ADA14E0 /* Export */,
 				84D7A52D8BB95EF9FED729A3 /* Import */,
 				6B57C1B4F58C269D8B38FD73 /* MediaStore */,
@@ -262,9 +269,11 @@
 			children = (
 				554EEB21B4A169D76D891B43 /* AIServiceCoordinatorTests.swift */,
 				56B5E03F31318ED588E9D82E /* DataModelTests.swift */,
+				B60BE0D421C3D9DC5AE360BF /* DictationServiceTests.swift */,
 				452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */,
 				DD392C71EA93BA09D38A03A1 /* ExportServiceTests.swift */,
 				2BC3238C38829DADE0A922D2 /* ImportServiceTests.swift */,
+				95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */,
 				942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */,
 				498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */,
 				46BDDD6A676EE307D7466154 /* LocalTitleServiceTests.swift */,
@@ -329,6 +338,14 @@
 				8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		8DF698B43801F1408C10AD4B /* Dictation */ = {
+			isa = PBXGroup;
+			children = (
+				0D0E6ECCE5E82FA4B0537FF6 /* DictationService.swift */,
+			);
+			path = Dictation;
 			sourceTree = "<group>";
 		};
 		9810B70111917BCDE600DA35 /* Home */ = {
@@ -586,6 +603,7 @@
 				CA6AD1DF1D858E7606380438 /* ClaudeAIService.swift in Sources */,
 				84114EF03D1F972C347BC0F3 /* Components.swift in Sources */,
 				0F8EB3D83400CC19E81EBA2D /* CustomGroupRow.swift in Sources */,
+				1CAEC017F9E4BFBC94955243 /* DictationService.swift in Sources */,
 				12F7860AB2DB8146FB55028E /* DraftAttachment.swift in Sources */,
 				8141DE33ECBCC36BCD95EDDF /* EditGroupSheet.swift in Sources */,
 				AEC10119BAA667B825CDFADD /* EditTagSheet.swift in Sources */,
@@ -640,6 +658,7 @@
 			files = (
 				7D8C9042CE7AF25081D01DF1 /* AIServiceCoordinatorTests.swift in Sources */,
 				4EF35058653B8DBD15FAE99F /* DataModelTests.swift in Sources */,
+				F9933DF72EE1488C78F3D1DE /* DictationServiceTests.swift in Sources */,
 				21AEA5F72A1412962A12F416 /* EditorModelTests.swift in Sources */,
 				CD16756A4E0C0691BAA5E143 /* ExportServiceTests.swift in Sources */,
 				033D1C62433D5D7A58F2A20C /* ImportServiceTests.swift in Sources */,
@@ -651,6 +670,7 @@
 				D6AD382BBB9B18F654AD0984 /* ShareCardRendererTests.swift in Sources */,
 				2D9423DC21AC89477F6508F6 /* SmokeTests.swift in Sources */,
 				71DCCF0E91C2A0C1C292C9A8 /* SnapshotTests.swift in Sources */,
+				55C5636FF30F8AA8B69A3641 /* iOSNoteEditorModelDictationTests.swift in Sources */,
 				C6F6DB46202CC06355D58AC6 /* iOSNoteEditorModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -690,7 +710,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J3X5545WTD;
 				INFOPLIST_FILE = Smile/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -708,7 +727,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J3X5545WTD;
 				INFOPLIST_FILE = Smile/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

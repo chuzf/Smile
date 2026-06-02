@@ -49,6 +49,8 @@ enum EditorSegment: Identifiable {
     var updatedAt: Date = Date()
     var isDirty: Bool = false
     var isSaving: Bool = false
+    var dictationTargetSegmentID: UUID? = nil
+    var dictationBaseText: String = ""
     var lastAutoSaveTime: Date = Date.distantPast
     // Incremented each time performAutoSave fires so the view can react and persist.
     private(set) var autoSaveSignal: Int = 0
@@ -231,6 +233,8 @@ enum EditorSegment: Identifiable {
         isDirty = false
         isSaving = false
         lastAutoSaveTime = Date.distantPast
+        dictationTargetSegmentID = nil
+        dictationBaseText = ""
     }
 
     // MARK: Other
@@ -275,6 +279,8 @@ enum EditorSegment: Identifiable {
         isSaving = false
         lastAutoSaveTime = Date.distantPast
         autoSaveSignal = 0
+        dictationTargetSegmentID = nil
+        dictationBaseText = ""
     }
 
     // MARK: Private
@@ -308,6 +314,45 @@ enum EditorSegment: Identifiable {
         }
 
         return built
+    }
+
+    // MARK: Dictation
+
+    func updateDictation(_ partial: String) {
+        guard let targetID = dictationTargetSegmentID else { return }
+        let separator = needsSeparator(for: dictationBaseText)
+        updateText(dictationBaseText + separator + partial, for: targetID)
+        isDirty = true
+    }
+
+    func commitDictation(_ final: String) {
+        guard let targetID = dictationTargetSegmentID else { return }
+        let separator = needsSeparator(for: dictationBaseText)
+        updateText(dictationBaseText + separator + final, for: targetID)
+        dictationTargetSegmentID = nil
+        dictationBaseText = ""
+        isDirty = true
+    }
+
+    func finalizeDictation() {
+        dictationTargetSegmentID = nil
+        dictationBaseText = ""
+        isDirty = true
+    }
+
+    func cancelDictation() {
+        if let targetID = dictationTargetSegmentID {
+            updateText(dictationBaseText, for: targetID)
+        }
+        dictationTargetSegmentID = nil
+        dictationBaseText = ""
+    }
+
+    private func needsSeparator(for base: String) -> String {
+        guard !base.isEmpty,
+              !base.hasSuffix(" "),
+              !base.hasSuffix("\n") else { return "" }
+        return " "
     }
 
     private func collapseAdjacentTextSegments() {
