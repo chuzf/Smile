@@ -22,3 +22,6 @@ docs/
 # Claude local
 .claude
 
+# Git worktrees
+.worktrees/
+
