@@ -91,14 +91,15 @@ import Speech
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let error {
+                    // If isActive is already false, stop() was called before this callback
+                    // fired — this error is the expected cancellation from our own cleanup.
+                    guard self.isActive else {
+                        self.cleanupAudio()
+                        return
+                    }
                     self.cleanupAudio()
                     self.isActive = false
-                    // Don't surface cancellation errors — they're triggered by stop()
-                    let nsError = error as NSError
-                    let isCancellation = nsError.code == NSUserCancelledError
-                    if !isCancellation {
-                        self.error = .recognitionFailed(error)
-                    }
+                    self.error = .recognitionFailed(error)
                     return
                 }
                 guard let result else { return }
