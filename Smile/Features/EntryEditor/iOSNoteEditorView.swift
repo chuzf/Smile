@@ -34,6 +34,8 @@ struct iOSNoteEditorView: View {
     @State private var showUnsavedAlert = false
     @State private var showInsertPhotoError = false
     @State private var showSaveError = false
+    @State private var dictationService = DictationService()
+    @State private var dictationError: DictationService.DictationError?
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -57,6 +59,9 @@ struct iOSNoteEditorView: View {
                 )
                 Divider()
                 editorScrollView
+                if dictationService.isActive {
+                    dictationStatusBar
+                }
                 Divider()
                 toolbarRow
             }
@@ -71,7 +76,16 @@ struct iOSNoteEditorView: View {
                 }
             }
         }
-        .onDisappear { model.reset(); thumbnails.removeAll() }
+        .onDisappear {
+            if dictationService.isActive {
+                dictationService.stop()
+                // finalizeDictation keeps any partial text already written — intentional,
+                // so the user doesn't lose words they already spoke before dismissing.
+                model.finalizeDictation()
+            }
+            model.reset()
+            thumbnails.removeAll()
+        }
         .onChange(of: model.autoSaveSignal) { _, signal in
             guard signal > 0 else { return }
             Task { await performLightAutosave() }
@@ -118,6 +132,21 @@ struct iOSNoteEditorView: View {
             Button("好的", role: .cancel) { }
         } message: {
             Text("记录保存失败，请检查存储空间是否充足后重试。")
+        }
+        .alert("语音识别不可用", isPresented: Binding(
+            get: { dictationError != nil },
+            set: { if !$0 { dictationError = nil } }
+        )) {
+            if case .microphoneDenied? = dictationError,
+               let url = URL(string: UIApplication.openSettingsURLString) {
+                Button("去设置") { UIApplication.shared.open(url); dictationError = nil }
+            } else if case .speechRecognitionDenied? = dictationError,
+                      let url = URL(string: UIApplication.openSettingsURLString) {
+                Button("去设置") { UIApplication.shared.open(url); dictationError = nil }
+            }
+            Button("好的", role: .cancel) { dictationError = nil }
+        } message: {
+            Text(dictationError?.localizedDescription ?? "")
         }
     }
 
@@ -189,6 +218,29 @@ struct iOSNoteEditorView: View {
     }
 
     @ViewBuilder
+    private var dictationStatusBar: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 2) {
+                ForEach([8, 14, 10, 16, 6], id: \.self) { h in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(AppColors.warmOrange)
+                        .frame(width: 3, height: CGFloat(h))
+                }
+            }
+            Text("正在听写…")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppColors.warmOrange)
+            Spacer()
+            Text("点击麦克风停止")
+                .font(.system(size: 11))
+                .foregroundStyle(AppColors.textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(AppColors.warmOrange.opacity(0.08))
+    }
+
+    @ViewBuilder
     private var toolbarRow: some View {
         HStack(spacing: 18) {
             Button { showPhotoPicker = true } label: {
@@ -196,21 +248,44 @@ struct iOSNoteEditorView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(AppColors.warmOrange)
             }
+            .disabled(dictationService.isActive)
             Button { showCamera = true } label: {
                 Label("拍摄", systemImage: "camera")
                     .font(.system(size: 13))
                     .foregroundStyle(AppColors.warmOrange)
             }
+            .disabled(dictationService.isActive)
+            Button { handleDictationTap() } label: {
+                if dictationService.isActive {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 28, height: 28)
+                        Circle()
+                            .stroke(Color.red.opacity(0.3), lineWidth: 4)
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.white)
+                    }
+                } else {
+                    Label("听写", systemImage: "mic")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColors.warmOrange)
+                }
+            }
             Button { showVoiceRecorder = true } label: {
-                Label("语音", systemImage: "mic")
+                Label("语音", systemImage: "mic.badge.plus")
                     .font(.system(size: 13))
                     .foregroundStyle(AppColors.warmOrange)
             }
+            .disabled(dictationService.isActive)
             Button { showTagPicker = true } label: {
                 Label("标签", systemImage: "number")
                     .font(.system(size: 13))
                     .foregroundStyle(AppColors.warmOrange)
             }
+            .disabled(dictationService.isActive)
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -224,6 +299,39 @@ struct iOSNoteEditorView: View {
             get: { model.textContent(for: id) },
             set: { model.updateText($0, for: id) }
         )
+    }
+
+    private func handleDictationTap() {
+        if dictationService.isActive {
+            dictationService.stop()
+            model.finalizeDictation()
+        } else {
+            let targetID: UUID?
+            if let focused = focusedSegmentID {
+                targetID = focused
+            } else {
+                targetID = model.segments.compactMap {
+                    if case .text(let id, _, _) = $0 { return id } else { return nil }
+                }.last
+            }
+            guard let targetID else { return }
+            model.dictationTargetSegmentID = targetID
+            model.dictationBaseText = model.textContent(for: targetID)
+
+            Task {
+                do {
+                    try await dictationService.start(
+                        onPartial: { partial in model.updateDictation(partial) },
+                        onFinal: { final in model.commitDictation(final) }
+                    )
+                } catch let e as DictationService.DictationError {
+                    model.cancelDictation()
+                    dictationError = e
+                } catch {
+                    model.cancelDictation()
+                }
+            }
+        }
     }
 
     private var dateLabel: String {
