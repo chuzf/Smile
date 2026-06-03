@@ -115,6 +115,7 @@ struct PhotoLibraryPickerView: View {
 
                 if assets.count > 50 {
                     PhotoScrubber(totalCount: assets.count) { idx in
+                        guard idx < assets.count else { return }
                         scrollProxy?.scrollTo(assets[idx].localIdentifier, anchor: .top)
                     }
                     .padding(.trailing, 4)
@@ -240,7 +241,7 @@ private struct PhotoScrubber: View {
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .local)
                     .onChanged { value in
-                        let fraction = max(0, min(1, value.location.y / trackHeight))
+                        let fraction = travelHeight > 0 ? max(0, min(1, value.location.y / travelHeight)) : 0
                         thumbFraction = fraction
                         let idx = min(Int(fraction * CGFloat(totalCount)), max(0, totalCount - 1))
                         onJump(idx)
