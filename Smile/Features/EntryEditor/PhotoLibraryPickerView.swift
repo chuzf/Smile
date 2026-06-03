@@ -298,9 +298,12 @@ private struct ThumbnailCell: View {
         requestID = PHImageManager.default().requestImage(
             for: asset, targetSize: targetSize,
             contentMode: .aspectFill, options: opts
-        ) { img, _ in
+        ) { img, info in
             guard let img else { return }
-            ThumbnailCache.shared.set(img, forKey: id)
+            let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+            if !isDegraded {
+                ThumbnailCache.shared.set(img, forKey: id)
+            }
             DispatchQueue.main.async { self.thumbnail = img }
         }
     }
