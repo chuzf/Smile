@@ -236,3 +236,23 @@ struct PhotoLibraryPickerView: View {
         }
     }
 }
+
+// MARK: - ThumbnailCache
+
+final class ThumbnailCache {
+    static let shared = ThumbnailCache()
+    private let cache = NSCache<NSString, UIImage>()
+
+    init() {
+        cache.countLimit = 500
+        cache.totalCostLimit = 150 * 1024 * 1024
+    }
+
+    func get(_ key: String) -> UIImage? {
+        cache.object(forKey: key as NSString)
+    }
+
+    func set(_ img: UIImage, forKey key: String) {
+        cache.setObject(img, forKey: key as NSString)
+    }
+}
