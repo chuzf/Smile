@@ -85,37 +85,35 @@ struct PhotoLibraryPickerView: View {
     private var gridView: some View {
         GeometryReader { geo in
             let cellSize = (geo.size.width - 4) / 3
-            ZStack(alignment: .trailing) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 2) {
-                            ForEach(Array(assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
-                                let id = asset.localIdentifier
-                                ThumbnailCell(
-                                    asset: asset,
-                                    size: cellSize,
-                                    isSelected: selectedIDs.contains(id),
-                                    selectionDisabled: !selectedIDs.contains(id) && selectedIDs.count >= maxSelection,
-                                    onTap: { previewIndex = idx },
-                                    onToggleSelect: {
-                                        if selectedIDs.contains(id) {
-                                            selectedIDs.remove(id)
-                                        } else if selectedIDs.count < maxSelection {
-                                            selectedIDs.insert(id)
-                                        }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 2) {
+                        ForEach(Array(assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
+                            let id = asset.localIdentifier
+                            ThumbnailCell(
+                                asset: asset,
+                                size: cellSize,
+                                isSelected: selectedIDs.contains(id),
+                                selectionDisabled: !selectedIDs.contains(id) && selectedIDs.count >= maxSelection,
+                                onTap: { previewIndex = idx },
+                                onToggleSelect: {
+                                    if selectedIDs.contains(id) {
+                                        selectedIDs.remove(id)
+                                    } else if selectedIDs.count < maxSelection {
+                                        selectedIDs.insert(id)
                                     }
-                                )
-                                .id(id)
-                            }
+                                }
+                            )
+                            .id(id)
                         }
                     }
-
+                }
+                .overlay(alignment: .trailing) {
                     if assets.count > 50 {
                         PhotoScrubber(totalCount: assets.count) { idx in
                             guard idx < assets.count else { return }
                             proxy.scrollTo(assets[idx].localIdentifier, anchor: .top)
                         }
-                        .padding(.trailing, 4)
                     }
                 }
             }
@@ -224,17 +222,17 @@ private struct PhotoScrubber: View {
             let travelHeight = max(0, trackHeight - thumbHeight)
 
             ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 2.5)
                     .fill(Color(white: 0.7).opacity(0.5))
-                    .frame(width: 4)
+                    .frame(width: 5)
                     .frame(maxHeight: .infinity)
 
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color(white: 0.35))
-                    .frame(width: 4, height: thumbHeight)
+                    .frame(width: 6, height: thumbHeight)
                     .offset(y: thumbFraction * travelHeight)
             }
-            .frame(width: 16)
+            .frame(width: 28)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .local)
@@ -246,7 +244,7 @@ private struct PhotoScrubber: View {
                     }
             )
         }
-        .frame(width: 16)
+        .frame(width: 28)
     }
 }
 
