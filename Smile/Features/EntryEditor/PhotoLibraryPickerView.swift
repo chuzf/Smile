@@ -11,9 +11,9 @@ struct PhotoLibraryPickerView: View {
     @State private var selectedIDs: Set<String> = []
     @State private var previewIndex: Int? = nil
     @State private var editImage: UIImage? = nil
-    @State private var thumbnails: [String: UIImage] = [:]
-
     private let maxSelection = 9
+    private let cellSize: CGFloat = (UIScreen.main.bounds.width - 4) / 3
+    @State private var scrollProxy: ScrollViewProxy?
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
     var body: some View {
@@ -85,53 +85,33 @@ struct PhotoLibraryPickerView: View {
     // MARK: - Grid
 
     private var gridView: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 2) {
-                ForEach(assets.indices, id: \.self) { idx in
-                    let asset = assets[idx]
-                    let id = asset.localIdentifier
-                    thumbnailCell(asset: asset, id: id, idx: idx)
-                }
-            }
-        }
-    }
-
-    private func thumbnailCell(asset: PHAsset, id: String, idx: Int) -> some View {
-        let checked = selectedIDs.contains(id)
-        return GeometryReader { geo in
-            ZStack(alignment: .topTrailing) {
-                // Photo — tap to preview
-                SwiftUI.Group {
-                    if let thumb = thumbnails[id] {
-                        Image(uiImage: thumb)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        Color.gray.opacity(0.3)
-                            .onAppear { loadThumbnail(asset: asset, size: geo.size) }
+        ZStack(alignment: .trailing) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 2) {
+                        ForEach(Array(assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
+                            let id = asset.localIdentifier
+                            ThumbnailCell(
+                                asset: asset,
+                                size: cellSize,
+                                isSelected: selectedIDs.contains(id),
+                                selectionDisabled: !selectedIDs.contains(id) && selectedIDs.count >= maxSelection,
+                                onTap: { previewIndex = idx },
+                                onToggleSelect: {
+                                    if selectedIDs.contains(id) {
+                                        selectedIDs.remove(id)
+                                    } else if selectedIDs.count < maxSelection {
+                                        selectedIDs.insert(id)
+                                    }
+                                }
+                            )
+                            .id(id)
+                        }
                     }
                 }
-                .frame(width: geo.size.width, height: geo.size.width)
-                .clipped()
-                .contentShape(Rectangle())
-                .onTapGesture { previewIndex = idx }
-
-                // Checkmark — tap to select
-                Button {
-                    if checked { selectedIDs.remove(id) } else if selectedIDs.count < maxSelection { selectedIDs.insert(id) }
-                } label: {
-                    Image(systemName: checked ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 22))
-                        .foregroundStyle(
-                            checked ? Color.blue :
-                            (!checked && selectedIDs.count >= maxSelection) ? Color.white.opacity(0.3) : Color.white
-                        )
-                        .shadow(color: .black.opacity(0.4), radius: 2)
-                        .padding(6)
-                }
+                .onAppear { scrollProxy = proxy }
             }
         }
-        .aspectRatio(1, contentMode: .fit)
     }
 
     // MARK: - Permission denied
@@ -176,22 +156,6 @@ struct PhotoLibraryPickerView: View {
         var fetched: [PHAsset] = []
         result.enumerateObjects { asset, _, _ in fetched.append(asset) }
         DispatchQueue.main.async { assets = fetched }
-    }
-
-    private func loadThumbnail(asset: PHAsset, size: CGSize) {
-        guard thumbnails[asset.localIdentifier] == nil else { return }
-        let targetSize = CGSize(width: size.width * UIScreen.main.scale,
-                                height: size.width * UIScreen.main.scale)
-        let opts = PHImageRequestOptions()
-        opts.deliveryMode = .opportunistic
-        opts.isNetworkAccessAllowed = false
-        PHImageManager.default().requestImage(
-            for: asset, targetSize: targetSize,
-            contentMode: .aspectFill, options: opts
-        ) { img, _ in
-            guard let img else { return }
-            DispatchQueue.main.async { thumbnails[asset.localIdentifier] = img }
-        }
     }
 
     private func confirmSelection() {
