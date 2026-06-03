@@ -12,7 +12,6 @@ struct PhotoLibraryPickerView: View {
     @State private var previewIndex: Int? = nil
     @State private var editImage: UIImage? = nil
     private let maxSelection = 9
-    private let cellSize: CGFloat = (UIScreen.main.bounds.width - 4) / 3
     @State private var scrollProxy: ScrollViewProxy?
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
@@ -85,31 +84,34 @@ struct PhotoLibraryPickerView: View {
     // MARK: - Grid
 
     private var gridView: some View {
-        ZStack(alignment: .trailing) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 2) {
-                        ForEach(Array(assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
-                            let id = asset.localIdentifier
-                            ThumbnailCell(
-                                asset: asset,
-                                size: cellSize,
-                                isSelected: selectedIDs.contains(id),
-                                selectionDisabled: !selectedIDs.contains(id) && selectedIDs.count >= maxSelection,
-                                onTap: { previewIndex = idx },
-                                onToggleSelect: {
-                                    if selectedIDs.contains(id) {
-                                        selectedIDs.remove(id)
-                                    } else if selectedIDs.count < maxSelection {
-                                        selectedIDs.insert(id)
+        GeometryReader { geo in
+            let cellSize = (geo.size.width - 4) / 3
+            ZStack(alignment: .trailing) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 2) {
+                            ForEach(Array(assets.enumerated()), id: \.element.localIdentifier) { idx, asset in
+                                let id = asset.localIdentifier
+                                ThumbnailCell(
+                                    asset: asset,
+                                    size: cellSize,
+                                    isSelected: selectedIDs.contains(id),
+                                    selectionDisabled: !selectedIDs.contains(id) && selectedIDs.count >= maxSelection,
+                                    onTap: { previewIndex = idx },
+                                    onToggleSelect: {
+                                        if selectedIDs.contains(id) {
+                                            selectedIDs.remove(id)
+                                        } else if selectedIDs.count < maxSelection {
+                                            selectedIDs.insert(id)
+                                        }
                                     }
-                                }
-                            )
-                            .id(id)
+                                )
+                                .id(id)
+                            }
                         }
                     }
+                    .onAppear { scrollProxy = proxy }
                 }
-                .onAppear { scrollProxy = proxy }
             }
         }
     }
@@ -211,6 +213,7 @@ private struct ThumbnailCell: View {
     let onTap: () -> Void
     let onToggleSelect: () -> Void
 
+    @Environment(\.displayScale) private var displayScale
     @State private var thumbnail: UIImage?
     @State private var requestID: PHImageRequestID?
 
@@ -253,7 +256,7 @@ private struct ThumbnailCell: View {
             thumbnail = cached
             return
         }
-        let px = size * UIScreen.main.scale
+        let px = size * displayScale
         let targetSize = CGSize(width: px, height: px)
         let opts = PHImageRequestOptions()
         opts.deliveryMode = .opportunistic
