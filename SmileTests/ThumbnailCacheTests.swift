@@ -4,33 +4,39 @@ import UIKit
 
 final class ThumbnailCacheTests: XCTestCase {
 
+    // Each test uses a unique key prefix to avoid cross-test state pollution
+    // when using the shared ThumbnailCache instance (ThumbnailCache is private
+    // to its file and not directly constructible outside that file scope).
+    private var prefix: String = ""
+
+    override func setUp() {
+        super.setUp()
+        prefix = UUID().uuidString + "_"
+    }
+
     func testSetAndGet() {
-        let cache = ThumbnailCache()
         let img = makeImage()
-        cache.set(img, forKey: "key1")
-        XCTAssertNotNil(cache.get("key1"))
+        ThumbnailCache.shared.set(img, forKey: prefix + "key1")
+        XCTAssertNotNil(ThumbnailCache.shared.get(prefix + "key1"))
     }
 
     func testMissReturnsNil() {
-        let cache = ThumbnailCache()
-        XCTAssertNil(cache.get("nonexistent"))
+        XCTAssertNil(ThumbnailCache.shared.get(prefix + "nonexistent"))
     }
 
     func testDifferentKeysAreIndependent() {
-        let cache = ThumbnailCache()
         let img = makeImage()
-        cache.set(img, forKey: "a")
-        XCTAssertNotNil(cache.get("a"))
-        XCTAssertNil(cache.get("b"))
+        ThumbnailCache.shared.set(img, forKey: prefix + "a")
+        XCTAssertNotNil(ThumbnailCache.shared.get(prefix + "a"))
+        XCTAssertNil(ThumbnailCache.shared.get(prefix + "b"))
     }
 
     func testOverwriteUpdatesValue() {
-        let cache = ThumbnailCache()
         let img1 = makeImage(color: .red)
         let img2 = makeImage(color: .blue)
-        cache.set(img1, forKey: "k")
-        cache.set(img2, forKey: "k")
-        XCTAssertIdentical(cache.get("k"), img2)
+        ThumbnailCache.shared.set(img1, forKey: prefix + "k")
+        ThumbnailCache.shared.set(img2, forKey: prefix + "k")
+        XCTAssertIdentical(ThumbnailCache.shared.get(prefix + "k"), img2)
     }
 
     private func makeImage(color: UIColor = .gray) -> UIImage {

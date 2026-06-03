@@ -12,7 +12,6 @@ struct PhotoLibraryPickerView: View {
     @State private var previewIndex: Int? = nil
     @State private var editImage: UIImage? = nil
     private let maxSelection = 9
-    @State private var scrollProxy: ScrollViewProxy?
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
     var body: some View {
@@ -110,15 +109,14 @@ struct PhotoLibraryPickerView: View {
                             }
                         }
                     }
-                    .onAppear { scrollProxy = proxy }
-                }
 
-                if assets.count > 50 {
-                    PhotoScrubber(totalCount: assets.count) { idx in
-                        guard idx < assets.count else { return }
-                        scrollProxy?.scrollTo(assets[idx].localIdentifier, anchor: .top)
+                    if assets.count > 50 {
+                        PhotoScrubber(totalCount: assets.count) { idx in
+                            guard idx < assets.count else { return }
+                            proxy.scrollTo(assets[idx].localIdentifier, anchor: .top)
+                        }
+                        .padding(.trailing, 4)
                     }
-                    .padding(.trailing, 4)
                 }
             }
         }
@@ -300,6 +298,7 @@ private struct ThumbnailCell: View {
     }
 
     private func load() {
+        guard size > 0 else { return }
         let id = asset.localIdentifier
         if let cached = ThumbnailCache.shared.get(id) {
             thumbnail = cached
@@ -337,7 +336,7 @@ final class ThumbnailCache {
     static let shared = ThumbnailCache()
     private let cache = NSCache<NSString, UIImage>()
 
-    init() {
+    private init() {
         cache.countLimit = 500
         cache.totalCostLimit = 150 * 1024 * 1024
     }
