@@ -237,6 +237,81 @@ struct PhotoLibraryPickerView: View {
     }
 }
 
+// MARK: - ThumbnailCell
+
+private struct ThumbnailCell: View {
+    let asset: PHAsset
+    let size: CGFloat
+    let isSelected: Bool
+    let selectionDisabled: Bool
+    let onTap: () -> Void
+    let onToggleSelect: () -> Void
+
+    @State private var thumbnail: UIImage?
+    @State private var requestID: PHImageRequestID?
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            SwiftUI.Group {
+                if let thumb = thumbnail {
+                    Image(uiImage: thumb)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.gray.opacity(0.3)
+                }
+            }
+            .frame(width: size, height: size)
+            .clipped()
+            .contentShape(Rectangle())
+            .onTapGesture { onTap() }
+
+            Button {
+                onToggleSelect()
+            } label: {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(
+                        isSelected ? Color.blue :
+                        selectionDisabled ? Color.white.opacity(0.3) : Color.white
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 2)
+                    .padding(6)
+            }
+        }
+        .onAppear { load() }
+        .onDisappear { cancel() }
+    }
+
+    private func load() {
+        let id = asset.localIdentifier
+        if let cached = ThumbnailCache.shared.get(id) {
+            thumbnail = cached
+            return
+        }
+        let px = size * UIScreen.main.scale
+        let targetSize = CGSize(width: px, height: px)
+        let opts = PHImageRequestOptions()
+        opts.deliveryMode = .opportunistic
+        opts.resizeMode = .fast
+        opts.isNetworkAccessAllowed = false
+        requestID = PHImageManager.default().requestImage(
+            for: asset, targetSize: targetSize,
+            contentMode: .aspectFill, options: opts
+        ) { img, _ in
+            guard let img else { return }
+            ThumbnailCache.shared.set(img, forKey: id)
+            DispatchQueue.main.async { self.thumbnail = img }
+        }
+    }
+
+    private func cancel() {
+        guard let rid = requestID else { return }
+        PHImageManager.default().cancelImageRequest(rid)
+        requestID = nil
+    }
+}
+
 // MARK: - ThumbnailCache
 
 final class ThumbnailCache {
