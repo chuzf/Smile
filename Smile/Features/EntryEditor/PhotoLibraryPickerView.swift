@@ -112,6 +112,13 @@ struct PhotoLibraryPickerView: View {
                     }
                     .onAppear { scrollProxy = proxy }
                 }
+
+                if assets.count > 50 {
+                    PhotoScrubber(totalCount: assets.count) { idx in
+                        scrollProxy?.scrollTo(assets[idx].localIdentifier, anchor: .top)
+                    }
+                    .padding(.trailing, 4)
+                }
             }
         }
     }
@@ -200,6 +207,47 @@ struct PhotoLibraryPickerView: View {
             let imgs = (0..<ordered.count).compactMap { loaded[$0] }
             self.onSelect(imgs)
         }
+    }
+}
+
+// MARK: - PhotoScrubber
+
+private struct PhotoScrubber: View {
+    let totalCount: Int
+    let onJump: (Int) -> Void
+
+    @State private var thumbFraction: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { geo in
+            let trackHeight = geo.size.height
+            let thumbHeight: CGFloat = 30
+            let travelHeight = max(0, trackHeight - thumbHeight)
+
+            ZStack(alignment: .top) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(white: 0.7).opacity(0.5))
+                    .frame(width: 4)
+                    .frame(maxHeight: .infinity)
+
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(white: 0.35))
+                    .frame(width: 4, height: thumbHeight)
+                    .offset(y: thumbFraction * travelHeight)
+            }
+            .frame(width: 16)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .onChanged { value in
+                        let fraction = max(0, min(1, value.location.y / trackHeight))
+                        thumbFraction = fraction
+                        let idx = min(Int(fraction * CGFloat(totalCount)), max(0, totalCount - 1))
+                        onJump(idx)
+                    }
+            )
+        }
+        .frame(width: 16)
     }
 }
 
