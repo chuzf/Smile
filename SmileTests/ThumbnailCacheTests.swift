@@ -30,7 +30,7 @@ final class ThumbnailCacheTests: XCTestCase {
         let img2 = makeImage(color: .blue)
         cache.set(img1, forKey: "k")
         cache.set(img2, forKey: "k")
-        XCTAssertEqual(cache.get("k"), img2)
+        XCTAssertIdentical(cache.get("k"), img2)
     }
 
     private func makeImage(color: UIColor = .gray) -> UIImage {

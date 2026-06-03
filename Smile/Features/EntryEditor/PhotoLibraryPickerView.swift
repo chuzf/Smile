@@ -253,6 +253,7 @@ final class ThumbnailCache {
     }
 
     func set(_ img: UIImage, forKey key: String) {
-        cache.setObject(img, forKey: key as NSString)
+        let cost = Int(img.size.width * img.scale * img.size.height * img.scale) * 4
+        cache.setObject(img, forKey: key as NSString, cost: cost)
     }
 }
