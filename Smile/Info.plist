@@ -35,6 +35,8 @@
 	<string>1</string>
 	<key>NSCameraUsageDescription</key>
 	<string>用于拍摄记录</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用于验证身份以查看加密的储蓄罐和条目</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>用于录音</string>
 	<key>NSPhotoLibraryUsageDescription</key>
