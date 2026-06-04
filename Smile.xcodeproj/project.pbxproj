@@ -19,6 +19,8 @@
 		13DF8F7673713207D740F02F /* EntryEditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EBDAC89DBB17F16E633AC4 /* EntryEditorModel.swift */; };
 		15CB6487264BC9621DC3ED16 /* TimeFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F79656BE75E9333AF78F79E /* TimeFilterSheet.swift */; };
 		1747B9824BB814546F42CB3D /* KeychainServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */; };
+		AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */; };
+		AA11BB22CC33DD44EE55FF68 /* LockSessionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */; };
 		182632DE5FF018A5F4676E13 /* shareCardSnapshot.1.png in Resources */ = {isa = PBXBuildFile; fileRef = F8F9B6B9E597B31F4522CD76 /* shareCardSnapshot.1.png */; };
 		194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */; };
 		1C4163D8F94DB75E59DC4739 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B2D5874221409B0BC19C8C /* AIService.swift */; };
@@ -125,6 +127,8 @@
 		452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorModelTests.swift; sourceTree = "<group>"; };
 		46BDDD6A676EE307D7466154 /* LocalTitleServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalTitleServiceTests.swift; sourceTree = "<group>"; };
 		498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManagerTests.swift; sourceTree = "<group>"; };
 		531684AD5683F033B966D87D /* EntryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEditorView.swift; sourceTree = "<group>"; };
 		5421DA96C0DE30293F36BFDC /* EditGroupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupSheet.swift; sourceTree = "<group>"; };
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
@@ -276,6 +280,7 @@
 				95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */,
 				942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */,
 				498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */,
+				AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */,
 				46BDDD6A676EE307D7466154 /* LocalTitleServiceTests.swift */,
 				BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */,
 				CCF19E010724A6A0A0167D07 /* PhotoCropTests.swift */,
@@ -460,6 +465,7 @@
 			isa = PBXGroup;
 			children = (
 				DE27C427CEC93DA20396BFBE /* KeychainService.swift */,
+				AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */,
 			);
 			path = Security;
 			sourceTree = "<group>";
@@ -620,6 +626,7 @@
 				32E6283D3DC77A04F437171D /* JarCardView.swift in Sources */,
 				645F7B7A0FB470026386AECD /* JarView.swift in Sources */,
 				520905D61AF750DE07650D35 /* KeychainService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */,
 				EC0E1F437B87D9E352F69F87 /* LocalTitleService.swift in Sources */,
 				C83798A6B01D17C6FB52A05A /* MeTabView.swift in Sources */,
 				AEE9F6B8092DD32CE39790C1 /* MediaAttachment.swift in Sources */,
@@ -663,6 +670,7 @@
 				CD16756A4E0C0691BAA5E143 /* ExportServiceTests.swift in Sources */,
 				033D1C62433D5D7A58F2A20C /* ImportServiceTests.swift in Sources */,
 				1747B9824BB814546F42CB3D /* KeychainServiceTests.swift in Sources */,
+				AA11BB22CC33DD44EE55FF68 /* LockSessionManagerTests.swift in Sources */,
 				D12706F66B8A02CFBC174D6D /* LocalTitleServiceTests.swift in Sources */,
 				0CA99BEE805B3AA347DDAE00 /* MediaStoreTests.swift in Sources */,
 				77DA72BF4C9CA1AB4314BB44 /* PhotoCropTests.swift in Sources */,
