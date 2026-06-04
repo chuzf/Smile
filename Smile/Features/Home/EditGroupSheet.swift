@@ -4,7 +4,7 @@ struct EditGroupSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    let group: Group
+    @Bindable var group: Group
 
     @State private var name: String
     @State private var pickedColorHex: String
@@ -53,6 +53,16 @@ struct EditGroupSheet: View {
                                 .onTapGesture { pickedSymbol = sym }
                         }
                     }
+                }
+                Section {
+                    Toggle(isOn: $group.isLocked) {
+                        Label("锁定此储蓄罐", systemImage: "lock.fill")
+                    }
+                    .tint(AppColors.warmOrange)
+                } footer: {
+                    Text("开启后需通过 Face ID 或密码才能查看内容")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("编辑分组")
