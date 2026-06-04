@@ -10,6 +10,7 @@ final class Entry {
     var createdAt: Date
     var updatedAt: Date
     var group: Group?
+    var isLocked: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \MediaAttachment.entry)
     var attachments: [MediaAttachment] = []

@@ -113,4 +113,46 @@ struct DataModelTests {
 
         #expect(try ctx.fetch(FetchDescriptor<MediaAttachment>()).count == 0)
     }
+
+    @Test("Group.isLocked 默认 false")
+    @MainActor func groupLockedDefault() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let g = Group(name: "Test", iconSymbol: "star", colorHex: "#FF0000")
+        ctx.insert(g)
+        try ctx.save()
+        #expect(g.isLocked == false)
+    }
+
+    @Test("Entry.isLocked 默认 false")
+    @MainActor func entryLockedDefault() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let e = Entry(title: "测试条目")
+        ctx.insert(e)
+        try ctx.save()
+        #expect(e.isLocked == false)
+    }
+
+    @Test("Group.isLocked 可持久化")
+    @MainActor func groupLockedPersists() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let g = Group(name: "Test", iconSymbol: "star", colorHex: "#FF0000")
+        ctx.insert(g)
+        g.isLocked = true
+        try ctx.save()
+        #expect(g.isLocked == true)
+    }
+
+    @Test("Entry.isLocked 可持久化")
+    @MainActor func entryLockedPersists() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let e = Entry(title: "测试条目")
+        ctx.insert(e)
+        e.isLocked = true
+        try ctx.save()
+        #expect(e.isLocked == true)
+    }
 }
