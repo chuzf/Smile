@@ -55,6 +55,11 @@ struct EntryDetailView: View {
                 Menu {
                     Button("编辑", systemImage: "pencil") { showEditor = true }
                     Button("生成分享图", systemImage: "square.and.arrow.up") { generateShareImage() }
+                    if entry.isLocked {
+                        Button("取消加密", systemImage: "lock.open") { toggleLock() }
+                    } else {
+                        Button("加密此条目", systemImage: "lock") { toggleLock() }
+                    }
                     Button("删除", systemImage: "trash", role: .destructive) { deleteEntry() }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -145,6 +150,11 @@ struct EntryDetailView: View {
         )
         sharedImage = ShareCardRenderer.render(data)
         showShareSheet = true
+    }
+
+    private func toggleLock() {
+        entry.isLocked.toggle()
+        try? context.save()
     }
 
     private func deleteEntry() {
