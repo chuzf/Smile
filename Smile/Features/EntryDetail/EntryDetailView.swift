@@ -4,6 +4,7 @@ import SwiftData
 struct EntryDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(LockSessionManager.self) private var lockSession
     @Bindable var entry: Entry
 
     @State private var showEditor = false
@@ -153,8 +154,13 @@ struct EntryDetailView: View {
     }
 
     private func toggleLock() {
-        entry.isLocked.toggle()
-        try? context.save()
+        Task { @MainActor in
+            if entry.isLocked {
+                guard await lockSession.authenticate(reason: "验证身份以取消加密") else { return }
+            }
+            entry.isLocked.toggle()
+            try? context.save()
+        }
     }
 
     private func deleteEntry() {

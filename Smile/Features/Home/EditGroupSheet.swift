@@ -54,15 +54,17 @@ struct EditGroupSheet: View {
                         }
                     }
                 }
-                Section {
-                    Toggle(isOn: $group.isLocked) {
-                        Label("锁定此储蓄罐", systemImage: "lock.fill")
+                if !group.isBuiltIn {
+                    Section {
+                        Toggle(isOn: $group.isLocked) {
+                            Label("锁定此储蓄罐", systemImage: "lock.fill")
+                        }
+                        .tint(AppColors.warmOrange)
+                    } footer: {
+                        Text("开启后需通过 Face ID 或密码才能查看内容")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    .tint(AppColors.warmOrange)
-                } footer: {
-                    Text("开启后需通过 Face ID 或密码才能查看内容")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("编辑分组")

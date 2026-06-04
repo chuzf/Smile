@@ -102,7 +102,10 @@ struct GroupDetailView: View {
 
                     PrimaryButton(title: entries.isEmpty ? "还没有可以取出的微笑" : "随机看一颗") {
                         if !entries.isEmpty {
-                            randomEntry = entries.randomElement()
+                            let unlockable = entries.filter {
+                                !$0.isLocked || lockSession.isEntryUnlocked($0.id)
+                            }
+                            randomEntry = unlockable.isEmpty ? nil : unlockable.randomElement()
                         }
                     }
                     .disabled(entries.isEmpty)
@@ -217,7 +220,7 @@ private struct UnlockBanner: View {
                 Text("已解锁")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppColors.warmOrange)
-                Text("3 分钟后自动重新锁定")
+                Text("\(Int(LockSessionManager.unlockDuration / 60)) 分钟后自动重新锁定")
                     .font(.system(size: 11))
                     .foregroundStyle(AppColors.textSecondary)
             }

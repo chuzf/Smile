@@ -66,8 +66,11 @@ final class LockSessionManager {
     private func scheduleGroupRelock(id: UUID) {
         groupRelockTasks[id]?.cancel()
         groupRelockTasks[id] = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(LockSessionManager.unlockDuration))
-            guard !Task.isCancelled else { return }
+            do {
+                try await Task.sleep(for: .seconds(LockSessionManager.unlockDuration))
+            } catch {
+                return
+            }
             self?.unlockedGroupIDs.remove(id)
             self?.groupRelockTasks.removeValue(forKey: id)
         }
@@ -76,8 +79,11 @@ final class LockSessionManager {
     private func scheduleEntryRelock(id: UUID) {
         entryRelockTasks[id]?.cancel()
         entryRelockTasks[id] = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(LockSessionManager.unlockDuration))
-            guard !Task.isCancelled else { return }
+            do {
+                try await Task.sleep(for: .seconds(LockSessionManager.unlockDuration))
+            } catch {
+                return
+            }
             self?.unlockedEntryIDs.remove(id)
             self?.entryRelockTasks.removeValue(forKey: id)
         }
