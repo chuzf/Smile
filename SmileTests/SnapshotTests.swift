@@ -10,7 +10,7 @@ struct SnapshotTests {
     @Test func emptyJarCard() {
         let group = Group(name: "微笑储蓄罐", iconSymbol: "face.smiling",
                           colorHex: "#E08A4A", isBuiltIn: true)
-        let view = JarCardView(group: group, recentEntry: nil, onTap: {})
+        let view = JarCardView(group: group, recentEntry: nil, isLocked: false, onTap: {})
             .frame(width: 360)
             .padding()
             .background(AppColors.backgroundGradient)
@@ -22,7 +22,7 @@ struct SnapshotTests {
     @Test func customGroupJarCard() {
         let group = Group(name: "家人", iconSymbol: "heart",
                           colorHex: "#7AA350", isBuiltIn: false)
-        let view = JarCardView(group: group, recentEntry: nil, onTap: {})
+        let view = JarCardView(group: group, recentEntry: nil, isLocked: false, onTap: {})
             .frame(width: 360)
             .padding()
             .background(AppColors.backgroundGradient)
