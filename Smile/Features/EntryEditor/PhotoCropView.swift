@@ -15,7 +15,6 @@ struct PhotoCropView: View {
     // Crop frame (view coords)
     @State private var cropRect: CGRect = .zero
     @State private var containerSize: CGSize = .zero
-    @State private var prevDelta: CGSize = .zero
     private let minCrop: CGFloat = 60
     private let handleHit: CGFloat = 32
 
@@ -89,39 +88,19 @@ struct PhotoCropView: View {
     @ViewBuilder
     private func cornerHandles(geo: GeometryProxy) -> some View {
         SwiftUI.Group {
-            handle(at: CGPoint(x: cropRect.minX, y: cropRect.minY)) { d in
+            CropCornerHandle(point: CGPoint(x: cropRect.minX, y: cropRect.minY), handleHit: handleHit) { d in
                 stretchCorner(.topLeft, delta: d, geo: geo)
             }
-            handle(at: CGPoint(x: cropRect.maxX, y: cropRect.minY)) { d in
+            CropCornerHandle(point: CGPoint(x: cropRect.maxX, y: cropRect.minY), handleHit: handleHit) { d in
                 stretchCorner(.topRight, delta: d, geo: geo)
             }
-            handle(at: CGPoint(x: cropRect.minX, y: cropRect.maxY)) { d in
+            CropCornerHandle(point: CGPoint(x: cropRect.minX, y: cropRect.maxY), handleHit: handleHit) { d in
                 stretchCorner(.bottomLeft, delta: d, geo: geo)
             }
-            handle(at: CGPoint(x: cropRect.maxX, y: cropRect.maxY)) { d in
+            CropCornerHandle(point: CGPoint(x: cropRect.maxX, y: cropRect.maxY), handleHit: handleHit) { d in
                 stretchCorner(.bottomRight, delta: d, geo: geo)
             }
         }
-    }
-
-    private func handle(at point: CGPoint, onDrag: @escaping (CGSize) -> Void) -> some View {
-        Circle()
-            .fill(Color.white)
-            .frame(width: 14, height: 14)
-            .contentShape(Rectangle().size(CGSize(width: handleHit, height: handleHit)))
-            .position(point)
-            .gesture(
-                DragGesture()
-                    .onChanged { v in
-                        let inc = CGSize(
-                            width: v.translation.width - prevDelta.width,
-                            height: v.translation.height - prevDelta.height
-                        )
-                        prevDelta = v.translation
-                        onDrag(inc)
-                    }
-                    .onEnded { _ in prevDelta = .zero }
-            )
     }
 
     private enum Corner { case topLeft, topRight, bottomLeft, bottomRight }
@@ -221,6 +200,35 @@ struct PhotoCropView: View {
         return renderer.image { _ in
             source.draw(at: CGPoint(x: -imageCrop.minX, y: -imageCrop.minY))
         }
+    }
+}
+
+// MARK: - Corner handle (isolated prevDelta per instance to fix two-finger simultaneous drag)
+
+private struct CropCornerHandle: View {
+    let point: CGPoint
+    let handleHit: CGFloat
+    let onDrag: (CGSize) -> Void
+    @State private var prevDelta: CGSize = .zero
+
+    var body: some View {
+        Circle()
+            .fill(Color.white)
+            .frame(width: 14, height: 14)
+            .contentShape(Rectangle().size(CGSize(width: handleHit, height: handleHit)))
+            .position(point)
+            .gesture(
+                DragGesture()
+                    .onChanged { v in
+                        let inc = CGSize(
+                            width: v.translation.width - prevDelta.width,
+                            height: v.translation.height - prevDelta.height
+                        )
+                        prevDelta = v.translation
+                        onDrag(inc)
+                    }
+                    .onEnded { _ in prevDelta = .zero }
+            )
     }
 }
 
