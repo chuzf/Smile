@@ -96,8 +96,15 @@ struct HomeView: View {
             }
             .onChange(of: externalNav) { _, nav in
                 guard let nav else { return }
-                activeNav = nav
                 externalNav = nil
+                let allGroups = builtinGroups + customGroups
+                guard let group = allGroups.first(where: { $0.id == nav.id }) else { return }
+                Task { @MainActor in
+                    if group.isLocked && !lockSession.isGroupUnlocked(group.id) {
+                        guard await lockSession.unlockGroup(group.id) else { return }
+                    }
+                    activeNav = nav
+                }
             }
             .sheet(isPresented: $showAddGroup) {
                 AddGroupSheet()
