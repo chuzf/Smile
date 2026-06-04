@@ -4,6 +4,9 @@ import SwiftData
 @main
 struct SmileApp: App {
     let container: ModelContainer
+    @State private var lockSession = LockSessionManager()
+
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         do {
@@ -20,7 +23,13 @@ struct SmileApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(lockSession)
         }
         .modelContainer(container)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                lockSession.lockAll()
+            }
+        }
     }
 }

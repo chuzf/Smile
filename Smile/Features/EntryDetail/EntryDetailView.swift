@@ -4,6 +4,7 @@ import SwiftData
 struct EntryDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(LockSessionManager.self) private var lockSession
     @Bindable var entry: Entry
 
     @State private var showEditor = false
@@ -55,6 +56,11 @@ struct EntryDetailView: View {
                 Menu {
                     Button("编辑", systemImage: "pencil") { showEditor = true }
                     Button("生成分享图", systemImage: "square.and.arrow.up") { generateShareImage() }
+                    if entry.isLocked {
+                        Button("取消加密", systemImage: "lock.open") { toggleLock() }
+                    } else {
+                        Button("加密此条目", systemImage: "lock") { toggleLock() }
+                    }
                     Button("删除", systemImage: "trash", role: .destructive) { deleteEntry() }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -145,6 +151,16 @@ struct EntryDetailView: View {
         )
         sharedImage = ShareCardRenderer.render(data)
         showShareSheet = true
+    }
+
+    private func toggleLock() {
+        Task { @MainActor in
+            if entry.isLocked {
+                guard await lockSession.authenticate(reason: "验证身份以取消加密") else { return }
+            }
+            entry.isLocked.toggle()
+            try? context.save()
+        }
     }
 
     private func deleteEntry() {

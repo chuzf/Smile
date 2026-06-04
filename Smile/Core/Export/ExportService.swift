@@ -87,10 +87,11 @@ enum ExportService {
         let isBuiltIn: Bool
         let sortOrder: Int
         let createdAt: Date
+        let isLocked: Bool
         init(_ g: Group) {
             id = g.id; name = g.name; iconSymbol = g.iconSymbol
             colorHex = g.colorHex; isBuiltIn = g.isBuiltIn; sortOrder = g.sortOrder
-            createdAt = g.createdAt
+            createdAt = g.createdAt; isLocked = g.isLocked
         }
     }
 
@@ -104,12 +105,14 @@ enum ExportService {
         let groupID: UUID?
         let attachments: [AttachmentDTO]
         let tagNames: [String]
+        let isLocked: Bool
         init(_ e: Entry) {
             id = e.id; title = e.title; titleSource = e.titleSourceRaw
             bodyText = e.bodyText; createdAt = e.createdAt; updatedAt = e.updatedAt
             groupID = e.group?.id
             attachments = e.attachments.sorted { $0.sortOrder < $1.sortOrder }.map(AttachmentDTO.init)
             tagNames = e.tags.map(\.name)
+            isLocked = e.isLocked
         }
     }
 

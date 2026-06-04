@@ -3,10 +3,12 @@ import SwiftData
 
 struct MeTabView: View {
     @Environment(\.modelContext) private var context
+    @Environment(LockSessionManager.self) private var lockSession
     @Query(sort: [SortDescriptor(\Group.sortOrder)]) private var groups: [Group]
     @Query(sort: [SortDescriptor(\Tag.name)]) private var allTags: [Tag]
 
     @State private var globalSearch = ""
+    @State private var searchNavEntry: Entry?
     @State private var editingGroup: Group? = nil
     @State private var deleteBlockedGroup: Group? = nil
     @State private var editingTag: Tag? = nil
@@ -21,6 +23,9 @@ struct MeTabView: View {
                 settingsSection
             }
             .navigationTitle("我")
+            .navigationDestination(item: $searchNavEntry) { entry in
+                EntryDetailView(entry: entry)
+            }
             .sheet(item: $editingGroup) { group in
                 EditGroupSheet(group: group)
             }
@@ -71,16 +76,28 @@ struct MeTabView: View {
                     Text("没找到匹配的记录").foregroundStyle(AppColors.textSecondary)
                 } else {
                     ForEach(results) { e in
-                        NavigationLink {
-                            EntryDetailView(entry: e)
+                        let entryLocked = e.isLocked && !lockSession.isEntryUnlocked(e.id)
+                        let groupLocked = (e.group?.isLocked ?? false) && !lockSession.isGroupUnlocked(e.group?.id ?? UUID())
+                        let isLocked = entryLocked || groupLocked
+                        Button {
+                            handleSearchResultTap(e)
                         } label: {
                             VStack(alignment: .leading) {
-                                Text(e.title.isEmpty ? "(无标题)" : e.title)
-                                Text(e.group?.name ?? "—")
-                                    .font(.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
+                                if isLocked {
+                                    Label("已加密条目", systemImage: "lock.fill")
+                                        .foregroundStyle(AppColors.warmOrange)
+                                    Text(e.group?.name ?? "—")
+                                        .font(.caption)
+                                        .foregroundStyle(AppColors.textSecondary)
+                                } else {
+                                    Text(e.title.isEmpty ? "(无标题)" : e.title)
+                                    Text(e.group?.name ?? "—")
+                                        .font(.caption)
+                                        .foregroundStyle(AppColors.textSecondary)
+                                }
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -175,6 +192,18 @@ struct MeTabView: View {
             } label: {
                 Label("App 设置", systemImage: "gearshape")
             }
+        }
+    }
+
+    private func handleSearchResultTap(_ entry: Entry) {
+        Task { @MainActor in
+            if (entry.group?.isLocked ?? false) && !lockSession.isGroupUnlocked(entry.group?.id ?? UUID()) {
+                guard await lockSession.unlockGroup(entry.group!.id) else { return }
+            }
+            if entry.isLocked && !lockSession.isEntryUnlocked(entry.id) {
+                guard await lockSession.unlockEntry(entry.id) else { return }
+            }
+            searchNavEntry = entry
         }
     }
 }

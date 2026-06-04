@@ -3,6 +3,8 @@ import SwiftData
 
 struct GroupDetailView: View {
     @Environment(\.modelContext) private var context
+    @Environment(LockSessionManager.self) private var lockSession
+
     let group: Group
     let highlightEntryID: UUID?
 
@@ -25,14 +27,18 @@ struct GroupDetailView: View {
     @State private var showAddEntry = false
     @State private var randomEntry: Entry?
     @State private var selectedEntry: Entry?
+    @State private var showUnlockBanner = true
 
     @State private var selectedTagIDs: Set<PersistentIdentifier> = []
     @State private var searchText = ""
     @State private var dateFrom: Date?
     @State private var dateTo: Date?
     @State private var showTimeFilter = false
-    // Cache decoded bodyText plain strings to avoid re-decoding JSON on every render.
     @State private var plainTextCache: [UUID: String] = [:]
+
+    private var isGroupUnlocked: Bool {
+        lockSession.isGroupUnlocked(group.id)
+    }
 
     private var fillRatio: Double {
         min(1.0, Double(entries.count) / 50.0)
@@ -76,13 +82,19 @@ struct GroupDetailView: View {
             AppColors.backgroundGradient.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 14) {
+                    if group.isLocked && isGroupUnlocked && showUnlockBanner {
+                        UnlockBanner(onDismiss: { showUnlockBanner = false })
+                            .padding(.horizontal, 14)
+                            .padding(.top, 8)
+                    }
+
                     JarView(
                         fillRatio: fillRatio,
                         mainColor: Color(hex: group.colorHex),
                         symbolName: group.iconSymbol
                     )
                     .frame(width: 130, height: 160)
-                    .padding(.top, 16)
+                    .padding(.top, group.isLocked && isGroupUnlocked && showUnlockBanner ? 0 : 16)
 
                     Text("\(entries.count) 颗")
                         .font(.system(size: 14))
@@ -90,7 +102,10 @@ struct GroupDetailView: View {
 
                     PrimaryButton(title: entries.isEmpty ? "还没有可以取出的微笑" : "随机看一颗") {
                         if !entries.isEmpty {
-                            randomEntry = entries.randomElement()
+                            let unlockable = entries.filter {
+                                !$0.isLocked || lockSession.isEntryUnlocked($0.id)
+                            }
+                            randomEntry = unlockable.isEmpty ? nil : unlockable.randomElement()
                         }
                     }
                     .disabled(entries.isEmpty)
@@ -100,7 +115,6 @@ struct GroupDetailView: View {
                         EmptyStateView(icon: "tray",
                                        message: "这个罐子还是空的\n回主屏点 ＋ 添加第一条记录")
                     } else {
-                        // 搜索 + 时间筛选
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundStyle(AppColors.textSecondary)
@@ -125,8 +139,11 @@ struct GroupDetailView: View {
 
                         TimelineList(
                             entries: filteredEntries,
-                            onTap: { selectedEntry = $0 },
-                            highlightedEntryID: highlightedEntryID
+                            onTap: { handleEntryTap($0) },
+                            highlightedEntryID: highlightedEntryID,
+                            isEntryLocked: { entry in
+                                entry.isLocked && !lockSession.isEntryUnlocked(entry.id)
+                            }
                         )
                     }
                 }
@@ -167,13 +184,62 @@ struct GroupDetailView: View {
             EntryDetailView(entry: entry)
         }
         .onChange(of: entries) { _, newEntries in
-            // If the selected entry was deleted, clear navigation to avoid dangling reference.
             if let sel = selectedEntry, !newEntries.contains(where: { $0.id == sel.id }) {
                 selectedEntry = nil
             }
-            // Invalidate plainText cache for entries that no longer exist or have been updated.
             let currentIDs = Set(newEntries.map { $0.id })
             plainTextCache = plainTextCache.filter { currentIDs.contains($0.key) }
         }
+        .onChange(of: group.isLocked) { _, _ in
+            showUnlockBanner = true
+        }
+    }
+
+    private func handleEntryTap(_ entry: Entry) {
+        Task { @MainActor in
+            if entry.isLocked && !lockSession.isEntryUnlocked(entry.id) {
+                guard await lockSession.unlockEntry(entry.id) else { return }
+            }
+            selectedEntry = entry
+        }
+    }
+}
+
+// MARK: - Unlock Banner
+
+private struct UnlockBanner: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock.open.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(AppColors.warmOrange)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("已解锁")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppColors.warmOrange)
+                Text("\(Int(LockSessionManager.unlockDuration / 60)) 分钟后自动重新锁定")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Spacer()
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .padding(6)
+            }
+        }
+        .padding(12)
+        .background(AppColors.warmOrange.opacity(0.12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(AppColors.warmOrange.opacity(0.3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

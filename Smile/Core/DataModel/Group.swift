@@ -10,6 +10,7 @@ final class Group {
     var isBuiltIn: Bool
     var sortOrder: Int
     var createdAt: Date
+    var isLocked: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \Entry.group)
     var entries: [Entry] = []

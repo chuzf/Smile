@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct GroupNavigation: Identifiable, Equatable, Hashable {
-    let id: UUID            // groupID
+    let id: UUID
     let highlightEntryID: UUID?
 
     init(groupID: UUID, highlightEntryID: UUID? = nil) {
@@ -13,6 +13,8 @@ struct GroupNavigation: Identifiable, Equatable, Hashable {
 
 struct HomeView: View {
     @Environment(\.modelContext) private var context
+    @Environment(LockSessionManager.self) private var lockSession
+
     @Query(filter: #Predicate<Group> { $0.isBuiltIn == true },
            sort: [SortDescriptor(\Group.sortOrder)])
     private var builtinGroups: [Group]
@@ -94,8 +96,15 @@ struct HomeView: View {
             }
             .onChange(of: externalNav) { _, nav in
                 guard let nav else { return }
-                activeNav = nav
                 externalNav = nil
+                let allGroups = builtinGroups + customGroups
+                guard let group = allGroups.first(where: { $0.id == nav.id }) else { return }
+                Task { @MainActor in
+                    if group.isLocked && !lockSession.isGroupUnlocked(group.id) {
+                        guard await lockSession.unlockGroup(group.id) else { return }
+                    }
+                    activeNav = nav
+                }
             }
             .sheet(isPresented: $showAddGroup) {
                 AddGroupSheet()
@@ -113,10 +122,24 @@ struct HomeView: View {
 
     @ViewBuilder
     private func jarCard(_ group: Group) -> some View {
-        JarCardView(group: group, recentEntry: mostRecent(in: group)) {
-            activeNav = GroupNavigation(groupID: group.id)
+        let locked = group.isLocked && !lockSession.isGroupUnlocked(group.id)
+        JarCardView(
+            group: group,
+            recentEntry: mostRecent(in: group),
+            isLocked: locked
+        ) {
+            handleJarTap(group)
         }
         .padding(.horizontal, 14)
+    }
+
+    private func handleJarTap(_ group: Group) {
+        Task { @MainActor in
+            if group.isLocked && !lockSession.isGroupUnlocked(group.id) {
+                guard await lockSession.unlockGroup(group.id) else { return }
+            }
+            activeNav = GroupNavigation(groupID: group.id)
+        }
     }
 
     private func mostRecent(in group: Group) -> Entry? {

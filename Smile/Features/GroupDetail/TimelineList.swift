@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct TimelineList: View {
-    let entries: [Entry]   // 已按 createdAt 倒序
+    let entries: [Entry]
     let onTap: (Entry) -> Void
     var highlightedEntryID: UUID? = nil
+    var isEntryLocked: ((Entry) -> Bool)? = nil
 
     var body: some View {
         let groupedByMonth = Self.groupByMonth(entries)
@@ -13,6 +14,7 @@ struct TimelineList: View {
                     ForEach(items) { entry in
                         EntryListRow(
                             entry: entry,
+                            isLocked: isEntryLocked?(entry) ?? false,
                             isHighlighted: entry.id == highlightedEntryID,
                             onTap: { onTap(entry) }
                         )
@@ -49,6 +51,7 @@ struct TimelineList: View {
 
 struct EntryListRow: View {
     let entry: Entry
+    var isLocked: Bool = false
     var isHighlighted: Bool = false
     let onTap: () -> Void
 
@@ -57,29 +60,59 @@ struct EntryListRow: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(dayLabel)
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(entry.title.isEmpty ? "(无标题)" : entry.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColors.textPrimary)
-                    .multilineTextAlignment(.leading)
-                if !mediaSummary.isEmpty {
-                    Text(mediaSummary)
-                        .font(.system(size: 10))
-                        .foregroundStyle(AppColors.textSecondary)
-                }
+            if isLocked {
+                lockedContent
+            } else {
+                normalContent
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(AppColors.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .scaleEffect(bounceScale)
         .onAppear { if isHighlighted && !hasBounced { triggerBounce() } }
         .onChange(of: isHighlighted) { _, highlighted in if highlighted && !hasBounced { triggerBounce() } }
+    }
+
+    private var lockedContent: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(dayLabel)
+                .font(.system(size: 11))
+                .foregroundStyle(AppColors.textSecondary)
+            Label("已加密条目", systemImage: "lock.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColors.warmOrange)
+            Text("轻触以验证 Face ID 后查看")
+                .font(.system(size: 11))
+                .foregroundStyle(AppColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(AppColors.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(AppColors.warmOrange.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var normalContent: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(dayLabel)
+                .font(.system(size: 11))
+                .foregroundStyle(AppColors.textSecondary)
+            Text(entry.title.isEmpty ? "(无标题)" : entry.title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
+                .multilineTextAlignment(.leading)
+            if !mediaSummary.isEmpty {
+                Text(mediaSummary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(AppColors.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func triggerBounce() {
