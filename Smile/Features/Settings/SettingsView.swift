@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var context
+    @Environment(LockSessionManager.self) private var lockSession
 
     @State private var exportURL: URL?
     @State private var exporting = false
@@ -91,6 +92,14 @@ struct SettingsView: View {
 
     @MainActor
     private func exportAll() async {
+        let groups = (try? context.fetch(FetchDescriptor<Group>())) ?? []
+        let entries = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
+        let hasLockedContent = groups.contains { $0.isLocked } || entries.contains { $0.isLocked }
+
+        if hasLockedContent {
+            guard await lockSession.authenticate(reason: "验证身份后才能导出全部记录") else { return }
+        }
+
         exporting = true
         defer { exporting = false }
         do {
