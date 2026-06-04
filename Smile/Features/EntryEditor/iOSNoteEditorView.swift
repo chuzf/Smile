@@ -171,30 +171,42 @@ struct iOSNoteEditorView: View {
     private func segmentView(_ segment: EditorSegment) -> some View {
         switch segment {
         case .text(let id, _, let alignment):
-            TextEditor(text: textBinding(for: id))
-                .scrollContentBackground(.hidden)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(AppColors.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
-                .frame(minHeight: 80)
-                .focused($focusedSegmentID, equals: id)
-                .multilineTextAlignment(alignment)
-                .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
-                .overlay(alignment: .topTrailing) {
-                    if focusedSegmentID == id {
-                        HStack(spacing: 2) {
-                            alignButton(icon: "text.alignleft",   align: .leading, current: alignment, segmentID: id)
-                            alignButton(icon: "text.aligncenter", align: .center,  current: alignment, segmentID: id)
-                        }
-                        .padding(4)
-                        .background(.thinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                        .padding(.trailing, 16)
-                        .padding(.top, 4)
+            ZStack(alignment: .topLeading) {
+                // Invisible mirror Text drives the container height so the TextEditor
+                // expands to show all content instead of clipping inside the ScrollView.
+                // TextEditor's UITextView has ~5pt horizontal and ~8pt vertical internal inset.
+                Text(model.textContent(for: id).isEmpty ? " " : model.textContent(for: id))
+                    .font(.system(size: 16, weight: .regular))
+                    .padding(.horizontal, 21)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .opacity(0)
+                TextEditor(text: textBinding(for: id))
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(AppColors.textPrimary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
+                    .scrollDisabled(true)
+                    .focused($focusedSegmentID, equals: id)
+                    .multilineTextAlignment(alignment)
+                    .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
+            }
+            .frame(minHeight: 80)
+            .overlay(alignment: .topTrailing) {
+                if focusedSegmentID == id {
+                    HStack(spacing: 2) {
+                        alignButton(icon: "text.alignleft",   align: .leading, current: alignment, segmentID: id)
+                        alignButton(icon: "text.aligncenter", align: .center,  current: alignment, segmentID: id)
                     }
+                    .padding(4)
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    .padding(.trailing, 16)
+                    .padding(.top, 4)
                 }
+            }
         case .photo(let draft):
             MediaAttachmentRow(
                 draft: draft,
@@ -249,15 +261,21 @@ struct iOSNoteEditorView: View {
     private var toolbarRow: some View {
         HStack(spacing: 18) {
             Button { showPhotoPicker = true } label: {
-                Label("相册", systemImage: "photo.on.rectangle")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColors.warmOrange)
+                HStack(spacing: 4) {
+                    Image(systemName: "photo.on.rectangle")
+                    Text("相册")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppColors.warmOrange)
             }
             .disabled(dictationService.isActive)
             Button { showCamera = true } label: {
-                Label("拍摄", systemImage: "camera")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColors.warmOrange)
+                HStack(spacing: 4) {
+                    Image(systemName: "camera")
+                    Text("拍摄")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppColors.warmOrange)
             }
             .disabled(dictationService.isActive)
             Button { handleDictationTap() } label: {
@@ -274,21 +292,30 @@ struct iOSNoteEditorView: View {
                             .foregroundStyle(.white)
                     }
                 } else {
-                    Label("听写", systemImage: "mic")
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppColors.warmOrange)
+                    HStack(spacing: 4) {
+                        Image(systemName: "mic")
+                        Text("听写")
+                    }
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColors.warmOrange)
                 }
             }
             Button { showVoiceRecorder = true } label: {
-                Label("语音", systemImage: "mic.badge.plus")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColors.warmOrange)
+                HStack(spacing: 4) {
+                    Image(systemName: "mic.badge.plus")
+                    Text("语音")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppColors.warmOrange)
             }
             .disabled(dictationService.isActive)
             Button { showTagPicker = true } label: {
-                Label("标签", systemImage: "number")
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColors.warmOrange)
+                HStack(spacing: 4) {
+                    Image(systemName: "number")
+                    Text("标签")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppColors.warmOrange)
             }
             .disabled(dictationService.isActive)
             Spacer()
