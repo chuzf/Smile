@@ -123,10 +123,12 @@ struct HomeView: View {
     @ViewBuilder
     private func jarCard(_ group: Group) -> some View {
         let locked = group.isLocked && !lockSession.isGroupUnlocked(group.id)
+        let temporarilyUnlocked = group.isLocked && lockSession.isGroupUnlocked(group.id)
         JarCardView(
             group: group,
             recentEntry: mostRecent(in: group),
-            isLocked: locked
+            isLocked: locked,
+            isTemporarilyUnlocked: temporarilyUnlocked
         ) {
             handleJarTap(group)
         }

@@ -30,7 +30,7 @@ final class LockSessionManager {
 
     @discardableResult
     func unlockEntry(_ id: UUID) async -> Bool {
-        guard await authenticate(reason: "验证身份以查看加密条目") else { return false }
+        guard await authenticate(reason: "验证身份以查看锁定条目") else { return false }
         unlockedEntryIDs.insert(id)
         scheduleEntryRelock(id: id)
         return true

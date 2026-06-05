@@ -4,6 +4,7 @@ struct JarCardView: View {
     let group: Group
     let recentEntry: Entry?
     let isLocked: Bool
+    var isTemporarilyUnlocked: Bool = false
     let onTap: () -> Void
 
     private var fillRatio: Double {
@@ -29,6 +30,14 @@ struct JarCardView: View {
                             .background(AppColors.cardSurface)
                             .clipShape(Circle())
                             .offset(x: 2, y: 2)
+                    } else if isTemporarilyUnlocked {
+                        Image(systemName: "lock.open.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(AppColors.leafGreen)
+                            .padding(4)
+                            .background(AppColors.cardSurface)
+                            .clipShape(Circle())
+                            .offset(x: 2, y: 2)
                     }
                 }
 
@@ -41,9 +50,14 @@ struct JarCardView: View {
                         .foregroundStyle(AppColors.textSecondary)
 
                     if isLocked {
-                        Label("已锁定 · 点击验证身份", systemImage: "lock.fill")
+                        Text("已锁定")
                             .font(.system(size: 12))
                             .foregroundStyle(AppColors.warmOrange)
+                            .padding(.top, 4)
+                    } else if isTemporarilyUnlocked {
+                        Text("已解锁")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppColors.leafGreen)
                             .padding(.top, 4)
                     } else {
                         Text(previewLine)

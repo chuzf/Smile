@@ -143,6 +143,9 @@ struct GroupDetailView: View {
                             highlightedEntryID: highlightedEntryID,
                             isEntryLocked: { entry in
                                 entry.isLocked && !lockSession.isEntryUnlocked(entry.id)
+                            },
+                            isEntryUnlocked: { entry in
+                                entry.isLocked && lockSession.isEntryUnlocked(entry.id)
                             }
                         )
                     }

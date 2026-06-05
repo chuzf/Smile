@@ -5,6 +5,7 @@ struct TimelineList: View {
     let onTap: (Entry) -> Void
     var highlightedEntryID: UUID? = nil
     var isEntryLocked: ((Entry) -> Bool)? = nil
+    var isEntryUnlocked: ((Entry) -> Bool)? = nil
 
     var body: some View {
         let groupedByMonth = Self.groupByMonth(entries)
@@ -15,6 +16,7 @@ struct TimelineList: View {
                         EntryListRow(
                             entry: entry,
                             isLocked: isEntryLocked?(entry) ?? false,
+                            isUnlocked: isEntryUnlocked?(entry) ?? false,
                             isHighlighted: entry.id == highlightedEntryID,
                             onTap: { onTap(entry) }
                         )
@@ -52,6 +54,7 @@ struct TimelineList: View {
 struct EntryListRow: View {
     let entry: Entry
     var isLocked: Bool = false
+    var isUnlocked: Bool = false
     var isHighlighted: Bool = false
     let onTap: () -> Void
 
@@ -74,15 +77,26 @@ struct EntryListRow: View {
 
     private var lockedContent: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(dayLabel)
-                .font(.system(size: 11))
-                .foregroundStyle(AppColors.textSecondary)
-            Label("已加密条目", systemImage: "lock.fill")
+            HStack(spacing: 4) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColors.warmOrange)
+                Text(dayLabel)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColors.textSecondary)
+                Text("已锁定")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColors.warmOrange)
+            }
+            Text(entry.title.isEmpty ? "(无标题)" : entry.title)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppColors.warmOrange)
-            Text("轻触以验证 Face ID 后查看")
-                .font(.system(size: 11))
-                .foregroundStyle(AppColors.textSecondary)
+                .foregroundStyle(AppColors.textPrimary)
+                .multilineTextAlignment(.leading)
+            if !mediaSummary.isEmpty {
+                Text(mediaSummary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColors.textSecondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -96,9 +110,21 @@ struct EntryListRow: View {
 
     private var normalContent: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(dayLabel)
-                .font(.system(size: 11))
-                .foregroundStyle(AppColors.textSecondary)
+            HStack(spacing: 4) {
+                if isUnlocked {
+                    Image(systemName: "lock.open.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppColors.leafGreen)
+                }
+                Text(dayLabel)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColors.textSecondary)
+                if isUnlocked {
+                    Text("已解锁")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColors.leafGreen)
+                }
+            }
             Text(entry.title.isEmpty ? "(无标题)" : entry.title)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
