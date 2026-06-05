@@ -41,6 +41,7 @@ struct PhotoCropView: View {
                         cropBorder
                         cornerHandles(geo: geo)
                     }
+                    .clipped()
                     .contentShape(Rectangle())
                     .gesture(imageDrag)
                     .simultaneousGesture(imagePinch)
@@ -143,14 +144,60 @@ struct PhotoCropView: View {
         cropRect = r.clamped(to: CGRect(origin: .zero, size: geo.size))
     }
 
+    // MARK: - Constraint helpers
+
+    // 图片在 scale=1 时的基础尺寸（scaledToFit 结果）
+    private func baseImageSize(in size: CGSize) -> CGSize {
+        let aspect = image.size.width / image.size.height
+        let containerAspect = size.width / size.height
+        if aspect > containerAspect {
+            return CGSize(width: size.width, height: size.width / aspect)
+        } else {
+            return CGSize(width: size.height * aspect, height: size.height)
+        }
+    }
+
+    // 保证图片铺满裁剪框所需的最小缩放值
+    private func minimumScale(for size: CGSize) -> CGFloat {
+        guard cropRect.width > 0, cropRect.height > 0 else { return 1 }
+        let base = baseImageSize(in: size)
+        return max(cropRect.width / base.width, cropRect.height / base.height)
+    }
+
+    // 最大缩放 = 最小缩放的 4 倍，保证裁剪区域至少占原图 1/16 面积，避免像素化
+    private func maximumScale(for size: CGSize) -> CGFloat {
+        return minimumScale(for: size) * 4
+    }
+
+    // 将 offset 约束在合法范围内（裁剪框四边不超出图片边界）
+    // 图片中心 = 容器中心 + offset，故：
+    //   imageMinX = (containerW - scaledW) / 2 + offsetX
+    //   需满足：imageMinX <= cropMinX 且 imageMaxX >= cropMaxX
+    private func clampedOffset(_ offset: CGSize, scale: CGFloat, in size: CGSize) -> CGSize {
+        let base = baseImageSize(in: size)
+        let sw = base.width * scale
+        let sh = base.height * scale
+        let maxX = cropRect.minX - (size.width  - sw) / 2
+        let minX = cropRect.maxX - (size.width  + sw) / 2
+        let maxY = cropRect.minY - (size.height - sh) / 2
+        let minY = cropRect.maxY - (size.height + sh) / 2
+        return CGSize(
+            width:  min(maxX, max(minX, offset.width)),
+            height: min(maxY, max(minY, offset.height))
+        )
+    }
+
     // MARK: - Image gestures
 
     private var imageDrag: some Gesture {
         DragGesture()
             .onChanged { v in
                 guard !isPinching else { return }
-                imgOffset = CGSize(width: lastImgOffset.width + v.translation.width,
-                                   height: lastImgOffset.height + v.translation.height)
+                let proposed = CGSize(
+                    width:  lastImgOffset.width  + v.translation.width,
+                    height: lastImgOffset.height + v.translation.height
+                )
+                imgOffset = clampedOffset(proposed, scale: imgScale, in: containerSize)
             }
             .onEnded { _ in
                 guard !isPinching else { return }
@@ -166,10 +213,15 @@ struct PhotoCropView: View {
                 let base = firstPinchValue ?? v
                 if firstPinchValue == nil { firstPinchValue = v }
                 let normalizedV = v / base
-                imgScale = max(1, lastImgScale * normalizedV)
+                let minScale = minimumScale(for: containerSize)
+                let maxScale = maximumScale(for: containerSize)
+                imgScale = min(maxScale, max(minScale, lastImgScale * normalizedV))
+                // 缩放时同步重新约束偏移，防止缩小后裁剪框露出空白
+                imgOffset = clampedOffset(lastImgOffset, scale: imgScale, in: containerSize)
             }
             .onEnded { _ in
                 lastImgScale = imgScale
+                lastImgOffset = imgOffset
                 firstPinchValue = nil
                 isPinching = false
             }
@@ -183,6 +235,12 @@ struct PhotoCropView: View {
         cropRect = CGRect(x: (size.width - side) / 2,
                           y: (size.height - side) / 2,
                           width: side, height: side)
+        // 初始缩放保证图片恰好铺满裁剪框，居中对齐
+        let minScale = minimumScale(for: size)
+        imgScale = minScale
+        lastImgScale = minScale
+        imgOffset = .zero
+        lastImgOffset = .zero
     }
 
     private func commit() {
