@@ -84,7 +84,7 @@ struct MeTabView: View {
                         } label: {
                             VStack(alignment: .leading) {
                                 if isLocked {
-                                    Label("已加密条目", systemImage: "lock.fill")
+                                    Label("已锁定条目", systemImage: "lock.fill")
                                         .foregroundStyle(AppColors.warmOrange)
                                     Text(e.group?.name ?? "—")
                                         .font(.caption)

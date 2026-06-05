@@ -11,6 +11,8 @@ struct PhotoCropView: View {
     @State private var lastImgScale: CGFloat = 1
     @State private var imgOffset: CGSize = .zero
     @State private var lastImgOffset: CGSize = .zero
+    @State private var isPinching = false
+    @State private var firstPinchValue: CGFloat? = nil
 
     // Crop frame (view coords)
     @State private var cropRect: CGRect = .zero
@@ -146,16 +148,31 @@ struct PhotoCropView: View {
     private var imageDrag: some Gesture {
         DragGesture()
             .onChanged { v in
+                guard !isPinching else { return }
                 imgOffset = CGSize(width: lastImgOffset.width + v.translation.width,
                                    height: lastImgOffset.height + v.translation.height)
             }
-            .onEnded { _ in lastImgOffset = imgOffset }
+            .onEnded { _ in
+                guard !isPinching else { return }
+                lastImgOffset = imgOffset
+            }
     }
 
     private var imagePinch: some Gesture {
         MagnificationGesture()
-            .onChanged { v in imgScale = max(1, lastImgScale * v) }
-            .onEnded { _ in lastImgScale = imgScale }
+            .onChanged { v in
+                isPinching = true
+                // 归一化首次值，消除手势识别阈值带来的初始跳变
+                let base = firstPinchValue ?? v
+                if firstPinchValue == nil { firstPinchValue = v }
+                let normalizedV = v / base
+                imgScale = max(1, lastImgScale * normalizedV)
+            }
+            .onEnded { _ in
+                lastImgScale = imgScale
+                firstPinchValue = nil
+                isPinching = false
+            }
     }
 
     // MARK: - Init & commit

@@ -57,9 +57,9 @@ struct EntryDetailView: View {
                     Button("编辑", systemImage: "pencil") { showEditor = true }
                     Button("生成分享图", systemImage: "square.and.arrow.up") { generateShareImage() }
                     if entry.isLocked {
-                        Button("取消加密", systemImage: "lock.open") { toggleLock() }
+                        Button("取消锁定", systemImage: "lock.open") { toggleLock() }
                     } else {
-                        Button("加密此条目", systemImage: "lock") { toggleLock() }
+                        Button("锁定此条目", systemImage: "lock") { toggleLock() }
                     }
                     Button("删除", systemImage: "trash", role: .destructive) { deleteEntry() }
                 } label: {
@@ -156,7 +156,7 @@ struct EntryDetailView: View {
     private func toggleLock() {
         Task { @MainActor in
             if entry.isLocked {
-                guard await lockSession.authenticate(reason: "验证身份以取消加密") else { return }
+                guard await lockSession.authenticate(reason: "验证身份以取消锁定") else { return }
             }
             entry.isLocked.toggle()
             try? context.save()
