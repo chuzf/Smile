@@ -17,11 +17,23 @@ struct PhotoPreviewView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            pageView
+            VStack(spacing: 0) {
+                // 顶部操作栏
+                HStack {
+                    backButton()
+                    Spacer()
+                    checkButton()
+                }
+                .frame(height: 56)
+
+                // 图片区域（不延伸到操作栏）
+                pageView
+
+                // 底部操作栏
+                bottomBar()
+                    .frame(height: 64)
+            }
         }
-        .overlay(alignment: .topLeading,  content: backButton)
-        .overlay(alignment: .topTrailing, content: checkButton)
-        .overlay(alignment: .bottom,      content: bottomBar)
         .onAppear {
             currentIndex = initialIndex
             loadImage(at: initialIndex)
@@ -103,7 +115,6 @@ struct PhotoPreviewView: View {
             .foregroundStyle(.white)
         }
         .padding(.horizontal, 24)
-        .padding(.bottom, 32)
     }
 
     // MARK: - Helpers

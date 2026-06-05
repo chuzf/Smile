@@ -21,26 +21,39 @@ struct PhotoCropView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            GeometryReader { geo in
-                ZStack {
-                    imageLayer(geo: geo)
-                    dimmingLayer(geo: geo)
-                    cropBorder
-                    cornerHandles(geo: geo)
+            VStack(spacing: 0) {
+                // 顶部操作栏
+                HStack {
+                    Button("取消", action: onCancel)
+                        .foregroundStyle(.white)
+                        .padding()
+                    Spacer()
                 }
-                .contentShape(Rectangle())
-                .gesture(imageDrag)
-                .simultaneousGesture(imagePinch)
-                .onAppear { initCrop(geo.size) }
+                .frame(height: 56)
+
+                // 图片编辑区域（不延伸到顶部/底部操作栏）
+                GeometryReader { geo in
+                    ZStack {
+                        imageLayer(geo: geo)
+                        dimmingLayer(geo: geo)
+                        cropBorder
+                        cornerHandles(geo: geo)
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(imageDrag)
+                    .simultaneousGesture(imagePinch)
+                    .onAppear { initCrop(geo.size) }
+                }
+
+                // 底部操作栏
+                HStack {
+                    Spacer()
+                    Button("完成") { commit() }
+                        .foregroundStyle(.white)
+                        .padding()
+                }
+                .frame(height: 56)
             }
-        }
-        .overlay(alignment: .topLeading) {
-            Button("取消", action: onCancel)
-                .foregroundStyle(.white).padding()
-        }
-        .overlay(alignment: .bottomTrailing) {
-            Button("完成") { commit() }
-                .foregroundStyle(.white).padding()
         }
     }
 
