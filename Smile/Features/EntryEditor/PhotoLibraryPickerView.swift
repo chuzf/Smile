@@ -312,7 +312,8 @@ private struct ThumbnailCell: View {
             for: asset, targetSize: targetSize,
             contentMode: .aspectFill, options: opts
         ) { img, info in
-            guard let img else { return }
+            let isCancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+            guard !isCancelled, let img else { return }
             let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
             if !isDegraded {
                 ThumbnailCache.shared.set(img, forKey: id)

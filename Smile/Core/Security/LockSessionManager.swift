@@ -10,6 +10,7 @@ final class LockSessionManager {
 
     private var groupRelockTasks: [UUID: Task<Void, Never>] = [:]
     private var entryRelockTasks: [UUID: Task<Void, Never>] = [:]
+    private var authInProgress = false
 
     static let unlockDuration: TimeInterval = 180
 
@@ -50,6 +51,9 @@ final class LockSessionManager {
     // MARK: - Auth (also called by SettingsView for export)
 
     func authenticate(reason: String) async -> Bool {
+        guard !authInProgress else { return false }
+        authInProgress = true
+        defer { authInProgress = false }
         let ctx = LAContext()
         var error: NSError?
         guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {

@@ -164,10 +164,13 @@ struct EntryDetailView: View {
     }
 
     private func deleteEntry() {
-        try? MediaStore.production().deleteEntryDirectory(entryID: entry.id)
-        context.delete(entry)
-        try? context.save()
+        let entryID = entry.id
         dismiss()
+        Task { @MainActor in
+            try? MediaStore.production().deleteEntryDirectory(entryID: entryID)
+            context.delete(entry)
+            try? context.save()
+        }
     }
 }
 

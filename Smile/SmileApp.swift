@@ -28,7 +28,7 @@ struct SmileApp: App {
         .modelContainer(container)
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
-                lockSession.lockAll()
+                Task { @MainActor in lockSession.lockAll() }
             }
         }
     }

@@ -177,7 +177,10 @@ struct GroupDetailView: View {
         }
         .sheet(item: $randomEntry) { entry in
             RandomRecallSheet(entry: entry, onNext: {
-                randomEntry = entries.randomElement()
+                let unlockable = entries.filter {
+                    !$0.isLocked || lockSession.isEntryUnlocked($0.id)
+                }
+                randomEntry = unlockable.isEmpty ? nil : unlockable.randomElement()
             })
         }
         .sheet(isPresented: $showTimeFilter) {

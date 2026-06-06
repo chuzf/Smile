@@ -17,6 +17,7 @@ struct PhotoCropView: View {
     // Crop frame (view coords)
     @State private var cropRect: CGRect = .zero
     @State private var containerSize: CGSize = .zero
+    @State private var cropInitialized = false
     private let minCrop: CGFloat = 60
     private let handleHit: CGFloat = 32
 
@@ -230,7 +231,11 @@ struct PhotoCropView: View {
     // MARK: - Init & commit
 
     private func initCrop(_ size: CGSize) {
+        // 始终更新 containerSize，确保手势坐标计算准确
         containerSize = size
+        // 仅在首次出现时初始化裁剪状态，避免前后台切换重置用户进度
+        guard !cropInitialized else { return }
+        cropInitialized = true
         let side = min(size.width, size.height) * 0.82
         cropRect = CGRect(x: (size.width - side) / 2,
                           y: (size.height - side) / 2,
