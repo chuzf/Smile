@@ -1,5 +1,7 @@
 import Foundation
 import SwiftData
+import CryptoKit
+import CommonCrypto
 
 enum ExportService {
 
@@ -10,9 +12,16 @@ enum ExportService {
         let entryCount: Int
     }
 
-    /// 生成 zip 包,返回临时文件 URL
+    // MARK: - Encrypted file format
+    // Layout: magic(8) + salt(16) + AES-GCM.combined(nonce 12 + ciphertext + tag 16)
+    static let encryptedFileMagic = Data("SMILJAR1".utf8)
+
+    // MARK: - Export
+
+    /// 生成备份文件，返回临时文件 URL。
+    /// password 非空时生成 .smilejar 加密文件，否则生成普通 .zip。
     @MainActor
-    static func exportAll(context: ModelContext, mediaStore: MediaStore) throws -> URL {
+    static func exportAll(context: ModelContext, mediaStore: MediaStore, password: String? = nil) throws -> URL {
         let groups = try context.fetch(FetchDescriptor<Group>())
         let entries = try context.fetch(FetchDescriptor<Entry>())
         let tags = try context.fetch(FetchDescriptor<Tag>())
@@ -51,17 +60,114 @@ enum ExportService {
 
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
+        let dateStr = df.string(from: .now)
+
         let zipURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("smilejar-backup-\(df.string(from: .now)).zip")
+            .appendingPathComponent("smilejar-backup-\(dateStr).zip")
         if FileManager.default.fileExists(atPath: zipURL.path) {
             try FileManager.default.removeItem(at: zipURL)
         }
         try zipDirectory(staging, to: zipURL)
         try? FileManager.default.removeItem(at: staging)
-        return zipURL
+
+        let pwd = password?.trimmingCharacters(in: .whitespaces) ?? ""
+        guard !pwd.isEmpty else { return zipURL }
+
+        let smilejarURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("smilejar-backup-\(dateStr).smilejar")
+        if FileManager.default.fileExists(atPath: smilejarURL.path) {
+            try FileManager.default.removeItem(at: smilejarURL)
+        }
+        try encryptFile(at: zipURL, password: pwd, to: smilejarURL)
+        try? FileManager.default.removeItem(at: zipURL)
+        return smilejarURL
     }
 
-    /// 用 FileManager 的 NSFileCoordinator + .forUploading 把目录压成 zip
+    // MARK: - Encryption / Decryption
+
+    static func isEncryptedBackup(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url),
+              let bytes = try? handle.read(upToCount: encryptedFileMagic.count) else { return false }
+        try? handle.close()
+        return bytes == encryptedFileMagic
+    }
+
+    static func decryptBackup(url: URL, password: String) throws -> URL {
+        let data = try Data(contentsOf: url)
+        let headerSize = encryptedFileMagic.count + 16
+        // Minimum: header + AES-GCM nonce(12) + tag(16)
+        guard data.count > headerSize + 28 else { throw CryptoError.invalidFormat }
+        guard data.prefix(encryptedFileMagic.count) == encryptedFileMagic else {
+            throw CryptoError.invalidFormat
+        }
+        let salt = data[encryptedFileMagic.count ..< headerSize]
+        let combined = data[headerSize...]
+        let key = deriveKey(from: password, salt: Data(salt))
+        do {
+            let box = try AES.GCM.SealedBox(combined: combined)
+            let zipData = try AES.GCM.open(box, using: key)
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".zip")
+            try zipData.write(to: tempURL)
+            return tempURL
+        } catch {
+            throw CryptoError.wrongPassword
+        }
+    }
+
+    enum CryptoError: LocalizedError {
+        case invalidFormat
+        case wrongPassword
+        case saltGenerationFailed
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidFormat:      return "备份文件格式不正确"
+            case .wrongPassword:      return "密码错误，本次导入已取消"
+            case .saltGenerationFailed: return "加密失败：无法生成随机盐值"
+            }
+        }
+    }
+
+    private static func encryptFile(at zipURL: URL, password: String, to outputURL: URL) throws {
+        let zipData = try Data(contentsOf: zipURL)
+        var saltBytes = [UInt8](repeating: 0, count: 16)
+        guard SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes) == errSecSuccess else {
+            throw CryptoError.saltGenerationFailed
+        }
+        let salt = Data(saltBytes)
+        let key = deriveKey(from: password, salt: salt)
+        let sealedBox = try AES.GCM.seal(zipData, using: key)
+        guard let combined = sealedBox.combined else { throw CryptoError.saltGenerationFailed }
+        var output = encryptedFileMagic
+        output.append(salt)
+        output.append(combined)
+        try output.write(to: outputURL)
+    }
+
+    // PBKDF2-SHA256, 200k iterations → 256-bit AES key
+    private static func deriveKey(from password: String, salt: Data) -> SymmetricKey {
+        let passwordData = Data(password.utf8)
+        var derivedKey = Data(repeating: 0, count: 32)
+        derivedKey.withUnsafeMutableBytes { dkBytes in
+            salt.withUnsafeBytes { saltBytes in
+                passwordData.withUnsafeBytes { pwBytes in
+                    _ = CCKeyDerivationPBKDF(
+                        CCPBKDFAlgorithm(kCCPBKDF2),
+                        pwBytes.baseAddress, passwordData.count,
+                        saltBytes.baseAddress, salt.count,
+                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                        200_000,
+                        dkBytes.baseAddress, 32
+                    )
+                }
+            }
+        }
+        return SymmetricKey(data: derivedKey)
+    }
+
+    // MARK: - Zip helper
+
     static func zipDirectory(_ src: URL, to dst: URL) throws {
         let coord = NSFileCoordinator()
         var coordError: NSError?
@@ -77,7 +183,7 @@ enum ExportService {
         if let e = thrown { throw e }
     }
 
-    // MARK: DTOs
+    // MARK: - DTOs
 
     struct GroupDTO: Codable {
         let id: UUID

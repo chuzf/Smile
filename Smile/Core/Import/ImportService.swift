@@ -171,6 +171,7 @@ enum ImportService {
                                   iconSymbol: dto.iconSymbol, colorHex: dto.colorHex,
                                   isBuiltIn: true, sortOrder: dto.sortOrder,
                                   createdAt: dto.createdAt)
+                    g.isLocked = dto.isLocked
                     context.insert(g)
                     map[dto.id] = g
                     newCount += 1
@@ -183,6 +184,7 @@ enum ImportService {
                                   iconSymbol: dto.iconSymbol, colorHex: dto.colorHex,
                                   isBuiltIn: false, sortOrder: dto.sortOrder,
                                   createdAt: dto.createdAt)
+                    g.isLocked = dto.isLocked
                     context.insert(g)
                     map[dto.id] = g
                     newCount += 1
@@ -231,6 +233,7 @@ enum ImportService {
             updatedAt: dto.updatedAt,
             group: group
         )
+        entry.isLocked = dto.isLocked
         context.insert(entry)
         entry.tags = dto.tagNames.compactMap { tagMap[$0] }
 
@@ -260,6 +263,7 @@ enum ImportService {
         entry.titleSourceRaw = dto.titleSource
         entry.bodyText = dto.bodyText
         entry.updatedAt = dto.updatedAt
+        entry.isLocked = dto.isLocked
         entry.group = dto.groupID.flatMap { groupMap[$0] }
         entry.tags = dto.tagNames.compactMap { tagMap[$0] }
 

@@ -10,6 +10,9 @@ struct RootView: View {
     @State private var pendingEntryID: UUID?
 
     @State private var inboxImportURL: URL?
+    @State private var pendingEncryptedURL: URL?
+    @State private var showInboxPasswordAlert = false
+    @State private var inboxPassword = ""
     @State private var importing = false
     @State private var importResult: ImportService.ImportResult?
     @State private var importError: String?
@@ -39,7 +42,8 @@ struct RootView: View {
             })
         }
         .onOpenURL { url in
-            guard url.pathExtension.lowercased() == "zip" else { return }
+            let ext = url.pathExtension.lowercased()
+            guard ext == "zip" || ext == "smilejar" else { return }
             inboxImportURL = url
         }
         .alert("发现备份文件", isPresented: Binding(
@@ -48,13 +52,36 @@ struct RootView: View {
         )) {
             Button("取消", role: .cancel) { inboxImportURL = nil }
             Button("导入") {
-                if let url = inboxImportURL {
-                    inboxImportURL = nil
-                    Task { await doInboxImport(from: url) }
+                guard let url = inboxImportURL else { return }
+                inboxImportURL = nil
+                if ExportService.isEncryptedBackup(url) {
+                    pendingEncryptedURL = url
+                    showInboxPasswordAlert = true
+                } else {
+                    Task { await doInboxImport(from: url, password: nil) }
                 }
             }
         } message: {
             Text("是否立即导入此备份？")
+        }
+        .alert("输入备份密码", isPresented: $showInboxPasswordAlert) {
+            SecureField("密码", text: $inboxPassword)
+            Button("导入") {
+                guard let url = pendingEncryptedURL else { return }
+                let pwd = inboxPassword
+                inboxPassword = ""
+                pendingEncryptedURL = nil
+                Task { await doInboxImport(from: url, password: pwd) }
+            }
+            Button("取消", role: .cancel) {
+                inboxPassword = ""
+                if let url = pendingEncryptedURL {
+                    try? FileManager.default.removeItem(at: url)
+                    pendingEncryptedURL = nil
+                }
+            }
+        } message: {
+            Text("此备份文件已加密，请输入创建备份时设置的密码")
         }
         .alert("导入完成", isPresented: Binding(
             get: { importResult != nil },
@@ -87,15 +114,33 @@ struct RootView: View {
     }
 
     @MainActor
-    private func doInboxImport(from url: URL) async {
+    private func doInboxImport(from url: URL, password: String?) async {
         importing = true
         defer {
             importing = false
             try? FileManager.default.removeItem(at: url)
         }
+
+        var importURL = url
+        var decryptedURL: URL?
+
+        if let pwd = password, !pwd.isEmpty {
+            do {
+                decryptedURL = try ExportService.decryptBackup(url: url, password: pwd)
+                importURL = decryptedURL!
+            } catch {
+                importError = error.localizedDescription
+                return
+            }
+        }
+
+        defer {
+            if let du = decryptedURL { try? FileManager.default.removeItem(at: du) }
+        }
+
         do {
             importResult = try ImportService.importBackup(
-                from: url, context: context, mediaStore: .production())
+                from: importURL, context: context, mediaStore: .production())
         } catch {
             importError = error.localizedDescription
         }
