@@ -42,7 +42,7 @@ struct EntryEditorView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        TextField("自动标题(可手动编辑)", text: $model.title, axis: .vertical)
+                        TextField("标题", text: $model.title, axis: .vertical)
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(AppColors.textPrimary)
                             .onChange(of: model.title) { _, _ in
@@ -232,13 +232,12 @@ struct EntryEditorView: View {
         else { return }
 
         Task { @MainActor in
-            // 1. 本地快速标题（同步，不等网络）
+            // 1. 本地标题
             if model.titleSource != .manual {
                 let combined = combinedTextForTitling()
-                let ctx = TitleContext(groupName: group.name, date: model.createdAt, hasMedia: !model.attachments.isEmpty)
                 let quick = combined.isEmpty
-                    ? LocalTitleService.dateFallback(date: ctx.date, groupName: ctx.groupName)
-                    : LocalTitleService.firstSentence(from: combined, maxChars: 20)
+                    ? Self.dateFallback(date: model.createdAt, groupName: group.name)
+                    : Self.firstSentence(from: combined, maxChars: 20)
                 if !quick.isEmpty { model.title = quick }
                 model.titleSource = .auto
             }
@@ -298,20 +297,6 @@ struct EntryEditorView: View {
             try? context.save()
             onSaved?(group.id, entry.id)
             dismiss()
-
-            // 5. AI 标题后台更新（不阻塞 dismiss）
-            let needsAI = model.titleSource != .manual
-            let aiEnabled = UserDefaults.standard.bool(forKey: AIServiceProvider.aiEnabledKey)
-            let apiKey = KeychainService().get(AIServiceProvider.keychainAPIKey) ?? ""
-            guard needsAI, aiEnabled, !apiKey.isEmpty else { return }
-            let aiCtx = TitleContext(groupName: group.name, date: model.createdAt, hasMedia: !model.attachments.isEmpty)
-            let combinedForAI = combinedTextForTitling()
-            if let generated = try? await ClaudeAIService(apiKey: apiKey).generateTitle(text: combinedForAI, context: aiCtx),
-               !generated.isEmpty {
-                entry.title = generated
-                entry.titleSource = .ai
-                try? context.save()
-            }
         }
     }
 
@@ -322,5 +307,23 @@ struct EntryEditorView: View {
             if let t = att.transcript, !t.isEmpty { pieces.append(t) }
         }
         return pieces.joined(separator: "\n")
+    }
+
+    private static func firstSentence(from text: String, maxChars: Int) -> String {
+        let delimiters: Set<Character> = ["。", ".", "！", "!", "？", "?", "\n"]
+        var sentence = ""
+        for ch in text {
+            if delimiters.contains(ch) { break }
+            sentence.append(ch)
+            if sentence.count >= maxChars { break }
+        }
+        return sentence.trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func dateFallback(date: Date, groupName: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
+        return "\(formatter.string(from: date)) · \(groupName)"
     }
 }

@@ -31,9 +31,6 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("功能") {
-                NavigationLink("AI 自动标题") { AISettingsView() }
-            }
             Section("数据") {
                 Button {
                     Task { await startExport() }

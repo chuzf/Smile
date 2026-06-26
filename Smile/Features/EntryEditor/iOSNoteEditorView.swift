@@ -432,7 +432,7 @@ struct iOSNoteEditorView: View {
             var descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { $0.persistentModelID == editID })
             descriptor.fetchLimit = 1
             if let existing = try? context.fetch(descriptor).first {
-                existing.title = title.isEmpty ? LocalTitleService.dateFallback(date: existing.createdAt, groupName: group.name) : title
+                existing.title = title.isEmpty ? Self.dateFallback(date: existing.createdAt, groupName: group.name) : title
                 existing.titleSource = .manual
                 existing.bodyText = body
                 existing.group = group
@@ -441,7 +441,7 @@ struct iOSNoteEditorView: View {
             } else {
                 let new = Entry(
                     id: entryDraftID,
-                    title: title.isEmpty ? LocalTitleService.dateFallback(date: model.createdAt, groupName: group.name) : title,
+                    title: title.isEmpty ? Self.dateFallback(date: model.createdAt, groupName: group.name) : title,
                     titleSource: .manual,
                     bodyText: body,
                     createdAt: model.createdAt,
@@ -454,7 +454,7 @@ struct iOSNoteEditorView: View {
         } else {
             let new = Entry(
                 id: entryDraftID,
-                title: title.isEmpty ? LocalTitleService.dateFallback(date: model.createdAt, groupName: group.name) : title,
+                title: title.isEmpty ? Self.dateFallback(date: model.createdAt, groupName: group.name) : title,
                 titleSource: .manual,
                 bodyText: body,
                 createdAt: model.createdAt,
@@ -563,7 +563,7 @@ struct iOSNoteEditorView: View {
 
         let title = model.extractTitle()
         let body = iOSNoteEditorModel.encodeBodySegments(model.buildBodySegments())
-        let fallbackTitle = LocalTitleService.dateFallback(date: model.createdAt, groupName: group.name)
+        let fallbackTitle = Self.dateFallback(date: model.createdAt, groupName: group.name)
 
         let entry: Entry
         if let editID = editingEntryID {
@@ -602,6 +602,13 @@ struct iOSNoteEditorView: View {
         let allTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
         entry.tags = allTags.filter { model.selectedTags.contains($0.persistentModelID) }
         try? context.save()
+    }
+
+    private static func dateFallback(date: Date, groupName: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
+        return "\(formatter.string(from: date)) · \(groupName)"
     }
 
     @ViewBuilder
