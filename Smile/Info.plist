@@ -10,34 +10,14 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>SmileJar 备份</string>
+			<string>Smile备份</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.zip-archive</string>
-				<string>com.smilejar.backup</string>
+				<string>com.chuzhanfeng.smilepiggybank.backup</string>
 			</array>
-		</dict>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.smilejar.backup</string>
-			<key>UTTypeDescription</key>
-			<string>SmileJar 加密备份</string>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>smilejar</string>
-				</array>
-			</dict>
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
@@ -69,9 +49,31 @@
 		<key>UIColorName</key>
 		<string>AccentColor</string>
 	</dict>
+	<key>UIStatusBarStyle</key>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Smile 加密备份</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.chuzhanfeng.smilepiggybank.backup</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>smilejar</string>
+				</array>
+			</dict>
+		</dict>
 	</array>
 </dict>
 </plist>

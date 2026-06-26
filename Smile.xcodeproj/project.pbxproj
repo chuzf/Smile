@@ -19,8 +19,6 @@
 		13DF8F7673713207D740F02F /* EntryEditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EBDAC89DBB17F16E633AC4 /* EntryEditorModel.swift */; };
 		15CB6487264BC9621DC3ED16 /* TimeFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F79656BE75E9333AF78F79E /* TimeFilterSheet.swift */; };
 		1747B9824BB814546F42CB3D /* KeychainServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */; };
-		AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */; };
-		AA11BB22CC33DD44EE55FF68 /* LockSessionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */; };
 		182632DE5FF018A5F4676E13 /* shareCardSnapshot.1.png in Resources */ = {isa = PBXBuildFile; fileRef = F8F9B6B9E597B31F4522CD76 /* shareCardSnapshot.1.png */; };
 		194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */; };
 		1C4163D8F94DB75E59DC4739 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B2D5874221409B0BC19C8C /* AIService.swift */; };
@@ -61,6 +59,8 @@
 		929A07B791259D451F4CD615 /* PhotoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */; };
 		A0A22F6EFB44787D4C52F57D /* PhotoCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33C499E09970813004CB542 /* PhotoCarousel.swift */; };
 		A5E1229A1B1A7CF9276A5D9C /* iOSNoteEditorComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */; };
+		AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */; };
+		AA11BB22CC33DD44EE55FF68 /* LockSessionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */; };
 		AEC10119BAA667B825CDFADD /* EditTagSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BE2BADD81EDC7D9799CEF66 /* EditTagSheet.swift */; };
 		AEE9F6B8092DD32CE39790C1 /* MediaAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F91A085A1A4AFEF6ABE0D18 /* MediaAttachment.swift */; };
 		B064AA6BB890C9FA175CF3EE /* emptyJarCard.1.png in Resources */ = {isa = PBXBuildFile; fileRef = 32058CB836D50944FAAF43C8 /* emptyJarCard.1.png */; };
@@ -120,22 +120,20 @@
 		32058CB836D50944FAAF43C8 /* emptyJarCard.1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = emptyJarCard.1.png; sourceTree = "<group>"; };
 		331CBCE6E4FC6CB1567AE6AE /* VoiceRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderView.swift; sourceTree = "<group>"; };
 		38BC12516C9E1305B40D3670 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
-		3A24F11AD4ECE495B375D016 /* SmileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SmileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A24F11AD4ECE495B375D016 /* SmileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BE2BADD81EDC7D9799CEF66 /* EditTagSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTagSheet.swift; sourceTree = "<group>"; };
 		3F79656BE75E9333AF78F79E /* TimeFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFilterSheet.swift; sourceTree = "<group>"; };
 		42C5A5BB1F2DCE884451414A /* PhotoLibraryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryPickerView.swift; sourceTree = "<group>"; };
 		452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorModelTests.swift; sourceTree = "<group>"; };
 		46BDDD6A676EE307D7466154 /* LocalTitleServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalTitleServiceTests.swift; sourceTree = "<group>"; };
 		498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
-		AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
-		AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManagerTests.swift; sourceTree = "<group>"; };
 		531684AD5683F033B966D87D /* EntryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEditorView.swift; sourceTree = "<group>"; };
 		5421DA96C0DE30293F36BFDC /* EditGroupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupSheet.swift; sourceTree = "<group>"; };
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
 		554EEB21B4A169D76D891B43 /* AIServiceCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceCoordinatorTests.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
-		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F2CCEDE0BC5605AEE770FC8 /* SmilePippyBank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmilePippyBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
 		6E79A9117FFC741528407136 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -155,6 +153,8 @@
 		98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainerFactory.swift; sourceTree = "<group>"; };
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
 		9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManagerTests.swift; sourceTree = "<group>"; };
 		AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
 		B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorComponents.swift; sourceTree = "<group>"; };
 		B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaAttachmentChip.swift; sourceTree = "<group>"; };
@@ -262,7 +262,7 @@
 		5282F5D288824BACADE81F89 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5F2CCEDE0BC5605AEE770FC8 /* Smile.app */,
+				5F2CCEDE0BC5605AEE770FC8 /* SmilePippyBank.app */,
 				3A24F11AD4ECE495B375D016 /* SmileTests.xctest */,
 			);
 			name = Products;
@@ -529,7 +529,7 @@
 				196DB5A96F52E0B4FFC83292 /* ZIPFoundation */,
 			);
 			productName = Smile;
-			productReference = 5F2CCEDE0BC5605AEE770FC8 /* Smile.app */;
+			productReference = 5F2CCEDE0BC5605AEE770FC8 /* SmilePippyBank.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -539,15 +539,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-					0834CA012DDBB119CFA4B32E = {
-						ProvisioningStyle = Automatic;
-					};
-					E1910121DA44BBB3B03B6D39 = {
-						ProvisioningStyle = Automatic;
-					};
-				};
+				LastUpgradeCheck = 2640;
 			};
 			buildConfigurationList = DD1692DCF94CF3C28D568D23 /* Build configuration list for PBXProject "Smile" */;
 			developmentRegion = "zh-Hans";
@@ -699,13 +691,17 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 4QBZT9QAHK;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.SmileTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smiletests;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";
@@ -717,16 +713,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J3X5545WTD;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 4QBZT9QAHK;
 				INFOPLIST_FILE = Smile/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.Smile;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
+				PRODUCT_NAME = SmilePippyBank;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -735,16 +741,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = J3X5545WTD;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 4QBZT9QAHK;
 				INFOPLIST_FILE = Smile/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.Smile;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
+				PRODUCT_NAME = SmilePippyBank;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -805,6 +821,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -876,6 +893,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -888,13 +906,19 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 4QBZT9QAHK;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.SmileTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.simleTests;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.chuzhanfeng.smile;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = SmilePippyBank;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";
