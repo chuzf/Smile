@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>帮助与支持 · 微笑储蓄罐</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.8;
+      color: #1d1d1f;
+      background: #fff;
+    }
+
+    header {
+      background: #f9f9f9;
+      border-bottom: 1px solid #e5e5e5;
+      padding: 32px 24px 28px;
+      text-align: center;
+    }
+
+    header .app-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: 0.02em;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-top: 8px;
+      color: #1d1d1f;
+    }
+
+    header .subtitle {
+      font-size: 15px;
+      color: #6e6e73;
+      margin-top: 10px;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* 联系卡片 */
+    .contact-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #f0f7ff;
+      border: 1px solid #cce0ff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 52px;
+    }
+
+    .contact-card .icon {
+      font-size: 36px;
+      flex-shrink: 0;
+    }
+
+    .contact-card .text p {
+      margin: 0;
+      font-size: 15px;
+      color: #3a3a3c;
+    }
+
+    .contact-card .text a {
+      color: #007aff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .contact-card .text .label {
+      font-size: 13px;
+      color: #6e6e73;
+      margin-bottom: 2px;
+    }
+
+    /* 章节标题 */
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1d1d1f;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    section {
+      margin-bottom: 52px;
+    }
+
+    /* FAQ 手风琴 */
+    .faq-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    details {
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    details + details {
+      margin-top: 6px;
+    }
+
+    summary {
+      padding: 16px 18px;
+      font-weight: 600;
+      font-size: 15px;
+      color: #1d1d1f;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    summary::after {
+      content: "+";
+      font-size: 20px;
+      font-weight: 300;
+      color: #007aff;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+
+    details[open] summary::after {
+      transform: rotate(45deg);
+    }
+
+    details[open] summary {
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .faq-body {
+      padding: 16px 18px;
+      font-size: 15px;
+      color: #3a3a3c;
+      line-height: 1.8;
+    }
+
+    .faq-body p { margin-bottom: 8px; }
+    .faq-body p:last-child { margin-bottom: 0; }
+
+    .faq-body ol, .faq-body ul {
+      padding-left: 20px;
+      margin-bottom: 8px;
+    }
+
+    .faq-body li { margin-bottom: 4px; }
+
+    .faq-body strong { color: #1d1d1f; }
+
+    .tip {
+      background: #f5f5f7;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: #6e6e73;
+      margin-top: 10px;
+    }
+
+    /* 分类标签 */
+    .category-tag {
+      display: inline-block;
+      background: #e8f0fe;
+      color: #007aff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      letter-spacing: 0.03em;
+    }
+
+    p { margin-bottom: 12px; color: #3a3a3c; }
+
+    footer {
+      text-align: center;
+      font-size: 13px;
+      color: #8e8e93;
+      padding: 32px 24px;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    footer a {
+      color: #007aff;
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 22px; }
+      h2 { font-size: 18px; }
+      summary { font-size: 14px; padding: 14px 14px; }
+      .faq-body { padding: 14px 14px; font-size: 14px; }
+      .contact-card { flex-direction: column; text-align: center; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="app-name">微笑储蓄罐</div>
+  <h1>帮助与支持</h1>
+  <div class="subtitle">遇到问题了？这里也许有你需要的答案。</div>
+</header>
+
+<main>
+
+  <!-- 联系入口 -->
+  <div class="contact-card">
+    <div class="icon">✉️</div>
+    <div class="text">
+      <p class="label">没找到答案？直接联系我们</p>
+      <p><a href="mailto:chuqiut@gmail.com">chuqiut@gmail.com</a></p>
+      <p style="font-size:13px; color:#6e6e73; margin-top:4px;">我们会在 15 个工作日内回复。</p>
+    </div>
+  </div>
+
+  <!-- 基本使用 -->
+  <section>
+    <div class="category-tag">基本使用</div>
+    <h2>记录与储蓄罐</h2>
+
+    <div class="faq-list">
+
+      <details>
+        <summary>什么是储蓄罐？怎么创建？</summary>
+        <div class="faq-body">
+          <p>储蓄罐是用来分类管理记录的容器，就像存钱罐一样，每个罐子装不同主题的美好瞬间。</p>
+          <p>在首页点击右上角的 <strong>+</strong> 按钮，填写罐子名称，选择图标和颜色，即可创建一个新储蓄罐。App 默认内置了几个常用储蓄罐供你快速上手。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>如何添加一条新记录？</summary>
+        <div class="faq-body">
+          <p>进入任意储蓄罐，点击右下角 <strong>+</strong> 按钮即可新建记录。支持：</p>
+          <ul>
+            <li><strong>文字</strong>：直接在编辑框中输入</li>
+            <li><strong>照片 / 视频</strong>：点击相机图标拍摄，或从相册选取</li>
+            <li><strong>语音备忘</strong>：点击麦克风图标开始录音</li>
+          </ul>
+          <p>一条记录可以同时包含文字、多张照片和多段录音。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>如何编辑或删除已有的记录？</summary>
+        <div class="faq-body">
+          <p>点击任意记录进入详情页，点击右上角的编辑按钮即可修改内容。</p>
+          <p>删除记录：在详情页点击更多（···）→ 删除。删除操作不可恢复，请谨慎操作。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>记录可以打标签吗？怎么按标签筛选？</summary>
+        <div class="faq-body">
+          <p>可以。在编辑记录时，点击标签图标可以为这条记录添加一个或多个标签。</p>
+          <p>进入储蓄罐后，顶部会显示该罐子中已有的标签，点击任意标签即可筛选出对应记录。</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <!-- 语音功能 -->
+  <section>
+    <div class="category-tag">语音功能</div>
+    <h2>录音与听写</h2>
+
+    <div class="faq-list">
+
+      <details>
+        <summary>语音听写是什么？怎么用？</summary>
+        <div class="faq-body">
+          <p>语音听写让你边说话边输入文字，说出来的内容会实时转化为文字出现在编辑框中，适合灵感来了不想打字的时候。</p>
+          <p>在编辑页面点击键盘上方或工具栏中的<strong>麦克风图标</strong>，授权后即可开始说话。说完点击停止，文字即自动填入。</p>
+          <div class="tip">💡 需要授权「麦克风」和「语音识别」权限，可在「设置 → 隐私与安全性」中开启。</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>录音会自动转成文字吗？</summary>
+        <div class="faq-body">
+          <p>会。录音保存后，App 会在后台自动将语音转写为文字。转写完成后，这段录音的内容就能被全局搜索检索到。</p>
+          <p>转写需要授权语音识别权限，转写过程由 Apple 系统框架完成，音频不会上传至我们的服务器。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>语音识别准确率不高，怎么办？</summary>
+        <div class="faq-body">
+          <p>语音识别准确率受以下因素影响：</p>
+          <ul>
+            <li>环境噪音较大时准确率会下降，建议在安静环境中使用</li>
+            <li>方言、口音较重时可能识别不准</li>
+            <li>网络状况也会影响 Apple 语音识别服务的响应</li>
+          </ul>
+          <p>识别结果可以在详情页手动修正。</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <!-- 隐私与安全 -->
+  <section>
+    <div class="category-tag">隐私与安全</div>
+    <h2>锁定与加密</h2>
+
+    <div class="faq-list">
+
+      <details>
+        <summary>如何锁定一个储蓄罐或记录？</summary>
+        <div class="faq-body">
+          <p>在储蓄罐列表页，长按某个罐子 → 点击「加锁」；或进入罐子详情后，在设置中开启锁定。</p>
+          <p>单条记录也可以单独锁定：在记录详情页点击更多（···）→ 加锁。</p>
+          <p>锁定后，查看该罐子或记录需要通过 Face ID 或密码验证。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Face ID 解锁失败怎么办？</summary>
+        <div class="faq-body">
+          <p>Face ID 识别失败时，系统会自动提供输入密码的选项。请确保：</p>
+          <ul>
+            <li>已在 iPhone「设置 → 面容 ID 与密码」中录入面容</li>
+            <li>已授权本 App 使用面容 ID（「设置 → 微笑储蓄罐 → 面容 ID」）</li>
+          </ul>
+          <p>若密码也无法使用，请通过邮件联系我们。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>我的数据会上传到云端吗？</summary>
+        <div class="faq-body">
+          <p><strong>不会。</strong>所有记录、照片、录音均仅存储在您的手机本地，我们没有任何服务器存放您的数据。</p>
+          <p>如果您开启了 iPhone 的 iCloud 备份，App 数据会随系统一同备份到您的 iCloud 账户（由 Apple 管理，我们无法访问）。</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <!-- 备份与迁移 -->
+  <section>
+    <div class="category-tag">备份与迁移</div>
+    <h2>数据备份与还原</h2>
+
+    <div class="faq-list">
+
+      <details>
+        <summary>如何备份我的数据？</summary>
+        <div class="faq-body">
+          <p>进入「设置」→「备份导出」，可以将所有数据导出为 <code>.smilejar</code> 加密备份文件。</p>
+          <p>导出时可以设置备份密码（强烈建议设置），文件经 AES-256 加密保护，只有你知道密码的情况下才能还原。</p>
+          <p>导出的文件可以保存到本地、发送到邮件或存至 iCloud Drive、电脑等任何你信任的地方。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>如何在新手机上还原数据？</summary>
+        <div class="faq-body">
+          <ol>
+            <li>在新手机上安装微笑储蓄罐</li>
+            <li>找到之前导出的 <code>.smilejar</code> 备份文件</li>
+            <li>点击该文件，选择用微笑储蓄罐打开</li>
+            <li>输入备份时设置的密码，确认导入</li>
+          </ol>
+          <p>导入完成后，所有储蓄罐、记录和附件将完整还原。</p>
+          <div class="tip">💡 如果没有备份文件，通过 iPhone「迁移数据」功能或 iCloud 备份恢复手机时，App 数据也会一并迁移。</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>忘记了备份密码，能找回数据吗？</summary>
+        <div class="faq-body">
+          <p>很遗憾，备份文件使用 AES-256 加密，我们无法帮您解密或找回密码。这是为了保护您的数据安全而设计的。</p>
+          <p>建议将备份密码保存在一个安全的地方（如系统备忘录的加密笔记，或密码管理工具中）。</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <!-- 搜索与回顾 -->
+  <section>
+    <div class="category-tag">搜索与回顾</div>
+    <h2>查找与随机回顾</h2>
+
+    <div class="faq-list">
+
+      <details>
+        <summary>怎么搜索历史记录？</summary>
+        <div class="faq-body">
+          <p>在底部导航栏切换到「我的」标签页，顶部有全局搜索框，输入关键词即可搜索所有储蓄罐中的记录。</p>
+          <p>搜索范围包括：记录标题、正文内容，以及录音自动转写的文字。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>随机回顾是什么功能？</summary>
+        <div class="faq-body">
+          <p>进入任意储蓄罐后，点击「随机回顾」按钮，App 会从该罐子中随机抽取一条历史记录展示给你。</p>
+          <p>这个功能的用意是：让你在不经意间重新遇见过去某个让你微笑的瞬间。记录存得越多，惊喜就越多。</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <!-- 其他 -->
+  <section>
+    <div class="category-tag">其他</div>
+    <h2>其他常见问题</h2>
+
+    <div class="faq-list">
+
+      <details>
+        <summary>App 需要联网才能使用吗？</summary>
+        <div class="faq-body">
+          <p>不需要。微笑储蓄罐完全可以在离线状态下使用，所有数据存储在本地。</p>
+          <p>唯一可能需要网络的功能是「语音识别」（由 Apple 系统提供，部分情况下依赖网络）。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>如何删除 App 及所有数据？</summary>
+        <div class="faq-body">
+          <p>在 iPhone 主屏幕或「设置 → 通用 → iPhone 储存空间」中卸载微笑储蓄罐，App 所有本地数据将被彻底删除，且无法恢复。</p>
+          <p>如需保留数据以备后续使用，请在卸载前先进行备份导出。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>App 崩溃或出现异常，怎么办？</summary>
+        <div class="faq-body">
+          <p>请尝试以下步骤：</p>
+          <ol>
+            <li>强制关闭 App 后重新打开</li>
+            <li>确认 iOS 系统和 App 均已更新至最新版本</li>
+            <li>重启手机</li>
+          </ol>
+          <p>如果问题仍然存在，请将问题描述（包括 iOS 版本、手机型号、触发步骤）发送至 <a href="mailto:chuqiut@gmail.com">chuqiut@gmail.com</a>，我们会尽快排查处理。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>有功能建议或想法，怎么反馈？</summary>
+        <div class="faq-body">
+          <p>非常欢迎！请发送邮件至 <a href="mailto:chuqiut@gmail.com">chuqiut@gmail.com</a>，在主题中注明「功能建议」。</p>
+          <p>我们认真阅读每一封用户来信，你的想法很可能出现在下一个版本里。</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>© 2026 微笑储蓄罐 &nbsp;·&nbsp; <a href="mailto:chuqiut@gmail.com">联系我们</a> &nbsp;·&nbsp; <a href="privacy_policy.html">隐私政策</a></p>
+</footer>
+
+</body>
+</html>
