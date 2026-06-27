@@ -121,7 +121,7 @@
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
-		5F2CCEDE0BC5605AEE770FC8 /* SmilePippyBank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmilePippyBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F2CCEDE0BC5605AEE770FC8 /* SmilePiggyBank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmilePiggyBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
 		6E79A9117FFC741528407136 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -246,7 +246,7 @@
 		5282F5D288824BACADE81F89 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5F2CCEDE0BC5605AEE770FC8 /* SmilePippyBank.app */,
+				5F2CCEDE0BC5605AEE770FC8 /* SmilePiggyBank.app */,
 				3A24F11AD4ECE495B375D016 /* SmileTests.xctest */,
 			);
 			name = Products;
@@ -500,7 +500,7 @@
 				196DB5A96F52E0B4FFC83292 /* ZIPFoundation */,
 			);
 			productName = Smile;
-			productReference = 5F2CCEDE0BC5605AEE770FC8 /* SmilePippyBank.app */;
+			productReference = 5F2CCEDE0BC5605AEE770FC8 /* SmilePiggyBank.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -690,7 +690,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
-				PRODUCT_NAME = SmilePippyBank;
+				PRODUCT_NAME = SmilePiggyBank;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -719,7 +719,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
-				PRODUCT_NAME = SmilePippyBank;
+				PRODUCT_NAME = SmilePiggyBank;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -884,7 +884,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.simleTests;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.chuzhanfeng.smile;
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = SmilePippyBank;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = SmilePiggyBank;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";
