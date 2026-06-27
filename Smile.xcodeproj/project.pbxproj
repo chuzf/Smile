@@ -54,6 +54,7 @@
 		904A52A33A2E2831DC5E64AB /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D6481AF95E4B15A05FCE18E /* ImportService.swift */; };
 		91D61E115C871733227FAD5C /* MediaAttachmentChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */; };
 		929A07B791259D451F4CD615 /* PhotoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */; };
+		98D4472D2FEFEF62002E2359 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 98D4472C2FEFEF62002E2359 /* PrivacyInfo.xcprivacy */; };
 		A0A22F6EFB44787D4C52F57D /* PhotoCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33C499E09970813004CB542 /* PhotoCarousel.swift */; };
 		A5E1229A1B1A7CF9276A5D9C /* iOSNoteEditorComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */; };
 		AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */; };
@@ -135,6 +136,7 @@
 		942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelTests.swift; sourceTree = "<group>"; };
 		95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelDictationTests.swift; sourceTree = "<group>"; };
 		98137F68B7D0E64DF6398BCD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		98D4472C2FEFEF62002E2359 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainerFactory.swift; sourceTree = "<group>"; };
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
 		9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
@@ -381,6 +383,7 @@
 		CAE91775A12400F9234B4876 = {
 			isa = PBXGroup;
 			children = (
+				98D4472C2FEFEF62002E2359 /* PrivacyInfo.xcprivacy */,
 				CE067C9CB47FF99922BD4D5E /* Smile */,
 				64F32B28E974871AA7087AFF /* SmileTests */,
 				5282F5D288824BACADE81F89 /* Products */,
@@ -538,6 +541,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98D4472D2FEFEF62002E2359 /* PrivacyInfo.xcprivacy in Resources */,
 				379F146B1BE548DC1E22C4E5 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -679,6 +683,7 @@
 				DEVELOPMENT_TEAM = 4QBZT9QAHK;
 				INFOPLIST_FILE = Smile/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -707,6 +712,7 @@
 				DEVELOPMENT_TEAM = 4QBZT9QAHK;
 				INFOPLIST_FILE = Smile/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

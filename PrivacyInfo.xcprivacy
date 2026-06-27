@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 本 App 不追踪用户跨 App 或跨网站行为 -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+
+	<!-- 无追踪域名 -->
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!--
+		本 App 所有数据均存储在用户设备本地（SwiftData + Documents 目录）。
+		开发者不收集、不传输任何用户数据到远程服务器，因此无需声明数据收集类型。
+	-->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- 必须声明理由的 API 使用情况 -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+
+		<!--
+			文件时间戳 API（NSPrivacyAccessedAPICategoryFileTimestamp）
+			使用场景：
+			  - MediaStore 在 Documents/Media/ 目录下创建、复制、移动媒体文件
+			  - ExportService / ImportService 通过 NSFileCoordinator 和 FileManager
+			    对 App 容器内临时目录及备份文件进行读写操作
+			  - ZIPFoundation 在压缩 / 解压过程中访问文件元数据
+			  - ImportService 处理用户通过文档选取器打开的 .smilejar / .zip 备份文件
+			理由：
+			  C617.1 —— 访问 App 容器内（Documents/Media/、临时目录）文件的元数据，
+			            仅用于 App 内部文件管理，不对外传输。
+			  3B52.1 —— 访问用户通过文档选取器明确授权的备份文件的元数据（导入还原功能）。
+		-->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+				<string>3B52.1</string>
+			</array>
+		</dict>
+
+	</array>
+</dict>
+</plist>
