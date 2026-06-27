@@ -13,6 +13,8 @@
 			<string>Smile备份</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.zip-archive</string>
@@ -44,6 +46,8 @@
 	<string>用于添加照片/视频到记录</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>用于实时听写输入文字，及将录音转为文字便于搜索</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
