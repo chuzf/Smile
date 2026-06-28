@@ -36,6 +36,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>用于拍摄记录</string>
 	<key>NSFaceIDUsageDescription</key>
@@ -46,8 +48,6 @@
 	<string>用于添加照片/视频到记录</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>用于实时听写输入文字，及将录音转为文字便于搜索</string>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
