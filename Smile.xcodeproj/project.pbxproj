@@ -28,6 +28,7 @@
 		3027A7058DF5078C44343309 /* Tag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11ED55795EC7FBBEF4253681 /* Tag.swift */; };
 		32E6283D3DC77A04F437171D /* JarCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5480A3140359B9E195EF3CC8 /* JarCardView.swift */; };
 		379F146B1BE548DC1E22C4E5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D435AD6F414F06C93966F9B2 /* Assets.xcassets */; };
+		381F23544BAEDC687A16EFB7 /* LockSessionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D840316B8C76FF3A1BF106F /* LockSessionManagerTests.swift */; };
 		388F6CA3B04967C02538BD1A /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26DD5BF496437A5780C5E9F3 /* ExportService.swift */; };
 		39D7528E9C035CE5C7D21495 /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E79A9117FFC741528407136 /* Enums.swift */; };
 		3C69FBB86C63F3FD55D0FC9D /* PhotoLibraryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C5A5BB1F2DCE884451414A /* PhotoLibraryPickerView.swift */; };
@@ -49,16 +50,15 @@
 		8141DE33ECBCC36BCD95EDDF /* EditGroupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5421DA96C0DE30293F36BFDC /* EditGroupSheet.swift */; };
 		81FB507614C283012121F4E8 /* RandomRecallSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE25EF3DD92D0A90C1E503ED /* RandomRecallSheet.swift */; };
 		84114EF03D1F972C347BC0F3 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B776FE2C097D81C9CC3D328B /* Components.swift */; };
+		8BD9DF11D10A8B0BE568551E /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE877647FBB33553DFF690F /* LockSessionManager.swift */; };
 		8D89B430D4CC97369264865A /* Entry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F2C2B2EC7B9CDBAD08BAB2 /* Entry.swift */; };
 		8F33A92B39E10DD1D8ABFFC8 /* MediaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99417C94FB2C7618B5387899 /* MediaStore.swift */; };
 		904A52A33A2E2831DC5E64AB /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D6481AF95E4B15A05FCE18E /* ImportService.swift */; };
 		91D61E115C871733227FAD5C /* MediaAttachmentChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */; };
 		929A07B791259D451F4CD615 /* PhotoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */; };
-		98D4472D2FEFEF62002E2359 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 98D4472C2FEFEF62002E2359 /* PrivacyInfo.xcprivacy */; };
 		A0A22F6EFB44787D4C52F57D /* PhotoCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33C499E09970813004CB542 /* PhotoCarousel.swift */; };
 		A5E1229A1B1A7CF9276A5D9C /* iOSNoteEditorComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */; };
-		AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */; };
-		AA11BB22CC33DD44EE55FF68 /* LockSessionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */; };
+		AB60A20FEE02EA6B796AC23C /* ThumbnailCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA3358F210C0B4122E60A56 /* ThumbnailCacheTests.swift */; };
 		AEC10119BAA667B825CDFADD /* EditTagSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BE2BADD81EDC7D9799CEF66 /* EditTagSheet.swift */; };
 		AEE9F6B8092DD32CE39790C1 /* MediaAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F91A085A1A4AFEF6ABE0D18 /* MediaAttachment.swift */; };
 		B064AA6BB890C9FA175CF3EE /* emptyJarCard.1.png in Resources */ = {isa = PBXBuildFile; fileRef = 32058CB836D50944FAAF43C8 /* emptyJarCard.1.png */; };
@@ -110,7 +110,7 @@
 		32058CB836D50944FAAF43C8 /* emptyJarCard.1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = emptyJarCard.1.png; sourceTree = "<group>"; };
 		331CBCE6E4FC6CB1567AE6AE /* VoiceRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderView.swift; sourceTree = "<group>"; };
 		38BC12516C9E1305B40D3670 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
-		3A24F11AD4ECE495B375D016 /* SmileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A24F11AD4ECE495B375D016 /* SmileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SmileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BE2BADD81EDC7D9799CEF66 /* EditTagSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTagSheet.swift; sourceTree = "<group>"; };
 		3F79656BE75E9333AF78F79E /* TimeFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFilterSheet.swift; sourceTree = "<group>"; };
 		42C5A5BB1F2DCE884451414A /* PhotoLibraryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryPickerView.swift; sourceTree = "<group>"; };
@@ -121,7 +121,7 @@
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
-		5F2CCEDE0BC5605AEE770FC8 /* SmilePiggyBank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmilePiggyBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
 		6E79A9117FFC741528407136 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -133,15 +133,13 @@
 		8AC0638A2229742F46E3B576 /* ShareCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardRenderer.swift; sourceTree = "<group>"; };
 		8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8D6481AF95E4B15A05FCE18E /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
+		8D840316B8C76FF3A1BF106F /* LockSessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManagerTests.swift; sourceTree = "<group>"; };
 		942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelTests.swift; sourceTree = "<group>"; };
 		95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelDictationTests.swift; sourceTree = "<group>"; };
 		98137F68B7D0E64DF6398BCD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		98D4472C2FEFEF62002E2359 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainerFactory.swift; sourceTree = "<group>"; };
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
 		9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
-		AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
-		AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManagerTests.swift; sourceTree = "<group>"; };
 		B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorComponents.swift; sourceTree = "<group>"; };
 		B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaAttachmentChip.swift; sourceTree = "<group>"; };
 		B1EBDAC89DBB17F16E633AC4 /* EntryEditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEditorModel.swift; sourceTree = "<group>"; };
@@ -152,12 +150,14 @@
 		BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStoreTests.swift; sourceTree = "<group>"; };
 		C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPreviewView.swift; sourceTree = "<group>"; };
 		C85DD7DC515EA89B489558D0 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
+		CBE877647FBB33553DFF690F /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
 		CCF19E010724A6A0A0167D07 /* PhotoCropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropTests.swift; sourceTree = "<group>"; };
 		CFA8B7413917CCB433EEBC09 /* Group.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Group.swift; sourceTree = "<group>"; };
 		D435AD6F414F06C93966F9B2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D4CE54904D1EA2FF21E93630 /* CustomGroupRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGroupRow.swift; sourceTree = "<group>"; };
 		D4D2CF6A020F0310D846BDF6 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
 		D7FC1B4752D2938A2F5E19F6 /* CameraPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPickerView.swift; sourceTree = "<group>"; };
+		DAA3358F210C0B4122E60A56 /* ThumbnailCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheTests.swift; sourceTree = "<group>"; };
 		DB007998789F54991CFC4435 /* TagFilterBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagFilterBar.swift; sourceTree = "<group>"; };
 		DD392C71EA93BA09D38A03A1 /* ExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportServiceTests.swift; sourceTree = "<group>"; };
 		DE27C427CEC93DA20396BFBE /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
@@ -246,7 +246,7 @@
 		5282F5D288824BACADE81F89 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5F2CCEDE0BC5605AEE770FC8 /* SmilePiggyBank.app */,
+				5F2CCEDE0BC5605AEE770FC8 /* Smile.app */,
 				3A24F11AD4ECE495B375D016 /* SmileTests.xctest */,
 			);
 			name = Products;
@@ -263,13 +263,14 @@
 				95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */,
 				942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */,
 				498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */,
-				AA11BB22CC33DD44EE55FF69 /* LockSessionManagerTests.swift */,
+				8D840316B8C76FF3A1BF106F /* LockSessionManagerTests.swift */,
 				BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */,
 				CCF19E010724A6A0A0167D07 /* PhotoCropTests.swift */,
 				73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */,
 				2DC5C44440FDC68ADF4A6EF6 /* ShareCardRendererTests.swift */,
 				D4D2CF6A020F0310D846BDF6 /* SmokeTests.swift */,
 				B235B1F1F195485F9889BA92 /* SnapshotTests.swift */,
+				DAA3358F210C0B4122E60A56 /* ThumbnailCacheTests.swift */,
 				F6CCE7005EF0291FF613F35C /* __Snapshots__ */,
 			);
 			path = SmileTests;
@@ -383,7 +384,6 @@
 		CAE91775A12400F9234B4876 = {
 			isa = PBXGroup;
 			children = (
-				98D4472C2FEFEF62002E2359 /* PrivacyInfo.xcprivacy */,
 				CE067C9CB47FF99922BD4D5E /* Smile */,
 				64F32B28E974871AA7087AFF /* SmileTests */,
 				5282F5D288824BACADE81F89 /* Products */,
@@ -436,7 +436,7 @@
 			isa = PBXGroup;
 			children = (
 				DE27C427CEC93DA20396BFBE /* KeychainService.swift */,
-				AA11BB22CC33DD44EE55FF67 /* LockSessionManager.swift */,
+				CBE877647FBB33553DFF690F /* LockSessionManager.swift */,
 			);
 			path = Security;
 			sourceTree = "<group>";
@@ -500,7 +500,7 @@
 				196DB5A96F52E0B4FFC83292 /* ZIPFoundation */,
 			);
 			productName = Smile;
-			productReference = 5F2CCEDE0BC5605AEE770FC8 /* SmilePiggyBank.app */;
+			productReference = 5F2CCEDE0BC5605AEE770FC8 /* Smile.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -510,7 +510,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0834CA012DDBB119CFA4B32E = {
+						ProvisioningStyle = Automatic;
+					};
+					E1910121DA44BBB3B03B6D39 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
 			buildConfigurationList = DD1692DCF94CF3C28D568D23 /* Build configuration list for PBXProject "Smile" */;
 			developmentRegion = "zh-Hans";
@@ -541,7 +549,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				98D4472D2FEFEF62002E2359 /* PrivacyInfo.xcprivacy in Resources */,
 				379F146B1BE548DC1E22C4E5 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -585,7 +592,7 @@
 				32E6283D3DC77A04F437171D /* JarCardView.swift in Sources */,
 				645F7B7A0FB470026386AECD /* JarView.swift in Sources */,
 				520905D61AF750DE07650D35 /* KeychainService.swift in Sources */,
-				AA11BB22CC33DD44EE55FF66 /* LockSessionManager.swift in Sources */,
+				8BD9DF11D10A8B0BE568551E /* LockSessionManager.swift in Sources */,
 				C83798A6B01D17C6FB52A05A /* MeTabView.swift in Sources */,
 				AEE9F6B8092DD32CE39790C1 /* MediaAttachment.swift in Sources */,
 				91D61E115C871733227FAD5C /* MediaAttachmentChip.swift in Sources */,
@@ -627,13 +634,14 @@
 				CD16756A4E0C0691BAA5E143 /* ExportServiceTests.swift in Sources */,
 				033D1C62433D5D7A58F2A20C /* ImportServiceTests.swift in Sources */,
 				1747B9824BB814546F42CB3D /* KeychainServiceTests.swift in Sources */,
-				AA11BB22CC33DD44EE55FF68 /* LockSessionManagerTests.swift in Sources */,
+				381F23544BAEDC687A16EFB7 /* LockSessionManagerTests.swift in Sources */,
 				0CA99BEE805B3AA347DDAE00 /* MediaStoreTests.swift in Sources */,
 				77DA72BF4C9CA1AB4314BB44 /* PhotoCropTests.swift in Sources */,
 				194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */,
 				D6AD382BBB9B18F654AD0984 /* ShareCardRendererTests.swift in Sources */,
 				2D9423DC21AC89477F6508F6 /* SmokeTests.swift in Sources */,
 				71DCCF0E91C2A0C1C292C9A8 /* SnapshotTests.swift in Sources */,
+				AB60A20FEE02EA6B796AC23C /* ThumbnailCacheTests.swift in Sources */,
 				55C5636FF30F8AA8B69A3641 /* iOSNoteEditorModelDictationTests.swift in Sources */,
 				C6F6DB46202CC06355D58AC6 /* iOSNoteEditorModelTests.swift in Sources */,
 			);
@@ -655,17 +663,13 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 4QBZT9QAHK;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smiletests;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.SmileTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";
@@ -677,27 +681,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
-				DEVELOPMENT_TEAM = 4QBZT9QAHK;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Smile/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
-				PRODUCT_NAME = SmilePiggyBank;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.Smile;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -706,27 +698,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
-				DEVELOPMENT_TEAM = 4QBZT9QAHK;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Smile/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
-				PRODUCT_NAME = SmilePiggyBank;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.Smile;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -787,7 +767,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -859,7 +838,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -872,19 +850,13 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 4QBZT9QAHK;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.simleTests;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.chuzhanfeng.smile;
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = SmilePiggyBank;
+				PRODUCT_BUNDLE_IDENTIFIER = com.smilejar.SmileTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";

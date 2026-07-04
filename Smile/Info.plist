@@ -10,15 +10,12 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Smile备份</string>
+			<string>SmileJar 备份</string>
 			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>Viewer</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.zip-archive</string>
-				<string>com.chuzhanfeng.smilepiggybank.backup</string>
 			</array>
 		</dict>
 	</array>
@@ -33,51 +30,25 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.0.6</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
+	<string>6</string>
 	<key>NSCameraUsageDescription</key>
-	<string>用于拍摄记录</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>用于验证身份以查看加密的储蓄罐和条目</string>
+	<string>微笑储蓄罐需要使用相机，以便你在记账时直接拍摄照片或视频作为记录的配图。例如，拍下刚买到的心愿商品，附在这条存钱记录里。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>用于录音</string>
+	<string>微笑储蓄罐需要使用麦克风，以便你为储蓄记录录制语音备注、或使用听写把说话内容转成文字。例如，用语音记下这笔存款的心情。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用于添加照片/视频到记录</string>
+	<string>微笑储蓄罐需要访问照片图库，以便你从相册中选择照片或视频添加到储蓄记录。例如，挑选一张旅行照片作为“旅行基金”的封面。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>用于实时听写输入文字，及将录音转为文字便于搜索</string>
+	<string>微笑储蓄罐使用语音识别，将你的录音和实时听写转换为文字，方便快速输入与搜索记录。例如，说一句话即可自动填入备注栏。</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
 		<string>AccentColor</string>
 	</dict>
-	<key>UIStatusBarStyle</key>
-	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>Smile 加密备份</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.chuzhanfeng.smilepiggybank.backup</string>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>smilejar</string>
-				</array>
-			</dict>
-		</dict>
 	</array>
 </dict>
 </plist>

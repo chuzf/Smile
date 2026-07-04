@@ -36,6 +36,7 @@ struct iOSNoteEditorView: View {
     @State private var showSaveError = false
     @State private var dictationService = DictationService()
     @State private var dictationError: DictationService.DictationError?
+    @State private var recordingPulse = false
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -237,24 +238,25 @@ struct iOSNoteEditorView: View {
     @ViewBuilder
     private var dictationStatusBar: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 2) {
-                ForEach([8, 14, 10, 16, 6], id: \.self) { h in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(AppColors.warmOrange)
-                        .frame(width: 3, height: CGFloat(h))
-                }
-            }
-            Text("正在听写…")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AppColors.warmOrange)
+            // 闪烁红点 —— 明确的“正在录音”信号（Guideline 2.5.14）
+            Circle()
+                .fill(Color.red)
+                .frame(width: 10, height: 10)
+                .opacity(recordingPulse ? 1.0 : 0.3)
+                .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true),
+                           value: recordingPulse)
+            Text("● 正在录音 · 听写中")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.red)
             Spacer()
             Text("点击麦克风停止")
                 .font(.system(size: 11))
                 .foregroundStyle(AppColors.textSecondary)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(AppColors.warmOrange.opacity(0.08))
+        .padding(.vertical, 10)
+        .background(Color.red.opacity(0.10))
+        .onAppear { recordingPulse = true }
     }
 
     @ViewBuilder

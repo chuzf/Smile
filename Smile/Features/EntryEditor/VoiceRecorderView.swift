@@ -8,6 +8,7 @@ struct VoiceRecorderView: View {
 
     @State private var recorder: AVAudioRecorder?
     @State private var isRecording = false
+    @State private var pulse = false
     @State private var elapsed: TimeInterval = 0
     @State private var timer: Timer?
     @State private var recordedURL: URL?
@@ -19,6 +20,19 @@ struct VoiceRecorderView: View {
                 Image(systemName: isRecording ? "waveform.circle.fill" : "mic.circle.fill")
                     .font(.system(size: 88))
                     .foregroundStyle(isRecording ? Color.red : AppColors.warmOrange)
+                if isRecording {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 12, height: 12)
+                            .opacity(pulse ? 1 : 0.3)
+                            .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: pulse)
+                        Text("正在录音")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.red)
+                    }
+                    .onAppear { pulse = true }
+                }
                 Text(String(format: "%02d:%02d", Int(elapsed) / 60, Int(elapsed) % 60))
                     .font(.system(size: 28, weight: .light, design: .monospaced))
                     .foregroundStyle(AppColors.textPrimary)
