@@ -25,24 +25,38 @@ targets:
     settings:
       base:
         CODE_SIGN_ENTITLEMENTS: Smile/Smile.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile
     info:
       path: Smile/Info.plist
       properties:
         CFBundleDisplayName: 微笑储蓄罐
         CFBundleShortVersionString: "1.0.6"
         CFBundleVersion: "6"
-        NSCameraUsageDescription: "微笑储蓄罐需要使用相机，以便你在记账时直接拍摄照片或视频作为记录的配图。例如，拍下刚买到的心愿商品，附在这条存钱记录里。"
-        NSPhotoLibraryUsageDescription: "微笑储蓄罐需要访问照片图库，以便你从相册中选择照片或视频添加到储蓄记录。例如，挑选一张旅行照片作为“旅行基金”的封面。"
-        NSMicrophoneUsageDescription: "微笑储蓄罐需要使用麦克风，以便你为储蓄记录录制语音备注、或使用听写把说话内容转成文字。例如，用语音记下这笔存款的心情。"
-        NSSpeechRecognitionUsageDescription: "微笑储蓄罐使用语音识别，将你的录音和实时听写转换为文字，方便快速输入与搜索记录。例如，说一句话即可自动填入备注栏。"
+        LSSupportsOpeningDocumentsInPlace: true
+        UIStatusBarStyle: ""
+        NSCameraUsageDescription: "微笑储蓄罐需要使用相机，以便你在记账时直接拍摄照片作为记录的配图。例如，拍下和孩子的温馨互动瞬间，放入微笑储蓄罐中。"
+        NSPhotoLibraryUsageDescription: "微笑储蓄罐需要访问照片图库，以便你从相册中选择照片或视频添加到储蓄记录。例如，记录孩子的获奖证书到优势储蓄罐中。"
+        NSMicrophoneUsageDescription: "微笑储蓄罐需要使用麦克风，以便你为储蓄记录录制语音备注。例如，用语音记当下的心情和感悟。"
+        NSSpeechRecognitionUsageDescription: "微笑储蓄罐使用语音识别，将你的录音和实时听写转换为文字，方便快速输入与搜索记录。例如，通过语音转文字的方式便捷记录当下心情和感悟。"
+        NSFaceIDUsageDescription: "用于验证身份以查看加密的储蓄罐和条目"
         UILaunchScreen:
           UIColorName: AccentColor
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         CFBundleDocumentTypes:
-          - CFBundleTypeName: "SmileJar 备份"
-            CFBundleTypeRole: Viewer
+          - CFBundleTypeName: "Smile备份"
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
             LSItemContentTypes:
               - public.zip-archive
+              - com.chuzhanfeng.smilepiggybank.backup
+        UTExportedTypeDeclarations:
+          - UTTypeConformsTo:
+              - public.data
+            UTTypeDescription: "Smile 加密备份"
+            UTTypeIdentifier: com.chuzhanfeng.smilepiggybank.backup
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - smilejar
     dependencies:
       - package: ZIPFoundation
         product: ZIPFoundation
@@ -54,6 +68,7 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
+        PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.SmileTests
     dependencies:
       - target: Smile
       - package: swift-snapshot-testing

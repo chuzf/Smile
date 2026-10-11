@@ -10,14 +10,15 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>SmileJar 备份</string>
+			<string>Smile备份</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
-			<string>Default</string>
+			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.zip-archive</string>
+				<string>com.chuzhanfeng.smilepiggybank.backup</string>
 			</array>
 		</dict>
 	</array>
@@ -35,8 +36,12 @@
 	<string>1.0.6</string>
 	<key>CFBundleVersion</key>
 	<string>6</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>微笑储蓄罐需要使用相机，以便你在记账时直接拍摄照片作为记录的配图。例如，拍下拍下和孩子的温馨互动瞬间，放入微笑储蓄罐中。</string>
+	<string>微笑储蓄罐需要使用相机，以便你在记账时直接拍摄照片作为记录的配图。例如，拍下和孩子的温馨互动瞬间，放入微笑储蓄罐中。</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用于验证身份以查看加密的储蓄罐和条目</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>微笑储蓄罐需要使用麦克风，以便你为储蓄记录录制语音备注。例如，用语音记当下的心情和感悟。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -48,9 +53,31 @@
 		<key>UIColorName</key>
 		<string>AccentColor</string>
 	</dict>
+	<key>UIStatusBarStyle</key>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Smile 加密备份</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.chuzhanfeng.smilepiggybank.backup</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>smilejar</string>
+				</array>
+			</dict>
+		</dict>
 	</array>
 </dict>
 </plist>
