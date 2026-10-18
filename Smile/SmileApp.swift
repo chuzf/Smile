@@ -5,6 +5,7 @@ import SwiftData
 struct SmileApp: App {
     let container: ModelContainer
     @State private var lockSession = LockSessionManager()
+    @State private var shareCenter = ShareInboxCenter()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -24,6 +25,7 @@ struct SmileApp: App {
         WindowGroup {
             RootView()
                 .environment(lockSession)
+                .environment(shareCenter)
         }
         .modelContainer(container)
         .onChange(of: scenePhase) { _, phase in

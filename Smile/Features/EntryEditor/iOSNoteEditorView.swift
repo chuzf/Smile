@@ -5,6 +5,7 @@ import UIKit
 struct iOSNoteEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(ShareInboxCenter.self) private var shareCenter
 
     @Query(filter: #Predicate<Group> { $0.isBuiltIn == true },
            sort: [SortDescriptor(\Group.sortOrder)])
@@ -16,11 +17,21 @@ struct iOSNoteEditorView: View {
 
     let editingEntryID: PersistentIdentifier?
     let initialGroupID: PersistentIdentifier?
+    /// 从相册分享进来的照片，打开后自动插入
+    let initialImages: [UIImage]
+    /// 分享照片中解码失败的数量，> 0 时提示
+    let initialImageFailures: Int
     let onSaved: ((UUID, UUID) -> Void)?
 
-    init(editingEntryID: PersistentIdentifier? = nil, initialGroupID: PersistentIdentifier? = nil, onSaved: ((UUID, UUID) -> Void)? = nil) {
+    init(editingEntryID: PersistentIdentifier? = nil,
+         initialGroupID: PersistentIdentifier? = nil,
+         initialImages: [UIImage] = [],
+         initialImageFailures: Int = 0,
+         onSaved: ((UUID, UUID) -> Void)? = nil) {
         self.editingEntryID = editingEntryID
         self.initialGroupID = initialGroupID
+        self.initialImages = initialImages
+        self.initialImageFailures = initialImageFailures
         self.onSaved = onSaved
     }
 
@@ -37,6 +48,11 @@ struct iOSNoteEditorView: View {
     @State private var dictationService = DictationService()
     @State private var dictationError: DictationService.DictationError?
     @State private var recordingPulse = false
+    @State private var showShareChoice = false
+    /// 弹窗标题用的张数；点按钮后 incomingImages 会立刻变 nil，避免标题闪成「收到 0 张照片」
+    @State private var shareChoiceCount = 0
+    /// 防止重复 onAppear 让 shareCenter 的打开编辑器计数多加
+    @State private var isRegisteredWithShareCenter = false
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -68,7 +84,20 @@ struct iOSNoteEditorView: View {
             }
         }
         .onAppear {
+            if !isRegisteredWithShareCenter {
+                isRegisteredWithShareCenter = true
+                shareCenter.editorDidAppear()
+            }
             initialize()
+            if !initialImages.isEmpty {
+                let images = initialImages
+                let failures = initialImageFailures
+                Task {
+                    await insertPhotos(images)
+                    if failures > 0 { showInsertPhotoError = true }
+                }
+            }
+            presentShareChoiceIfNeeded()
             if editingEntryID == nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     if case .text(let id, _, _) = model.segments.first {
@@ -86,6 +115,26 @@ struct iOSNoteEditorView: View {
             }
             model.reset()
             thumbnails.removeAll()
+            if isRegisteredWithShareCenter {
+                isRegisteredWithShareCenter = false
+                shareCenter.editorDidDisappear()
+            }
+        }
+        .onChange(of: shareCenter.incomingImages != nil) { _, hasIncoming in
+            if hasIncoming { presentShareChoiceIfNeeded() }
+        }
+        .onChange(of: allGroups.count) { _, _ in
+            // 冷启动时内置分组可能晚于编辑器出现才 seed 完成
+            if model.selectedGroupID == nil {
+                model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
+            }
+        }
+        .alert("收到 \(shareChoiceCount) 张照片", isPresented: $showShareChoice) {
+            Button("插入当前记录") { insertSharedPhotos() }
+            Button("新建记录") { Task { await startNewEntryFromShare() } }
+            Button("取消", role: .cancel) { shareCenter.discardIncoming() }
+        } message: {
+            Text("加入正在编辑的这条记录，还是新建一条记录？")
         }
         .onChange(of: model.autoSaveSignal) { _, signal in
             guard signal > 0 else { return }
@@ -542,6 +591,26 @@ struct iOSNoteEditorView: View {
         model.isDirty = true
     }
 
+    private func presentShareChoiceIfNeeded() {
+        guard let incoming = shareCenter.incomingImages else { return }
+        shareChoiceCount = incoming.count
+        showShareChoice = true
+    }
+
+    private func insertSharedPhotos() {
+        let incoming = shareCenter.takeIncoming()
+        Task {
+            await insertPhotos(incoming.images)
+            if incoming.failures > 0 { showInsertPhotoError = true }
+        }
+    }
+
+    /// incomingImages 保留在 shareCenter 中，本编辑器关闭后由 RootView 用它新建记录
+    @MainActor
+    private func startNewEntryFromShare() async {
+        if canSave { await save() } else { dismiss() }
+    }
+
     private func removePhoto(_ draft: DraftAttachment) {
         let mediaStore = MediaStore.production()
         try? mediaStore.delete(relativePath: draft.relativePath)
@@ -667,4 +736,5 @@ struct MediaAttachmentRow: View {
         onSaved: nil
     )
     .environment(\.modelContext, ModelContext(try! ModelContainer(for: Entry.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))))
+    .environment(ShareInboxCenter(inbox: nil))
 }
