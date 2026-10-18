@@ -444,6 +444,8 @@ Expected: 编译失败，`cannot find 'ShareInboxCenter' in scope`。
 
 - [ ] **Step 3: 实现 ShareInboxCenter**
 
+> 注：代码 review 后最终 API 有调整，以仓库中 `Smile/Core/SharedInbox/ShareInboxCenter.swift` 为准：`pullNextBatch() async -> PullResult`（`.nothing` / `.ready(count:)` / `.allFailed(failures:)`，后台 ImageIO 下采样到长边 4096 并应用 EXIF 方向）；`lastDecodeFailures` 改为 `incomingFailures`（只在 `incomingImages != nil` 时有意义）。`takeIncoming()` / `discardIncoming()` / `openEditorCount` 不变。
+
 创建 `Smile/Core/SharedInbox/ShareInboxCenter.swift`：
 
 ```swift
@@ -1126,7 +1128,8 @@ git commit -m "feat: 编辑器支持分享照片插入与收图询问"
             }
         }
         .alert("照片读取失败", isPresented: $showShareReadError) {
-            Button("好的", role: .cancel) {}
+            // 关闭后继续处理收件箱里可能排着的下一批
+            Button("好的", role: .cancel) { checkShareInbox() }
         } message: {
             Text("分享的照片无法读取，请重新分享。")
         }
@@ -1144,16 +1147,20 @@ git commit -m "feat: 编辑器支持分享照片插入与收图询问"
 
 ```swift
     /// 检查分享收件箱：没有编辑器时直接打开带图编辑器；已有编辑器时由编辑器弹窗询问。
+    /// `pullNextBatch` 是 async（后台解码），await 之后必须重新读取编辑器状态。
     private func checkShareInbox() {
-        // + 号编辑器正在弹出、尚未 onAppear：等编辑器计数变化后再处理，避免覆盖正在打开的那一批
-        if showEntryEditor && shareCenter.openEditorCount == 0 { return }
-        shareCenter.pullNextBatch()
-        guard shareCenter.openEditorCount == 0 else { return }
-        if shareCenter.incomingImages != nil {
-            openShareEditor()
-        } else if shareCenter.lastDecodeFailures > 0 {
-            shareCenter.discardIncoming()
-            showShareReadError = true
+        Task { @MainActor in
+            // + 号编辑器正在弹出、尚未 onAppear：等它出现后自己弹窗处理
+            if showEntryEditor && shareCenter.openEditorCount == 0 { return }
+            let result = await shareCenter.pullNextBatch()
+            // 解码期间用户可能已打开编辑器：编辑器 onAppear 会看到 incomingImages 并弹窗
+            if showEntryEditor || shareCenter.openEditorCount > 0 { return }
+            if shareCenter.incomingImages != nil {
+                // 新拉到的一批，或编辑器里选了「新建记录」留下的一批
+                openShareEditor()
+            } else if case .allFailed = result {
+                showShareReadError = true
+            }
         }
     }
 
