@@ -17,25 +17,13 @@ struct iOSNoteEditorView: View {
 
     let editingEntryID: PersistentIdentifier?
     let initialGroupID: PersistentIdentifier?
-    /// 从相册分享进来的照片，打开后自动插入
-    let initialImages: [UIImage]
-    /// 分享照片中解码失败的数量，> 0 时提示
-    let initialImageFailures: Int
-    /// 初始照片插入完成后回调，供调用方释放手里持有的大图
-    let onInitialImagesConsumed: (() -> Void)?
     let onSaved: ((UUID, UUID) -> Void)?
 
     init(editingEntryID: PersistentIdentifier? = nil,
          initialGroupID: PersistentIdentifier? = nil,
-         initialImages: [UIImage] = [],
-         initialImageFailures: Int = 0,
-         onInitialImagesConsumed: (() -> Void)? = nil,
          onSaved: ((UUID, UUID) -> Void)? = nil) {
         self.editingEntryID = editingEntryID
         self.initialGroupID = initialGroupID
-        self.initialImages = initialImages
-        self.initialImageFailures = initialImageFailures
-        self.onInitialImagesConsumed = onInitialImagesConsumed
         self.onSaved = onSaved
     }
 
@@ -59,8 +47,6 @@ struct iOSNoteEditorView: View {
     @State private var shareChoiceCount = 0
     /// 防止重复 onAppear 让 shareCenter 的打开编辑器计数多加
     @State private var isRegisteredWithShareCenter = false
-    /// initialImages 只插入一次（onAppear 可能重复触发）
-    @State private var didConsumeInitialImages = false
     /// 已开始关闭（dismiss 已调用）；此后不再接收分享照片、不再自动保存、不再写入照片
     @State private var isClosing = false
     /// 正在进行中的 insertPhotos 调用数；编码期间 model 还没更新，编辑器看起来仍是空白
@@ -101,16 +87,6 @@ struct iOSNoteEditorView: View {
                 shareCenter.editorDidAppear()
             }
             initialize()
-            if !didConsumeInitialImages, !initialImages.isEmpty {
-                didConsumeInitialImages = true
-                let images = initialImages
-                let failures = initialImageFailures
-                Task {
-                    await insertPhotos(images)
-                    if failures > 0 && !isClosing { showInsertPhotoError = true }
-                    onInitialImagesConsumed?()
-                }
-            }
             presentShareChoiceIfNeeded()
             if editingEntryID == nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -669,8 +645,9 @@ struct iOSNoteEditorView: View {
         guard isRegisteredWithShareCenter, !isClosing,
               let incoming = shareCenter.incomingImages,
               !isPresentingOther, !showShareChoice, !isStartingNewEntryFromShare else { return }
-        // 全新、空白、未改动、且不是从分享打开、也没有照片正在编码的编辑器：不用问，直接插入
-        if editingEntryID == nil && initialImages.isEmpty && pendingPhotoInserts == 0
+        // 全新、空白、未改动、也没有照片正在编码的编辑器（包括 RootView 为分享新开的编辑器）：不用问，直接插入。
+        // 第一批还在编码时（pendingPhotoInserts > 0）又来一批，走询问而不是合并
+        if editingEntryID == nil && pendingPhotoInserts == 0
             && !model.hasContent && !model.isDirty {
             insertSharedPhotos()
             return

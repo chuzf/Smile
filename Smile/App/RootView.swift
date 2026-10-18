@@ -18,8 +18,6 @@ struct RootView: View {
     @State private var importing = false
     @State private var importResult: ImportService.ImportResult?
     @State private var importError: String?
-    @State private var shareImages: [UIImage] = []
-    @State private var shareFailures = 0
     @State private var showShareReadError = false
 
     var body: some View {
@@ -30,11 +28,7 @@ struct RootView: View {
 
             Color.clear
                 .tabItem { Label("", systemImage: "plus.circle.fill") }
-                .onAppear {
-                    shareImages = []
-                    shareFailures = 0
-                    showEntryEditor = true
-                }
+                .onAppear { showEntryEditor = true }
                 .tag(1)
 
             MeTabView()
@@ -43,10 +37,13 @@ struct RootView: View {
         }
         .tint(AppColors.warmOrange)
         .preferredColorScheme(.light)
-        // 捕获列表让 body 读取 shareImages/shareFailures：否则它们与 showEntryEditor 同时被设置时，
-        // sheet 内容会先用旧的空数组构建，编辑器 onAppear 拿不到分享的照片
-        .sheet(isPresented: $showEntryEditor, onDismiss: handleEditorDismiss) { [shareImages, shareFailures] in
-            entryEditor(images: shareImages, failures: shareFailures)
+        .sheet(isPresented: $showEntryEditor, onDismiss: handleEditorDismiss) {
+            // 分享的照片留在 shareCenter 中，由新编辑器 onAppear 时自己取用并插入
+            iOSNoteEditorView(onSaved: { groupID, entryID in
+                pendingGroupID = groupID
+                pendingEntryID = entryID
+                selectedTab = 0
+            })
         }
         .onAppear { checkShareInbox() }
         .onChange(of: scenePhase) { _, phase in
@@ -55,7 +52,11 @@ struct RootView: View {
             checkShareInbox()
         }
         .onChange(of: shareCenter.openEditorCount) { _, count in
-            guard count == 0 else { return }
+            guard count == 0 else {
+                // 编辑器弹出期间到达的分享（checkShareInbox 当时提前返回了）：现在拉取，编辑器会弹窗询问
+                if shareCenter.incomingImages == nil { checkShareInbox() }
+                return
+            }
             Task { @MainActor in
                 // 等上一个编辑器 sheet 的关闭动画结束再弹新的
                 try? await Task.sleep(for: .milliseconds(350))
@@ -134,21 +135,6 @@ struct RootView: View {
         }
     }
 
-    private func entryEditor(images: [UIImage], failures: Int) -> some View {
-        iOSNoteEditorView(initialImages: images,
-                          initialImageFailures: failures,
-                          onInitialImagesConsumed: {
-                              // 照片已插入编辑器，释放这里持有的解码大图
-                              shareImages = []
-                              shareFailures = 0
-                          },
-                          onSaved: { groupID, entryID in
-                              pendingGroupID = groupID
-                              pendingEntryID = entryID
-                              selectedTab = 0
-                          })
-    }
-
     /// 检查分享收件箱：没有编辑器时直接打开带图编辑器；已有编辑器时由编辑器弹窗询问。
     /// `pullNextBatch` 是 async（后台解码），await 之后必须重新读取编辑器状态。
     private func checkShareInbox() {
@@ -167,19 +153,25 @@ struct RootView: View {
         }
     }
 
-    /// 不切换 selectedTab：sheet 挂在 TabView 上，任意 tab 下都能弹出
+    /// 照片留在 shareCenter 里，新编辑器 onAppear 时发现是空白编辑器会直接取用插入。
+    /// 不切换 selectedTab：sheet 挂在 TabView 上，任意 tab 下都能弹出。
     private func openShareEditor() {
-        let incoming = shareCenter.takeIncoming()
-        guard !incoming.images.isEmpty else { return }
-        shareImages = incoming.images
-        shareFailures = incoming.failures
         showEntryEditor = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1))
+            // 呈现失败（已有别的 sheet/alert 在呈现）：复位，否则 + 号与后续分享都会失效。
+            // 照片仍在 shareCenter 中，下次回到前台或编辑器数量变化时会重试
+            if showEntryEditor && shareCenter.openEditorCount == 0 {
+                showEntryEditor = false
+            }
+        }
     }
 
     private func handleEditorDismiss() {
-        // 关闭编辑器后总是回到“罐”列表页（无论保存还是取消），
-        // 避免取消时停留在中间 + 号那个空白 tab。
-        selectedTab = 0
+        // 从 + 号 tab 打开的编辑器关闭后回到“罐”列表页（无论保存还是取消），
+        // 避免停留在中间 + 号那个空白 tab；从其它 tab 打开的分享编辑器关闭后留在原 tab。
+        // 保存时 onSaved 已切到“罐”页。
+        if selectedTab == 1 { selectedTab = 0 }
         guard let gid = pendingGroupID, let eid = pendingEntryID else { return }
         pendingGroupID = nil
         pendingEntryID = nil
