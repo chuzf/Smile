@@ -144,7 +144,7 @@ struct RootView: View {
     }
 
     /// 检查分享收件箱：没有编辑器时直接打开带图编辑器；已有编辑器时由编辑器弹窗询问。
-    /// `pullNextBatch` 是 async（后台解码），await 之后必须重新读取编辑器状态。
+    /// `pullNextBatch` 是 async（后台校验文件），await 之后必须重新读取编辑器状态。
     private func checkShareInbox() {
         Task { @MainActor in
             // + 号编辑器正在弹出、尚未 onAppear：等它出现后自己弹窗处理
@@ -153,13 +153,13 @@ struct RootView: View {
                 return
             }
             let result = await shareCenter.pullNextBatch()
-            // 解码期间用户可能已打开编辑器：编辑器会看到 incomingImages 弹窗询问；
+            // 校验期间用户可能已打开编辑器：编辑器会看到 incomingPhotoURLs 弹窗询问；
             // 整批读取失败时交给编辑器提示
             if showEntryEditor || shareCenter.openEditorCount > 0 {
                 if case .allFailed = result { shareCenter.deferReadFailureNotice() }
                 return
             }
-            if shareCenter.incomingImages != nil {
+            if shareCenter.incomingPhotoURLs != nil {
                 // 新拉到的一批，或编辑器里选了「新建记录」留下的一批
                 openShareEditor()
             } else if case .allFailed = result {

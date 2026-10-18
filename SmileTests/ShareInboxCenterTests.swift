@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import UIKit
+import ImageIO
 @testable import Smile
 
 @Suite("ShareInboxCenter")
@@ -9,6 +10,23 @@ struct ShareInboxCenterTests {
     func makeInbox() -> SharedInbox {
         SharedInbox(rootURL: FileManager.default.temporaryDirectory
             .appendingPathComponent("ShareInboxCenterTest_\(UUID().uuidString)"))
+    }
+
+    /// 每个测试独立的认领目录，避免与其它测试或 App 自身的 `tmp/ShareProcessing` 互相影响
+    let processingRoot = FileManager.default.temporaryDirectory
+        .appendingPathComponent("ShareProcessingTest_\(UUID().uuidString)", isDirectory: true)
+
+    func makeCenter(_ inbox: SharedInbox?) -> ShareInboxCenter {
+        ShareInboxCenter(inbox: inbox, processingRoot: processingRoot)
+    }
+
+    func exists(_ url: URL) -> Bool { FileManager.default.fileExists(atPath: url.path) }
+
+    /// 校验不解码像素，用 ImageIO 读出文件声明的宽度，验证顺序
+    func pixelWidth(_ url: URL) -> Int? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] else { return nil }
+        return (props[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue
     }
 
     /// `format.scale = 1`：避免在模拟器 3x 屏幕下渲染出比指定尺寸大 3 倍的像素，
@@ -37,48 +55,66 @@ struct ShareInboxCenterTests {
         return try inbox.commit(pending)
     }
 
-    @Test func pullDecodesImagesAndRemovesBatch() async throws {
+    @Test func pullValidatesFilesAndRemovesBatch() async throws {
         let inbox = makeInbox()
-        try commitBatch(inbox, good: 3)
-        let center = ShareInboxCenter(inbox: inbox)
+        let batch = try commitBatch(inbox, good: 3)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .ready(count: 3))
-        #expect(center.incomingImages?.count == 3)
+        let urls = try #require(center.incomingPhotoURLs)
+        #expect(urls.count == 3)
+        #expect(urls.allSatisfy(exists))
+        #expect(urls.allSatisfy { $0.deletingLastPathComponent().lastPathComponent == batch.id.uuidString })
         #expect(inbox.pendingBatches().isEmpty)
+        #expect(!exists(batch.url))
     }
 
     @Test func pullPreservesFileOrder() async throws {
         let inbox = makeInbox()
         try commitBatch(inbox, good: 3, widths: [8, 9, 10])
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .ready(count: 3))
-        #expect(center.incomingImages?.map { Int($0.size.width) } == [8, 9, 10])
+        #expect(center.incomingPhotoURLs?.map { pixelWidth($0) } == [8, 9, 10])
     }
 
     @Test func pullSkipsUndecodableFiles() async throws {
         let inbox = makeInbox()
         try commitBatch(inbox, good: 1, bad: 1)
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .ready(count: 1))
         #expect(center.takeIncoming().failures == 1)
     }
 
+    @Test func invalidFilesAreDeletedAndNotKept() async throws {
+        let inbox = makeInbox()
+        let batch = try commitBatch(inbox, good: 2, bad: 2)
+        let center = makeCenter(inbox)
+
+        #expect(await center.pullNextBatch() == .ready(count: 2))
+        #expect(center.incomingFailures == 2)
+        let dir = processingRoot.appendingPathComponent(batch.id.uuidString)
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted()
+        #expect(remaining == ["0001.png", "0002.png"])
+        #expect(center.incomingPhotoURLs?.map(\.lastPathComponent) == ["0001.png", "0002.png"])
+    }
+
     @Test func pullWithAllFilesBrokenReturnsAllFailed() async throws {
         let inbox = makeInbox()
-        try commitBatch(inbox, good: 0, bad: 2)
-        let center = ShareInboxCenter(inbox: inbox)
+        let batch = try commitBatch(inbox, good: 0, bad: 2)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .allFailed(failures: 2))
-        #expect(center.incomingImages == nil)
+        #expect(center.incomingPhotoURLs == nil)
         #expect(inbox.pendingBatches().isEmpty)
+        #expect(!exists(processingRoot.appendingPathComponent(batch.id.uuidString)))
     }
 
     @Test func pullAfterAllFailedThenEmptyReturnsNothing() async throws {
         let inbox = makeInbox()
         try commitBatch(inbox, good: 0, bad: 2)
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .allFailed(failures: 2))
         #expect(await center.pullNextBatch() == .nothing)
@@ -92,11 +128,11 @@ struct ShareInboxCenterTests {
                                               ofItemAtPath: first.url.path)
         try FileManager.default.setAttributes([.creationDate: Date()],
                                               ofItemAtPath: second.url.path)
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .ready(count: 1))
         #expect(await center.pullNextBatch() == .nothing)
-        #expect(center.incomingImages?.count == 1)
+        #expect(center.incomingPhotoURLs?.count == 1)
         #expect(inbox.pendingBatches().map(\.id) == [second.id])
     }
 
@@ -108,7 +144,7 @@ struct ShareInboxCenterTests {
                                               ofItemAtPath: first.url.path)
         try FileManager.default.setAttributes([.creationDate: Date()],
                                               ofItemAtPath: second.url.path)
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
 
         #expect(await center.pullNextBatch() == .ready(count: 1))
         _ = center.takeIncoming()
@@ -116,13 +152,13 @@ struct ShareInboxCenterTests {
     }
 
     @Test func pullWithEmptyInboxReturnsNothing() async {
-        let center = ShareInboxCenter(inbox: makeInbox())
+        let center = makeCenter(makeInbox())
         #expect(await center.pullNextBatch() == .nothing)
-        #expect(center.incomingImages == nil)
+        #expect(center.incomingPhotoURLs == nil)
     }
 
     @Test func pullWithoutInboxReturnsNothing() async {
-        let center = ShareInboxCenter(inbox: nil)
+        let center = makeCenter(nil)
         #expect(await center.pullNextBatch() == .nothing)
     }
 
@@ -130,7 +166,7 @@ struct ShareInboxCenterTests {
         let inbox = makeInbox()
         try commitBatch(inbox, good: 1)
         try commitBatch(inbox, good: 1)
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
 
         async let a = center.pullNextBatch()
         async let b = center.pullNextBatch()
@@ -141,46 +177,76 @@ struct ShareInboxCenterTests {
         #expect(results.filter { $0 == .nothing }.count == 1)
     }
 
-    @Test func takeIncomingReturnsAndClearsState() async throws {
+    @Test func takeIncomingHandsOverExistingFilesAndClearsState() async throws {
         let inbox = makeInbox()
         try commitBatch(inbox, good: 2, bad: 1)
-        let center = ShareInboxCenter(inbox: inbox)
+        let center = makeCenter(inbox)
         _ = await center.pullNextBatch()
 
         let taken = center.takeIncoming()
 
-        #expect(taken.images.count == 2)
+        #expect(taken.urls.count == 2)
+        #expect(taken.urls.allSatisfy(exists))
         #expect(taken.failures == 1)
-        #expect(center.incomingImages == nil)
+        #expect(center.incomingPhotoURLs == nil)
         #expect(center.incomingFailures == 0)
     }
 
-    @Test func discardIncomingClearsState() async throws {
+    @Test func deleteHandedOffFileRemovesDirectoryWhenEmpty() async throws {
         let inbox = makeInbox()
-        try commitBatch(inbox, good: 1)
-        let center = ShareInboxCenter(inbox: inbox)
+        try commitBatch(inbox, good: 2)
+        let center = makeCenter(inbox)
         _ = await center.pullNextBatch()
+        let urls = center.takeIncoming().urls
+        let dir = try #require(urls.first?.deletingLastPathComponent())
+
+        ShareInboxCenter.deleteHandedOffFile(urls[0])
+        #expect(!exists(urls[0]))
+        #expect(exists(dir))
+        ShareInboxCenter.deleteHandedOffFile(urls[1])
+        #expect(!exists(dir))
+    }
+
+    @Test func discardIncomingDeletesFilesAndClearsState() async throws {
+        let inbox = makeInbox()
+        let batch = try commitBatch(inbox, good: 2)
+        let center = makeCenter(inbox)
+        _ = await center.pullNextBatch()
+        let urls = try #require(center.incomingPhotoURLs)
 
         center.discardIncoming()
 
-        #expect(center.incomingImages == nil)
+        #expect(center.incomingPhotoURLs == nil)
+        #expect(!urls.contains(where: exists))
+        #expect(!exists(processingRoot.appendingPathComponent(batch.id.uuidString)))
     }
 
-    @Test func pullLeavesNoProcessingCopyBehind() async throws {
+    @Test func purgeRemovesStaleProcessingDirButKeepsHeldOne() async throws {
         let inbox = makeInbox()
-        let batch = try commitBatch(inbox, good: 1, bad: 1)
-        let center = ShareInboxCenter(inbox: inbox)
+        let held = try commitBatch(inbox, good: 1)
+        let center = makeCenter(inbox)
+        #expect(await center.pullNextBatch() == .ready(count: 1))
+        let heldDir = processingRoot.appendingPathComponent(held.id.uuidString)
 
-        _ = await center.pullNextBatch()
+        let stale = processingRoot.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: stale, withIntermediateDirectories: true)
+        try pngData().write(to: stale.appendingPathComponent("0001.png"))
+        let recent = processingRoot.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: recent, withIntermediateDirectories: true)
+        let old = Date(timeIntervalSinceNow: -7200)
+        try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: stale.path)
+        try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: heldDir.path)
 
-        let processing = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ShareProcessing").appendingPathComponent(batch.id.uuidString)
-        #expect(!FileManager.default.fileExists(atPath: processing.path))
-        #expect(!FileManager.default.fileExists(atPath: batch.url.path))
+        center.purgeStaleTemporaries()
+
+        #expect(!exists(stale))
+        #expect(exists(recent))
+        #expect(exists(heldDir))
+        #expect(center.incomingPhotoURLs?.allSatisfy(exists) == true)
     }
 
     @Test func readFailureNoticeCanBeDeferredAndCleared() {
-        let center = ShareInboxCenter(inbox: nil)
+        let center = makeCenter(nil)
         #expect(center.hasUnreportedReadFailure == false)
         center.deferReadFailureNotice()
         #expect(center.hasUnreportedReadFailure == true)
@@ -189,44 +255,11 @@ struct ShareInboxCenterTests {
     }
 
     @Test func editorCountTracksAppearAndNeverGoesNegative() {
-        let center = ShareInboxCenter(inbox: nil)
+        let center = makeCenter(nil)
         center.editorDidAppear()
         #expect(center.openEditorCount == 1)
         center.editorDidDisappear()
         center.editorDidDisappear()
         #expect(center.openEditorCount == 0)
-    }
-
-    // MARK: - 降采样
-
-    @Test func downsampledImageDoesNotUpscaleSmallImage() throws {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).png")
-        try pngData(width: 8, height: 8).write(to: url)
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let image = ShareInboxCenter.downsampledImage(at: url)
-
-        #expect(image?.size.width == 8)
-        #expect(image?.size.height == 8)
-    }
-
-    @Test func downsampledImageCapsLongSideAtMaxPixel() throws {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).png")
-        let size = CGSize(width: 5000, height: 3000)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        let data = UIGraphicsImageRenderer(size: size, format: format).pngData { ctx in
-            UIColor.orange.setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
-        }
-        try data.write(to: url)
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let image = try #require(ShareInboxCenter.downsampledImage(at: url))
-
-        let longSide = max(image.size.width, image.size.height)
-        let shortSide = min(image.size.width, image.size.height)
-        #expect(longSide == 4096)
-        #expect(abs(shortSide - 3000.0 / 5000.0 * 4096.0) < 2)
     }
 }

@@ -44,7 +44,7 @@ struct iOSNoteEditorView: View {
     @State private var showShareChoice = false
     /// 「新建记录」等待保存期间，挡住收图询问的重复弹出
     @State private var isStartingNewEntryFromShare = false
-    /// 弹窗标题用的张数；点按钮后 incomingImages 会立刻变 nil，避免标题闪成「收到 0 张照片」
+    /// 弹窗标题用的张数；点按钮后 incomingPhotoURLs 会立刻变 nil，避免标题闪成「收到 0 张照片」
     @State private var shareChoiceCount = 0
     /// 防止重复 onAppear 让 shareCenter 的打开编辑器计数多加
     @State private var isRegisteredWithShareCenter = false
@@ -141,7 +141,7 @@ struct iOSNoteEditorView: View {
         .sheet(isPresented: $showPhotoPicker) {
             PhotoLibraryPickerView { images in
                 showPhotoPicker = false
-                Task { await insertPhotos(images) }
+                Task { await insertPhotos(images.map(PhotoSource.image)) }
             } onCancel: {
                 showPhotoPicker = false
             }
@@ -577,28 +577,59 @@ struct iOSNoteEditorView: View {
         model.isDirty = true
     }
 
+    /// 要插入的照片来源：相册选择器给的是已解码的 UIImage；分享进来的是磁盘上的原图文件
+    private enum PhotoSource: Sendable {
+        case image(UIImage)
+        /// 由本编辑器拥有，处理完（或编辑器关闭）后删除
+        case file(URL)
+    }
+
+    /// 逐张在后台编码为 JPEG 0.9 并落盘，全部完成后按顺序一次性插入。
+    /// `.file` 每次只解码一张全分辨率原图，避免多张大图同时驻留内存。
+    /// 返回 `.file` 中读取/编码失败的张数（「照片读取失败」）；保存失败仍走「照片插入失败」。
     @MainActor
-    private func insertPhotos(_ images: [UIImage]) async {
+    @discardableResult
+    private func insertPhotos(_ sources: [PhotoSource]) async -> Int {
         let anchor = focusedSegmentID
         var drafts: [DraftAttachment] = []
         let mediaStore = MediaStore.production()
-        var hadFailure = false
+        var hadSaveFailure = false
+        var readFailures = 0
         pendingPhotoInserts += 1
-        defer { pendingPhotoInserts -= 1 }
-        for image in images {
+        defer {
+            pendingPhotoInserts -= 1
+            // 分享的源文件无论成功、失败还是中途关闭都要删掉（已处理过的会被重复删除，无害）
+            for case .file(let url) in sources { ShareInboxCenter.deleteHandedOffFile(url) }
+        }
+        for source in sources {
             guard !isClosing else { break }
-            // JPEG 编码与缩略图生成较重，放到后台线程；落盘和状态修改留在主线程
+            // 解码、JPEG 编码与缩略图生成较重，放到后台线程；落盘和状态修改留在主线程
             let encoded = await Task.detached(priority: .userInitiated) {
                 autoreleasepool { () -> (data: Data, thumbnail: UIImage?)? in
-                    guard let data = image.jpegData(compressionQuality: 0.9) else { return nil }
+                    let data: Data?
+                    switch source {
+                    case .image(let image):
+                        data = image.jpegData(compressionQuality: 0.9)
+                    case .file(let url):
+                        // 与相册选择器一致：全分辨率 UIImage → JPEG 0.9，方向随 EXIF 保留。
+                        // 内层 autoreleasepool 让解码出的位图在生成缩略图前就释放
+                        data = autoreleasepool {
+                            UIImage(contentsOfFile: url.path)?.jpegData(compressionQuality: 0.9)
+                        }
+                        ShareInboxCenter.deleteHandedOffFile(url)
+                    }
+                    guard let data else { return nil }
                     let thumb = ThumbnailGenerator.makePhotoThumbnail(from: data).flatMap { UIImage(data: $0) }
                     return (data, thumb)
                 }
             }.value
             guard !isClosing else { break }
-            guard let encoded else { hadFailure = true; continue }
+            guard let encoded else {
+                if case .file = source { readFailures += 1 } else { hadSaveFailure = true }
+                continue
+            }
             let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
-            guard let relPath = try? mediaStore.save(data: encoded.data, entryID: entryDraftID, filename: filename) else { hadFailure = true; continue }
+            guard let relPath = try? mediaStore.save(data: encoded.data, entryID: entryDraftID, filename: filename) else { hadSaveFailure = true; continue }
             var draft = DraftAttachment(kind: .photo, relativePath: relPath)
             draft.persistedID = nil
             if let thumb = encoded.thumbnail {
@@ -607,14 +638,15 @@ struct iOSNoteEditorView: View {
             drafts.append(draft)
         }
         if isClosing {
-            // 编辑器已在关闭：本次写入但未进 model 的文件会成为孤儿，删掉
+            // 编辑器已在关闭：本次写入但未进 model 的文件会成为孤儿，删掉（未处理的源文件由 defer 删除）
             for draft in drafts { try? mediaStore.delete(relativePath: draft.relativePath) }
-            return
+            return 0
         }
-        if hadFailure { showInsertPhotoError = true }
-        guard !drafts.isEmpty else { return }
+        if hadSaveFailure { showInsertPhotoError = true }
+        guard !drafts.isEmpty else { return readFailures }
         model.insertPhotos(drafts, afterSegmentID: anchor)
         model.isDirty = true
+        return readFailures
     }
 
     /// 是否有其它 sheet / 全屏 / alert 正在呈现；此时弹收图询问会被系统吞掉
@@ -632,7 +664,7 @@ struct iOSNoteEditorView: View {
             showShareReadError = true
             return
         }
-        guard let incoming = shareCenter.incomingImages else { return }
+        guard let incoming = shareCenter.incomingPhotoURLs else { return }
         // 全新、空白、未改动、也没有照片正在编码的编辑器（包括 RootView 为分享新开的编辑器）：不用问，直接插入。
         // 第一批还在编码时（pendingPhotoInserts > 0）又来一批，走询问而不是合并
         if editingEntryID == nil && pendingPhotoInserts == 0
@@ -647,12 +679,12 @@ struct iOSNoteEditorView: View {
     private func insertSharedPhotos() {
         let incoming = shareCenter.takeIncoming()
         Task {
-            await insertPhotos(incoming.images)
-            if incoming.failures > 0 && !isClosing { showShareReadError = true }
+            let readFailures = await insertPhotos(incoming.urls.map(PhotoSource.file))
+            if readFailures + incoming.failures > 0 && !isClosing { showShareReadError = true }
         }
     }
 
-    /// incomingImages 保留在 shareCenter 中，本编辑器关闭后由 RootView 用它新建记录
+    /// incomingPhotoURLs 保留在 shareCenter 中，本编辑器关闭后由 RootView 用它新建记录
     @MainActor
     private func startNewEntryFromShare() async {
         isStartingNewEntryFromShare = true
@@ -785,7 +817,7 @@ private extension View {
 extension iOSNoteEditorView {
     fileprivate func applyShareHandling<Content: View>(to content: Content) -> some View {
         content
-            .onChange(of: shareCenter.incomingImages != nil) { _, hasIncoming in
+            .onChange(of: shareCenter.incomingPhotoURLs != nil) { _, hasIncoming in
                 if hasIncoming { presentSharePromptsIfNeeded() }
             }
             .onChange(of: shareCenter.hasUnreportedReadFailure) { _, hasFailure in

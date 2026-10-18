@@ -298,6 +298,8 @@ git commit -m "feat: 新增 SharedInbox 分享收件箱"
 
 ## Task 2: ShareInboxCenter（主 App 协调状态）
 
+> 注（最终实现）：中心不再解码图片，只把 batch 认领到 `tmp/ShareProcessing/<batchID>/` 并用 ImageIO 轻量校验，持有 `incomingPhotoURLs: [URL]?`；`takeIncoming() -> (urls:, failures:)` 交出文件所有权，编辑器逐张全分辨率解码并存为 JPEG 0.9（与相册选择器一致），下文的 `incomingImages` / 4096 降采样已被替换。
+
 **Files:**
 - Create: `Smile/Core/SharedInbox/ShareInboxCenter.swift`
 - Test: `SmileTests/ShareInboxCenterTests.swift`
