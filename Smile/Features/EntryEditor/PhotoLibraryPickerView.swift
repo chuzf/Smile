@@ -11,7 +11,13 @@ struct PhotoLibraryPickerView: View {
     @State private var selectedIDs: Set<String> = []
     @State private var previewIndex: Int? = nil
     @State private var editImage: UIImage? = nil
+    @State private var scrollState = GridScrollState()
     private let maxSelection = 9
+    private static let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy年M月"
+        return f
+    }()
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
     var body: some View {
@@ -107,13 +113,33 @@ struct PhotoLibraryPickerView: View {
                             .id(id)
                         }
                     }
+                    .background(GeometryReader { g in
+                        Color.clear.preference(
+                            key: GridOffsetKey.self,
+                            value: g.frame(in: .named("photoGrid")).minY
+                        )
+                    })
                 }
-                .overlay(alignment: .trailing) {
+                // 只写不读：滚动时仅 PhotoScrubber 刷新，网格本身不重算
+                .trackScrollOffset(into: scrollState)
+                .scrollIndicators(assets.count > 50 ? .hidden : .automatic)
+                .overlay {
                     if assets.count > 50 {
-                        PhotoScrubber(totalCount: assets.count) { idx in
-                            guard idx < assets.count else { return }
-                            proxy.scrollTo(assets[idx].localIdentifier, anchor: .top)
-                        }
+                        PhotoScrubber(
+                            state: scrollState,
+                            rowCount: (assets.count + 2) / 3,
+                            rowHeight: cellSize + 2,
+                            label: { row in
+                                let idx = row * 3
+                                guard idx < assets.count, let date = assets[idx].creationDate else { return nil }
+                                return Self.monthFormatter.string(from: date)
+                            },
+                            onJumpToRow: { row in
+                                let idx = row * 3
+                                guard idx < assets.count else { return }
+                                proxy.scrollTo(assets[idx].localIdentifier, anchor: .top)
+                            }
+                        )
                     }
                 }
             }
@@ -209,42 +235,136 @@ struct PhotoLibraryPickerView: View {
 
 // MARK: - PhotoScrubber
 
-private struct PhotoScrubber: View {
-    let totalCount: Int
-    let onJump: (Int) -> Void
+private struct GridOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
 
-    @State private var thumbFraction: CGFloat = 0
+private extension View {
+    /// iOS 18+ 用 onScrollGeometryChange；iOS 17 退回到 PreferenceKey 读取内容位置
+    @ViewBuilder
+    func trackScrollOffset(into state: GridScrollState) -> some View {
+        if #available(iOS 18.0, *) {
+            onScrollGeometryChange(for: CGFloat.self) { geo in
+                geo.contentOffset.y + geo.contentInsets.top
+            } action: { _, offset in
+                state.offset = offset
+            }
+        } else {
+            coordinateSpace(name: "photoGrid")
+                .onPreferenceChange(GridOffsetKey.self) { state.offset = -$0 }
+        }
+    }
+}
+
+@Observable
+private final class GridScrollState {
+    /// 网格当前的纵向滚动偏移（向下滚为正）
+    var offset: CGFloat = 0
+}
+
+/// 快速滚动手柄：滚动时浮现、静止 1.5 秒后隐藏，只有手柄本身响应触摸，
+/// 拖动时在左侧显示当前位置的年月。
+private struct PhotoScrubber: View {
+    let state: GridScrollState
+    let rowCount: Int
+    let rowHeight: CGFloat
+    let label: (Int) -> String?
+    let onJumpToRow: (Int) -> Void
+
+    @State private var visible = false
+    @State private var dragStartFraction: CGFloat? = nil
+    @State private var dragFraction: CGFloat? = nil
+    @State private var currentRow: Int? = nil
+    @State private var hideTask: Task<Void, Never>? = nil
+
+    private let handleSize = CGSize(width: 50, height: 56)
+    private let edgeInset: CGFloat = 8
 
     var body: some View {
         GeometryReader { geo in
-            let trackHeight = geo.size.height
-            let thumbHeight: CGFloat = 30
-            let travelHeight = max(0, trackHeight - thumbHeight)
+            let viewHeight = geo.size.height
+            let travel = max(0, viewHeight - handleSize.height - edgeInset * 2)
+            let maxOffset = max(0, CGFloat(rowCount) * rowHeight - 2 - viewHeight)
+            let scrollFraction = maxOffset > 0 ? min(max(state.offset / maxOffset, 0), 1) : 0
+            let fraction = dragFraction ?? scrollFraction
 
-            ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color(white: 0.7).opacity(0.5))
-                    .frame(width: 5)
-                    .frame(maxHeight: .infinity)
+            HStack(spacing: 8) {
+                if dragFraction != nil, let row = currentRow, let text = label(row) {
+                    Text(text)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.black.opacity(0.7)))
+                        .allowsHitTesting(false)
+                }
 
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(white: 0.35))
-                    .frame(width: 6, height: thumbHeight)
-                    .offset(y: thumbFraction * travelHeight)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Color(white: 0.25))
+                    .frame(width: handleSize.width, height: handleSize.height)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
+                            )
+                            .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
+                    )
+                    .contentShape(Rectangle())
+                    .gesture(
+                        // 用全局坐标的位移量：手柄自身在移动，局部坐标会产生反馈
+                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .onChanged { value in
+                                if dragStartFraction == nil {
+                                    dragStartFraction = scrollFraction
+                                    hideTask?.cancel()
+                                    visible = true
+                                }
+                                guard travel > 0, let start = dragStartFraction else { return }
+                                let f = min(max(start + value.translation.height / travel, 0), 1)
+                                dragFraction = f
+                                let row = f >= 1
+                                    ? rowCount - 1
+                                    : min(Int((f * maxOffset / rowHeight).rounded()), rowCount - 1)
+                                if row != currentRow {
+                                    currentRow = row
+                                    onJumpToRow(row)
+                                }
+                            }
+                            .onEnded { _ in
+                                dragStartFraction = nil
+                                dragFraction = nil
+                                currentRow = nil
+                                scheduleHide()
+                            }
+                    )
             }
-            .frame(width: 28)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                    .onChanged { value in
-                        let fraction = travelHeight > 0 ? max(0, min(1, value.location.y / travelHeight)) : 0
-                        thumbFraction = fraction
-                        let idx = min(Int(fraction * CGFloat(totalCount)), max(0, totalCount - 1))
-                        onJump(idx)
-                    }
-            )
+            .padding(.trailing, 4)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .offset(y: edgeInset + fraction * travel)
+            .opacity(visible ? 1 : 0)
+            .allowsHitTesting(visible)
         }
-        .frame(width: 28)
+        .onChange(of: state.offset) { old, new in
+            guard abs(new - old) > 0.5 else { return }
+            if !visible {
+                withAnimation(.easeOut(duration: 0.2)) { visible = true }
+            }
+            if dragStartFraction == nil { scheduleHide() }
+        }
+        .onDisappear { hideTask?.cancel() }
+    }
+
+    private func scheduleHide() {
+        hideTask?.cancel()
+        hideTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled, dragStartFraction == nil else { return }
+            withAnimation(.easeIn(duration: 0.3)) { visible = false }
+        }
     }
 }
 
