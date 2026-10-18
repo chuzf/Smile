@@ -31,6 +31,22 @@ struct SnapshotTests {
                        as: .image(on: .iPhone13))
     }
 
+    @Test func noteEditorTitleStyle() {
+        let view = VStack(spacing: 0) {
+            NoteTextView(segmentID: UUID(), text: "周末去爬山\n山顶的风很大，大家一起拍了合照。\n下山路上还看到了松鼠。",
+                         hasTitle: true, alignment: .leading, minHeight: 72,
+                         focusedSegmentID: .constant(nil), onChange: { _ in })
+            NoteTextView(segmentID: UUID(), text: "照片后面的另一段正文，第一行不是标题。",
+                         hasTitle: false, alignment: .leading, minHeight: 72,
+                         focusedSegmentID: .constant(nil), onChange: { _ in })
+        }
+        .padding(.horizontal, 21)
+        .frame(width: 390)
+        .background(AppColors.backgroundGradient)
+
+        assertSnapshot(of: UIHostingController(rootView: view), as: .image(on: .iPhone13))
+    }
+
     @Test func shareCardSnapshot() {
         let data = ShareCardRenderer.CardData(
             groupName: "微笑储蓄罐", dateText: "5月23日",

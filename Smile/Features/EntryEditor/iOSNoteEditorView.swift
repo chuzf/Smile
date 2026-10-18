@@ -63,7 +63,7 @@ struct iOSNoteEditorView: View {
     @State private var pendingFormattingError: String?
     @State private var showAISetupAlert = false
     @State private var showAISettings = false
-    @FocusState private var focusedSegmentID: UUID?
+    @State private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
 
@@ -217,29 +217,30 @@ struct iOSNoteEditorView: View {
     @ViewBuilder
     private func segmentView(_ segment: EditorSegment) -> some View {
         switch segment {
-        case .text(let id, _, let alignment):
-            ZStack(alignment: .topLeading) {
-                // Invisible mirror Text drives the container height so the TextEditor
-                // expands to show all content instead of clipping inside the ScrollView.
-                // TextEditor's UITextView has ~5pt horizontal and ~8pt vertical internal inset.
-                Text(model.textContent(for: id).isEmpty ? " " : model.textContent(for: id))
-                    .font(.system(size: 16, weight: .regular))
-                    .padding(.horizontal, 21)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .opacity(0)
-                TextEditor(text: textBinding(for: id))
-                    .scrollContentBackground(.hidden)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(AppColors.textPrimary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
-                    .scrollDisabled(true)
-                    .focused($focusedSegmentID, equals: id)
-                    .multilineTextAlignment(alignment)
-                    .onChange(of: model.textContent(for: id)) { _, _ in model.scheduleAutoSave() }
+        case .text(let id, let content, let alignment):
+            let hasTitle = id == firstTextSegmentID
+            NoteTextView(
+                segmentID: id,
+                text: content,
+                hasTitle: hasTitle,
+                alignment: alignment,
+                minHeight: 72,
+                focusedSegmentID: $focusedSegmentID,
+                onChange: { model.updateText($0, for: id) }
+            )
+            .padding(.horizontal, 21)
+            .padding(.vertical, 4)
+            .overlay(alignment: alignment == .center ? .top : .topLeading) {
+                if hasTitle && content.isEmpty {
+                    Text("标题")
+                        .font(Font(NoteTextView.titleFont))
+                        .foregroundStyle(AppColors.textSecondary.opacity(0.5))
+                        .padding(.horizontal, 21)
+                        .padding(.top, 12)
+                        .allowsHitTesting(false)
+                }
             }
-            .frame(minHeight: 80)
+            .onChange(of: content) { _, _ in model.scheduleAutoSave() }
             .overlay(alignment: .topTrailing) {
                 if focusedSegmentID == id {
                     HStack(spacing: 2) {
@@ -466,11 +467,12 @@ struct iOSNoteEditorView: View {
 
     // MARK: - Helpers
 
-    private func textBinding(for id: UUID) -> Binding<String> {
-        Binding(
-            get: { model.textContent(for: id) },
-            set: { model.updateText($0, for: id) }
-        )
+    /// 承载标题的文字段：第一行是标题（与 extractTitle() 一致）
+    private var firstTextSegmentID: UUID? {
+        for seg in model.segments {
+            if case .text(let id, _, _) = seg { return id }
+        }
+        return nil
     }
 
     private func handleDictationTap() {

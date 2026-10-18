@@ -71,12 +71,14 @@ struct EntryDetailView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(Color(uiColor: ArticleStyle.bodyColor))
                     .lineSpacing(6)
+                    .multilineTextAlignment(.center)
                 if entry.titleSource == .ai {
                     Image(systemName: "sparkles")
                         .font(.system(size: 12))
                         .foregroundStyle(AppColors.warmOrange)
                 }
             }
+            .frame(maxWidth: .infinity)
             HStack(spacing: 8) {
                 if let groupName = entry.group?.name, !groupName.isEmpty {
                     Text(groupName).foregroundStyle(AppColors.warmOrange)
