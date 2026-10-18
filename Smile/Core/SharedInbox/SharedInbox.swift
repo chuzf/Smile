@@ -5,7 +5,7 @@ import Foundation
 /// 因此主 App 永远读不到写了一半的 batch。
 /// 本文件同时编译进 Smile 与 SmileShare 两个 target，只能依赖 Foundation。
 struct SharedInbox {
-    static let appGroupID = "group.com.chuzhanfeng.smile"
+    static let appGroupID = "group.com.chuzhanfeng.smile.pic"
     static let tempPrefix = ".tmp-"
 
     let rootURL: URL

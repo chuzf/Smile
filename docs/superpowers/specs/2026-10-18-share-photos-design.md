@@ -25,7 +25,7 @@
 |------|------|------|
 | `project.yml` | 修改 | 新增 `SmileShare` app-extension target；主 App 嵌入扩展；两者 entitlements 指向 App Group；主 App 注册 URL scheme |
 | `Smile/Info.plist` | 修改 | `CFBundleURLTypes` 注册 `smilejar` |
-| `Smile/Smile.entitlements` | 修改 | `com.apple.security.application-groups = [group.com.chuzhanfeng.smile]` |
+| `Smile/Smile.entitlements` | 修改 | `com.apple.security.application-groups = [group.com.chuzhanfeng.smile.pic]` |
 | `SmileShare/Info.plist` | 新增 | `NSExtension` 配置 |
 | `SmileShare/SmileShare.entitlements` | 新增 | 同一 App Group |
 | `SmileShare/ShareViewController.swift` | 新增 | 扩展主逻辑 |
@@ -41,7 +41,7 @@
 
 ## 1. Share Extension `SmileShare`
 
-- Bundle ID：`com.chuzhanfeng.smile.share`，部署目标 iOS 17.0，版本号与主 App 一致。
+- Bundle ID：`com.chuzhanfeng.smile.pic`，部署目标 iOS 17.0，版本号与主 App 一致。
 - `NSExtensionPointIdentifier = com.apple.share-services`
 - `NSExtensionPrincipalClass = $(PRODUCT_MODULE_NAME).ShareViewController`（纯代码，无 storyboard）
 - `NSExtensionActivationRule`：`NSExtensionActivationSupportsImageWithMaxCount = 9`（系统据此在超过 9 张或含视频时不显示本 App）。
@@ -66,7 +66,7 @@
 
 ```swift
 struct SharedInbox {
-    static let appGroupID = "group.com.chuzhanfeng.smile"
+    static let appGroupID = "group.com.chuzhanfeng.smile.pic"
     let rootURL: URL                       // 生产：<AppGroup>/ShareInbox
     static func production() -> SharedInbox?   // 容器不可用时返回 nil
 

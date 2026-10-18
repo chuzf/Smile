@@ -179,7 +179,7 @@ import Foundation
 /// 因此主 App 永远读不到写了一半的 batch。
 /// 本文件同时编译进 Smile 与 SmileShare 两个 target，只能依赖 Foundation。
 struct SharedInbox {
-    static let appGroupID = "group.com.chuzhanfeng.smile"
+    static let appGroupID = "group.com.chuzhanfeng.smile.pic"
     static let tempPrefix = ".tmp-"
 
     let rootURL: URL
@@ -550,7 +550,7 @@ git commit -m "feat: 新增 ShareInboxCenter 协调分享照片"
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.chuzhanfeng.smile</string>
+		<string>group.com.chuzhanfeng.smile.pic</string>
 	</array>
 </dict>
 </plist>
@@ -612,7 +612,7 @@ git commit -m "feat: 主 App 加入 App Group 与 smilejar URL scheme"
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.chuzhanfeng.smile</string>
+		<string>group.com.chuzhanfeng.smile.pic</string>
 	</array>
 </dict>
 </plist>
@@ -813,7 +813,7 @@ final class ShareViewController: UIViewController {
       groups: [iphoneOnly]
       base:
         CODE_SIGN_ENTITLEMENTS: SmileShare/SmileShare.entitlements
-        PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile.pic
     info:
       path: SmileShare/Info.plist
       properties:
@@ -1210,8 +1210,8 @@ git commit -m "feat: RootView 接收相册分享并打开编辑器"
 - [ ] **Step 2: 开发者后台配置（需要用户操作）**
 
 在 Apple Developer → Identifiers 中：
-1. 新建 App Group `group.com.chuzhanfeng.smile`；
-2. 为 `com.chuzhanfeng.smile` 与 `com.chuzhanfeng.smile.share` 两个 App ID 勾选 App Groups 并选中该 group；
+1. 新建 App Group `group.com.chuzhanfeng.smile.pic`；
+2. 为 `com.chuzhanfeng.smile` 与 `com.chuzhanfeng.smile.pic` 两个 App ID 勾选 App Groups 并选中该 group；
 3. Xcode 中两个 target 的 Signing & Capabilities 选择团队，确认 App Groups 显示为已勾选。
 
 - [ ] **Step 3: 真机手动验证（逐项打勾）**
