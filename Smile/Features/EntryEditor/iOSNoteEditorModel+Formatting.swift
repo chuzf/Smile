@@ -5,9 +5,22 @@ struct FormattingSnapshot: Equatable {
     let input: FormattingInput
     let textSegmentIDs: [UUID]   // 与 input.segments 一一对应；[0] 是承载标题的首个文字段
     let originalContents: [String] // 各文字段取快照时的完整内容；写回前比对，有变化就拒绝
+    let centered: [Bool]         // 各文字段是否居中；居中段落不加段首缩进
     let layout: [Block]          // 文字段与照片的排列，供预览显示照片占位
 
     enum Block: Equatable { case text(Int), photo }
+
+    /// 去掉居中文字段每段开头的缩进，段间空行保留
+    func adjustingIndent(_ result: FormattingResult) -> FormattingResult {
+        var adjusted = result
+        for index in adjusted.segments.indices where centered.indices.contains(index) && centered[index] {
+            adjusted.segments[index] = adjusted.segments[index]
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map { String($0.drop(while: \.isWhitespace)) }
+                .joined(separator: "\n")
+        }
+        return adjusted
+    }
 }
 
 extension iOSNoteEditorModel {
@@ -16,10 +29,11 @@ extension iOSNoteEditorModel {
         var parts: [String] = []
         var ids: [UUID] = []
         var originals: [String] = []
+        var centered: [Bool] = []
         var layout: [FormattingSnapshot.Block] = []
         for seg in segments {
             switch seg {
-            case .text(let id, let content, _):
+            case .text(let id, let content, let alignment):
                 if ids.isEmpty {
                     // 与 extractTitle() 一致：首个文字段的第一行是标题
                     let lines = content.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
@@ -31,13 +45,15 @@ extension iOSNoteEditorModel {
                 layout.append(.text(ids.count))
                 ids.append(id)
                 originals.append(content)
+                centered.append(alignment == .center)
             case .photo:
                 layout.append(.photo)
             }
         }
         guard !ids.isEmpty else { return nil }
         return FormattingSnapshot(input: FormattingInput(title: title, segments: parts),
-                                  textSegmentIDs: ids, originalContents: originals, layout: layout)
+                                  textSegmentIDs: ids, originalContents: originals,
+                                  centered: centered, layout: layout)
     }
 
     var canFormat: Bool {

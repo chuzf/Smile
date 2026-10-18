@@ -433,7 +433,7 @@ struct iOSNoteEditorView: View {
             do {
                 let result = try await service.format(snapshot.input)
                 guard !Task.isCancelled else { return }
-                formattingPreview = FormattingPreview(snapshot: snapshot, result: result)
+                formattingPreview = FormattingPreview(snapshot: snapshot, result: snapshot.adjustingIndent(result))
             } catch let error as FormattingError {
                 if !Task.isCancelled { formattingErrorMessage = error.userMessage }
             } catch {

@@ -28,6 +28,23 @@ struct iOSNoteEditorModelFormattingTests {
         #expect(snap.layout == [.text(0), .photo, .text(1)])
     }
 
+    @Test func snapshotRecordsCenteredSegments() throws {
+        let snap = try #require(makeModel().formattingSnapshot())
+        #expect(snap.centered == [false, true])
+    }
+
+    @Test func centeredSegmentsLoseIndentButKeepBlankLines() throws {
+        let snap = try #require(makeModel().formattingSnapshot())
+        let result = FormattingResult(title: "标题", segments: [
+            "\u{3000}\u{3000}正文一。\n\n\u{3000}\u{3000}第二段。",
+            "\u{3000}\u{3000}居中一。\n\n\u{3000}\u{3000}居中二。",
+        ])
+        let adjusted = snap.adjustingIndent(result)
+        #expect(adjusted.title == "标题")
+        #expect(adjusted.segments[0] == result.segments[0])
+        #expect(adjusted.segments[1] == "居中一。\n\n居中二。")
+    }
+
     @Test func snapshotNilWithoutText() {
         let model = iOSNoteEditorModel()
         model.segments = [.photo(photo)]
