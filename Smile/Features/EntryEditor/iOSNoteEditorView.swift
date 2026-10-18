@@ -131,7 +131,7 @@ struct iOSNoteEditorView: View {
                 model.finalizeDictation()
             }
             if !isClosing {
-                // 下滑关闭不经过 close()/discardAndClose()：停止正在写入的照片，并清理没有记录引用的草稿照片
+                // 下滑关闭（仅在没有未保存修改时允许）不经过 close()/discardAndClose()：停止正在写入的照片，并清理没有记录引用的草稿照片
                 isClosing = true
                 discardUnsavedDraftMedia()
             }
@@ -144,6 +144,9 @@ struct iOSNoteEditorView: View {
         }
         .shareHandling(self)
         .formattingHandling(self)
+        // 有未保存的修改时不能直接下滑关闭，和返回按钮一样询问保存还是放弃
+        .interactiveDismissDisabled(model.isDirty)
+        .onSheetDismissAttempt { handleBack() }
         .onChange(of: model.autoSaveSignal) { _, signal in
             guard signal > 0 else { return }
             Task { await performLightAutosave() }
@@ -679,7 +682,9 @@ struct iOSNoteEditorView: View {
 
         let allDrafts = model.allAttachments
         let modelDraftIDs = Set(allDrafts.compactMap { $0.persistedID })
+        var removedPaths: [String] = []
         for existing in entry.attachments where !modelDraftIDs.contains(existing.persistentModelID) {
+            removedPaths.append(existing.relativePath)
             context.delete(existing)
         }
         for (idx, draft) in allDrafts.enumerated() where draft.persistedID == nil {
@@ -700,6 +705,9 @@ struct iOSNoteEditorView: View {
             showSaveError = true
             return false
         }
+        // 记录已不再引用，删掉编辑时移除的附件文件
+        let mediaStore = MediaStore.production()
+        for path in removedPaths { try? mediaStore.delete(relativePath: path) }
         onSaved?(group.id, entry.id)
         model.isDirty = false
         hasAutosaved = false
@@ -897,9 +905,15 @@ struct iOSNoteEditorView: View {
     }
 
     /// 放弃一条从未落库的新记录时，删除它已经写到 MediaStore 的草稿照片。
-    /// 编辑已有记录、或自动保存已建出 Entry 时不动文件。
+    /// 编辑已有记录时只删本次新加、还没落库的附件文件。
     private func discardUnsavedDraftMedia() {
-        guard editingEntryID == nil else { return }
+        guard editingEntryID == nil else {
+            let mediaStore = MediaStore.production()
+            for draft in model.allAttachments where draft.persistedID == nil {
+                try? mediaStore.delete(relativePath: draft.relativePath)
+            }
+            return
+        }
         let draftID = entryDraftID
         var descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == draftID })
         descriptor.fetchLimit = 1
@@ -909,16 +923,23 @@ struct iOSNoteEditorView: View {
     }
 
     private func removePhoto(_ draft: DraftAttachment) {
-        let mediaStore = MediaStore.production()
-        try? mediaStore.delete(relativePath: draft.relativePath)
+        deleteFileIfUnsaved(draft)
         thumbnails.removeValue(forKey: draft.id)
         model.removePhoto(id: draft.id)
+        model.isDirty = true
     }
 
     private func removeVoice(_ draft: DraftAttachment) {
-        let mediaStore = MediaStore.production()
-        try? mediaStore.delete(relativePath: draft.relativePath)
+        deleteFileIfUnsaved(draft)
         model.voiceAttachments.removeAll { $0.id == draft.id }
+        model.isDirty = true
+    }
+
+    /// 本次新加、还没落库的附件，移除时直接删文件；已落库的附件还被记录引用，
+    /// 留到保存成功后再删（见 save()），放弃编辑时记录里的照片仍完好
+    private func deleteFileIfUnsaved(_ draft: DraftAttachment) {
+        guard draft.persistedID == nil else { return }
+        try? MediaStore.production().delete(relativePath: draft.relativePath)
     }
 
     /// Autosave path: persists text+body to an existing entry without dismissing.
