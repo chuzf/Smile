@@ -21,17 +21,21 @@ struct iOSNoteEditorView: View {
     let initialImages: [UIImage]
     /// 分享照片中解码失败的数量，> 0 时提示
     let initialImageFailures: Int
+    /// 初始照片插入完成后回调，供调用方释放手里持有的大图
+    let onInitialImagesConsumed: (() -> Void)?
     let onSaved: ((UUID, UUID) -> Void)?
 
     init(editingEntryID: PersistentIdentifier? = nil,
          initialGroupID: PersistentIdentifier? = nil,
          initialImages: [UIImage] = [],
          initialImageFailures: Int = 0,
+         onInitialImagesConsumed: (() -> Void)? = nil,
          onSaved: ((UUID, UUID) -> Void)? = nil) {
         self.editingEntryID = editingEntryID
         self.initialGroupID = initialGroupID
         self.initialImages = initialImages
         self.initialImageFailures = initialImageFailures
+        self.onInitialImagesConsumed = onInitialImagesConsumed
         self.onSaved = onSaved
     }
 
@@ -53,6 +57,8 @@ struct iOSNoteEditorView: View {
     @State private var shareChoiceCount = 0
     /// 防止重复 onAppear 让 shareCenter 的打开编辑器计数多加
     @State private var isRegisteredWithShareCenter = false
+    /// initialImages 只插入一次（onAppear 可能重复触发）
+    @State private var didConsumeInitialImages = false
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -89,12 +95,14 @@ struct iOSNoteEditorView: View {
                 shareCenter.editorDidAppear()
             }
             initialize()
-            if !initialImages.isEmpty {
+            if !didConsumeInitialImages, !initialImages.isEmpty {
+                didConsumeInitialImages = true
                 let images = initialImages
                 let failures = initialImageFailures
                 Task {
                     await insertPhotos(images)
                     if failures > 0 { showInsertPhotoError = true }
+                    onInitialImagesConsumed?()
                 }
             }
             presentShareChoiceIfNeeded()
@@ -122,6 +130,14 @@ struct iOSNoteEditorView: View {
         }
         .onChange(of: shareCenter.incomingImages != nil) { _, hasIncoming in
             if hasIncoming { presentShareChoiceIfNeeded() }
+        }
+        .onChange(of: isPresentingOther) { _, busy in
+            // 其它弹窗/弹层关闭后再补弹收图询问；稍等让上一个呈现的退场动画结束
+            guard !busy else { return }
+            Task {
+                try? await Task.sleep(for: .milliseconds(350))
+                presentShareChoiceIfNeeded()
+            }
         }
         .onChange(of: allGroups.count) { _, _ in
             // 冷启动时内置分组可能晚于编辑器出现才 seed 完成
@@ -174,7 +190,10 @@ struct iOSNoteEditorView: View {
             }
         }
         .alert("未保存的修改", isPresented: $showUnsavedAlert) {
-            Button("放弃", role: .destructive) { dismiss() }
+            Button("放弃", role: .destructive) {
+                discardUnsavedDraftMedia()
+                dismiss()
+            }
             Button("保存") { Task { await save() } }
             Button("继续编辑", role: .cancel) { }
         } message: { Text("有未保存的修改，确定放弃吗？") }
@@ -462,15 +481,25 @@ struct iOSNoteEditorView: View {
     }
 
     private func handleBack() {
-        if model.isDirty { showUnsavedAlert = true } else { dismiss() }
+        if model.isDirty {
+            showUnsavedAlert = true
+        } else {
+            discardUnsavedDraftMedia()
+            dismiss()
+        }
     }
 
     private func handleComplete() { Task { await save() } }
 
+    /// 返回 true 表示已保存并关闭编辑器；缺少分组或写库失败时返回 false（并弹出保存失败提示）
     @MainActor
-    private func save() async {
+    @discardableResult
+    private func save() async -> Bool {
         guard let groupID = model.selectedGroupID,
-              let group = allGroups.first(where: { $0.persistentModelID == groupID }) else { return }
+              let group = allGroups.first(where: { $0.persistentModelID == groupID }) else {
+            showSaveError = true
+            return false
+        }
 
         model.isSaving = true
         defer { model.isSaving = false }
@@ -540,11 +569,12 @@ struct iOSNoteEditorView: View {
             try context.save()
         } catch {
             showSaveError = true
-            return
+            return false
         }
         onSaved?(group.id, entry.id)
         model.isDirty = false
         dismiss()
+        return true
     }
 
     @MainActor
@@ -574,14 +604,21 @@ struct iOSNoteEditorView: View {
         let mediaStore = MediaStore.production()
         var hadFailure = false
         for image in images {
-            guard let data = image.jpegData(compressionQuality: 0.9) else { hadFailure = true; continue }
+            // JPEG 编码与缩略图生成较重，放到后台线程；落盘和状态修改留在主线程
+            let encoded = await Task.detached(priority: .userInitiated) {
+                autoreleasepool { () -> (data: Data, thumbnail: UIImage?)? in
+                    guard let data = image.jpegData(compressionQuality: 0.9) else { return nil }
+                    let thumb = ThumbnailGenerator.makePhotoThumbnail(from: data).flatMap { UIImage(data: $0) }
+                    return (data, thumb)
+                }
+            }.value
+            guard let encoded else { hadFailure = true; continue }
             let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
-            guard let relPath = try? mediaStore.save(data: data, entryID: entryDraftID, filename: filename) else { hadFailure = true; continue }
+            guard let relPath = try? mediaStore.save(data: encoded.data, entryID: entryDraftID, filename: filename) else { hadFailure = true; continue }
             var draft = DraftAttachment(kind: .photo, relativePath: relPath)
             draft.persistedID = nil
-            if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
-               let img = UIImage(data: thumbData) {
-                thumbnails[draft.id] = img
+            if let thumb = encoded.thumbnail {
+                thumbnails[draft.id] = thumb
             }
             drafts.append(draft)
         }
@@ -591,8 +628,20 @@ struct iOSNoteEditorView: View {
         model.isDirty = true
     }
 
+    /// 是否有其它 sheet / 全屏 / alert 正在呈现；此时弹收图询问会被系统吞掉
+    private var isPresentingOther: Bool {
+        showPhotoPicker || showCamera || showVoiceRecorder || showTagPicker ||
+        showUnsavedAlert || showInsertPhotoError || showSaveError || dictationError != nil
+    }
+
     private func presentShareChoiceIfNeeded() {
-        guard let incoming = shareCenter.incomingImages else { return }
+        guard let incoming = shareCenter.incomingImages,
+              !isPresentingOther, !showShareChoice else { return }
+        // 全新、空白、未改动的编辑器：不用问，直接插入
+        if editingEntryID == nil && !model.hasContent && !model.isDirty {
+            insertSharedPhotos()
+            return
+        }
         shareChoiceCount = incoming.count
         showShareChoice = true
     }
@@ -608,7 +657,26 @@ struct iOSNoteEditorView: View {
     /// incomingImages 保留在 shareCenter 中，本编辑器关闭后由 RootView 用它新建记录
     @MainActor
     private func startNewEntryFromShare() async {
-        if canSave { await save() } else { dismiss() }
+        if canSave {
+            // 保存失败时不做别的：保存失败提示关闭后 isPresentingOther 变回 false，
+            // 照片仍在 shareCenter 中，会自动重新弹出收图询问
+            await save()
+        } else {
+            discardUnsavedDraftMedia()
+            dismiss()
+        }
+    }
+
+    /// 放弃一条从未落库的新记录时，删除它已经写到 MediaStore 的草稿照片。
+    /// 编辑已有记录、或自动保存已建出 Entry 时不动文件。
+    private func discardUnsavedDraftMedia() {
+        guard editingEntryID == nil else { return }
+        let draftID = entryDraftID
+        var descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == draftID })
+        descriptor.fetchLimit = 1
+        // 查询失败时保守处理，不删文件
+        guard let count = try? context.fetchCount(descriptor), count == 0 else { return }
+        try? MediaStore.production().deleteEntryDirectory(entryID: draftID)
     }
 
     private func removePhoto(_ draft: DraftAttachment) {
