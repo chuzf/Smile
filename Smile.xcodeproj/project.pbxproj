@@ -34,6 +34,7 @@
 		3C69FBB86C63F3FD55D0FC9D /* PhotoLibraryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C5A5BB1F2DCE884451414A /* PhotoLibraryPickerView.swift */; };
 		47C4A9BDFFF39DE272203670 /* Group.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA8B7413917CCB433EEBC09 /* Group.swift */; };
 		48DED3BDC2287D616E6E9A67 /* TimelineList.swift in Sources */ = {isa = PBXBuildFile; fileRef = B295A4C6BD146287F00A7346 /* TimelineList.swift */; };
+		4D7CB7C9D2BD2108B018BD48 /* ShareInboxCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51095B80E0AD8870E2F4A795 /* ShareInboxCenterTests.swift */; };
 		4EF35058653B8DBD15FAE99F /* DataModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56B5E03F31318ED588E9D82E /* DataModelTests.swift */; };
 		4F78CCC4C99C0DC0011098D3 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 64E19F4C2596F285C9524497 /* SnapshotTesting */; };
 		520905D61AF750DE07650D35 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE27C427CEC93DA20396BFBE /* KeychainService.swift */; };
@@ -51,6 +52,7 @@
 		8141DE33ECBCC36BCD95EDDF /* EditGroupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5421DA96C0DE30293F36BFDC /* EditGroupSheet.swift */; };
 		81FB507614C283012121F4E8 /* RandomRecallSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE25EF3DD92D0A90C1E503ED /* RandomRecallSheet.swift */; };
 		84114EF03D1F972C347BC0F3 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B776FE2C097D81C9CC3D328B /* Components.swift */; };
+		842AF91D57AB234C2E8ACB9E /* ShareInboxCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0EC3DC9EFBA672649F50C60 /* ShareInboxCenter.swift */; };
 		8BD9DF11D10A8B0BE568551E /* LockSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE877647FBB33553DFF690F /* LockSessionManager.swift */; };
 		8D89B430D4CC97369264865A /* Entry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F2C2B2EC7B9CDBAD08BAB2 /* Entry.swift */; };
 		8F33A92B39E10DD1D8ABFFC8 /* MediaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99417C94FB2C7618B5387899 /* MediaStore.swift */; };
@@ -118,6 +120,7 @@
 		42C5A5BB1F2DCE884451414A /* PhotoLibraryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryPickerView.swift; sourceTree = "<group>"; };
 		452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorModelTests.swift; sourceTree = "<group>"; };
 		498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
+		51095B80E0AD8870E2F4A795 /* ShareInboxCenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareInboxCenterTests.swift; sourceTree = "<group>"; };
 		531684AD5683F033B966D87D /* EntryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEditorView.swift; sourceTree = "<group>"; };
 		5421DA96C0DE30293F36BFDC /* EditGroupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupSheet.swift; sourceTree = "<group>"; };
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
@@ -145,6 +148,7 @@
 		9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorComponents.swift; sourceTree = "<group>"; };
 		B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaAttachmentChip.swift; sourceTree = "<group>"; };
+		B0EC3DC9EFBA672649F50C60 /* ShareInboxCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareInboxCenter.swift; sourceTree = "<group>"; };
 		B1EBDAC89DBB17F16E633AC4 /* EntryEditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEditorModel.swift; sourceTree = "<group>"; };
 		B235B1F1F195485F9889BA92 /* SnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
 		B295A4C6BD146287F00A7346 /* TimelineList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineList.swift; sourceTree = "<group>"; };
@@ -274,6 +278,7 @@
 				73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */,
 				2DC5C44440FDC68ADF4A6EF6 /* ShareCardRendererTests.swift */,
 				C22D6F0C222F61BBEE7B15AD /* SharedInboxTests.swift */,
+				51095B80E0AD8870E2F4A795 /* ShareInboxCenterTests.swift */,
 				D4D2CF6A020F0310D846BDF6 /* SmokeTests.swift */,
 				B235B1F1F195485F9889BA92 /* SnapshotTests.swift */,
 				DAA3358F210C0B4122E60A56 /* ThumbnailCacheTests.swift */,
@@ -308,6 +313,7 @@
 			isa = PBXGroup;
 			children = (
 				8994831B078E53BFB5EE64F5 /* SharedInbox.swift */,
+				B0EC3DC9EFBA672649F50C60 /* ShareInboxCenter.swift */,
 			);
 			path = SharedInbox;
 			sourceTree = "<group>";
@@ -623,6 +629,7 @@
 				F159ED17491E9257BDC78BC5 /* SearchService.swift in Sources */,
 				DF04B50E7FDF7B132634BA50 /* SettingsView.swift in Sources */,
 				2F4F7E0FD27B0DBFF98CABDD /* ShareCardRenderer.swift in Sources */,
+				842AF91D57AB234C2E8ACB9E /* ShareInboxCenter.swift in Sources */,
 				06ACD74C68A8292C3455AEA1 /* ShareSheet.swift in Sources */,
 				63708CF22C3C6BC2F9CE1DF0 /* SharedInbox.swift in Sources */,
 				5AD04A57C319B2A30C25B8E3 /* SmileApp.swift in Sources */,
@@ -656,6 +663,7 @@
 				77DA72BF4C9CA1AB4314BB44 /* PhotoCropTests.swift in Sources */,
 				194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */,
 				D6AD382BBB9B18F654AD0984 /* ShareCardRendererTests.swift in Sources */,
+				4D7CB7C9D2BD2108B018BD48 /* ShareInboxCenterTests.swift in Sources */,
 				CFC72ACF3C1E33ACDE8E068C /* SharedInboxTests.swift in Sources */,
 				2D9423DC21AC89477F6508F6 /* SmokeTests.swift in Sources */,
 				71DCCF0E91C2A0C1C292C9A8 /* SnapshotTests.swift in Sources */,
