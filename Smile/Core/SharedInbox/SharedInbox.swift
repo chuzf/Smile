@@ -24,6 +24,7 @@ struct SharedInbox {
     struct Batch: Identifiable, Equatable {
         let id: UUID
         let url: URL
+        /// `beginBatch` 被调用的时间（重命名保留目录原始的创建时间），不是 `commit` 的时间。
         let createdAt: Date
     }
 
@@ -34,8 +35,7 @@ struct SharedInbox {
 
         /// 复制源文件；index 从 1 开始，决定排序
         func addFile(from source: URL, index: Int) throws {
-            let ext = source.pathExtension.isEmpty ? "jpg" : source.pathExtension.lowercased()
-            try FileManager.default.copyItem(at: source, to: url.appendingPathComponent(Self.filename(index: index, ext: ext)))
+            try FileManager.default.copyItem(at: source, to: url.appendingPathComponent(Self.filename(index: index, ext: source.pathExtension)))
         }
 
         func addData(_ data: Data, ext: String, index: Int) throws {
@@ -43,7 +43,8 @@ struct SharedInbox {
         }
 
         static func filename(index: Int, ext: String) -> String {
-            String(format: "%04d", index) + "." + ext
+            let normalized = ext.isEmpty ? "jpg" : ext.lowercased()
+            return String(format: "%04d", index) + "." + normalized
         }
     }
 
@@ -58,7 +59,7 @@ struct SharedInbox {
     func commit(_ pending: PendingBatch) throws -> Batch {
         let dest = rootURL.appendingPathComponent(pending.id.uuidString)
         try FileManager.default.moveItem(at: pending.url, to: dest)
-        return Batch(id: pending.id, url: dest, createdAt: Self.creationDate(of: dest))
+        return Batch(id: pending.id, url: dest, createdAt: Self.creationDate(of: dest) ?? .distantPast)
     }
 
     func discard(_ pending: PendingBatch) {
@@ -70,9 +71,9 @@ struct SharedInbox {
         let urls = (try? FileManager.default.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil)) ?? []
         return urls.compactMap { url -> Batch? in
             guard let id = UUID(uuidString: url.lastPathComponent) else { return nil }
-            return Batch(id: id, url: url, createdAt: Self.creationDate(of: url))
+            return Batch(id: id, url: url, createdAt: Self.creationDate(of: url) ?? .distantPast)
         }
-        .sorted { $0.createdAt < $1.createdAt }
+        .sorted { ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString) }
     }
 
     func fileURLs(in batch: Batch) -> [URL] {
@@ -89,14 +90,16 @@ struct SharedInbox {
     func purgeStaleTemporaries(olderThan age: TimeInterval = 3600, now: Date = .now) {
         let urls = (try? FileManager.default.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil)) ?? []
         for url in urls where url.lastPathComponent.hasPrefix(Self.tempPrefix) {
-            if now.timeIntervalSince(Self.creationDate(of: url)) > age {
+            guard let createdAt = Self.creationDate(of: url) else { continue }
+            if now.timeIntervalSince(createdAt) > age {
                 try? FileManager.default.removeItem(at: url)
             }
         }
     }
 
-    private static func creationDate(of url: URL) -> Date {
+    /// 读取失败（属性缺失/文件已消失等）时返回 nil，调用方应按“不处理”而非“当成很旧”处理，避免误删还在写入中的目录。
+    private static func creationDate(of url: URL) -> Date? {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
-        return (attrs?[.creationDate] as? Date) ?? .distantPast
+        return attrs?[.creationDate] as? Date
     }
 }

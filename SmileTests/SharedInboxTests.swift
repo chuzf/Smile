@@ -106,4 +106,26 @@ struct SharedInboxTests {
 
         #expect(FileManager.default.fileExists(atPath: freshTemp.url.path))
     }
+
+    @Test func addDataNormalizesExtension() throws {
+        let inbox = makeInbox()
+        let pending = try inbox.beginBatch()
+        try pending.addData(Data("a".utf8), ext: "PNG", index: 1)
+        try pending.addData(Data("b".utf8), ext: "", index: 2)
+        let batch = try inbox.commit(pending)
+
+        #expect(inbox.fileURLs(in: batch).map(\.lastPathComponent) == ["0001.png", "0002.jpg"])
+    }
+
+    @Test func equalCreationDatesSortDeterministically() throws {
+        let inbox = makeInbox()
+        let first = try inbox.commit(try inbox.beginBatch())
+        let second = try inbox.commit(try inbox.beginBatch())
+        let sameDate = Date()
+        try FileManager.default.setAttributes([.creationDate: sameDate], ofItemAtPath: first.url.path)
+        try FileManager.default.setAttributes([.creationDate: sameDate], ofItemAtPath: second.url.path)
+
+        let expectedIDs = [first.id, second.id].sorted { $0.uuidString < $1.uuidString }
+        #expect(inbox.pendingBatches().map(\.id) == expectedIDs)
+    }
 }
