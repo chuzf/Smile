@@ -127,6 +127,7 @@ struct LLMClientTests {
         ("https://api.anthropic.com/", "https://api.anthropic.com/v1/messages"),
         ("https://gw.example.com/api", "https://gw.example.com/api/v1/messages"),
         ("https://gw.example.com/api/v1/", "https://gw.example.com/api/v1/messages"),
+        ("https://gw.example.com/api/v1/messages", "https://gw.example.com/api/v1/messages"),
     ])
     func anthropicEndpoint(base: String, expected: String) async throws {
         respond(200, #"{"content":[{"type":"text","text":"OK"}]}"#)
@@ -151,6 +152,40 @@ struct LLMClientTests {
         #expect(body["temperature"] == nil)
         let messages = try #require(body["messages"] as? [[String: String]])
         #expect(messages == [["role": "user", "content": "U"]])
+    }
+
+    @Test func openAIFullEndpointIsNotDuplicated() async throws {
+        respond(200, #"{"choices":[{"message":{"content":"好"}}]}"#)
+        _ = try await openAI("https://api.example.com/v1/chat/completions").complete(system: "S", user: "U")
+        #expect(StubURLProtocol.lastRequest?.url?.absoluteString == "https://api.example.com/v1/chat/completions")
+    }
+
+    @Test func openAILengthFinishThrowsTruncated() async {
+        respond(200, #"{"choices":[{"message":{"content":"{\"title\":"},"finish_reason":"length"}]}"#)
+        await #expect(throws: LLMError.truncated) { try await openAI().complete(system: "S", user: "U") }
+    }
+
+    @Test func anthropicGatewayAlsoSendsBearer() async throws {
+        respond(200, #"{"content":[{"type":"text","text":"OK"}]}"#)
+        _ = try await anthropic("https://gw.example.com/api").complete(system: "S", user: "U")
+        let req = try #require(StubURLProtocol.lastRequest)
+        #expect(req.value(forHTTPHeaderField: "x-api-key") == "sk-ant")
+        #expect(req.value(forHTTPHeaderField: "Authorization") == "Bearer sk-ant")
+    }
+
+    @Test func anthropicMaxTokensThrowsTruncated() async {
+        respond(200, #"{"content":[{"type":"text","text":"{\"title\":"}],"stop_reason":"max_tokens"}"#)
+        await #expect(throws: LLMError.truncated) { try await anthropic().complete(system: "S", user: "U") }
+    }
+
+    @Test func timeoutMapsToTimeoutError() async {
+        StubURLProtocol.handler = { _ in throw URLError(.timedOut) }
+        await #expect(throws: LLMError.timeout) { try await openAI().complete(system: "S", user: "U") }
+    }
+
+    @Test func cancelledRequestThrowsCancellationError() async {
+        StubURLProtocol.handler = { _ in throw URLError(.cancelled) }
+        await #expect(throws: CancellationError.self) { try await anthropic().complete(system: "S", user: "U") }
     }
 
     @Test func anthropicRefusalThrowsEmptyResponse() async {

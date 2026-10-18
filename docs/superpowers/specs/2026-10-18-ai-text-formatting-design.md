@@ -100,7 +100,7 @@ enum LLMError: Error, Equatable {
 }
 ```
 
-两个实现都通过构造器注入 `URLSession`，默认 `.shared`。请求超时 120 秒（Opus 5 默认开启思考，耗时较长）。**不传 `temperature`**：Claude Opus 4.7+ / Opus 5 / Sonnet 5 会对采样参数返回 400，部分第三方网关会把 OpenAI 协议转发到这些模型。
+两个实现都通过构造器注入 `URLSession`，默认 `.shared`。请求超时 300 秒（非流式请求生成完才回数据，思考模型耗时较长）；`URLError.timedOut` 映射为 `LLMError.timeout`，输出达到上限（OpenAI `finish_reason == "length"`、Anthropic `stop_reason == "max_tokens"`）映射为 `LLMError.truncated`。用户填的地址已是完整端点时不重复拼接路径。**不传 `temperature`**：Claude Opus 4.7+ / Opus 5 / Sonnet 5 会对采样参数返回 400，部分第三方网关会把 OpenAI 协议转发到这些模型。
 
 **`OpenAICompatibleClient`**
 - 请求 `POST {baseURL 去掉末尾 /}/chat/completions`
@@ -110,7 +110,7 @@ enum LLMError: Error, Equatable {
 
 **`AnthropicClient`**
 - 路径：baseURL 去掉末尾的 `/`；如果已经以 `/v1` 结尾，就拼接 `/messages`，否则拼接 `/v1/messages`
-- 请求头：`x-api-key: {key}`、`anthropic-version: 2023-06-01`、`Content-Type: application/json`
+- 请求头：`x-api-key: {key}`、`anthropic-version: 2023-06-01`、`Content-Type: application/json`；host 不是 `api.anthropic.com` 时另加 `Authorization: Bearer {key}`（不少网关按 Bearer 鉴权）
 - 请求体：`{"model", "max_tokens": 16000, "system", "messages": [{"role":"user",...}]}`；不传 `thinking`，由模型默认行为决定
 - 把 `content` 中所有 `type == "text"` 的块拼接起来（忽略 `thinking` 等其他块）；拼接结果为空（包括 `stop_reason == "refusal"`）时抛 `emptyResponse`
 

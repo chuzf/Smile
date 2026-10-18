@@ -22,12 +22,18 @@ struct OpenAICompatibleClient: LLMClient {
         struct Choice: Decodable {
             struct ChoiceMessage: Decodable { let content: String? }
             let message: ChoiceMessage
+            let finishReason: String?
+
+            enum CodingKeys: String, CodingKey {
+                case message
+                case finishReason = "finish_reason"
+            }
         }
         let choices: [Choice]
     }
 
     func complete(system: String, user: String) async throws -> String {
-        guard let url = URL(string: LLMHTTP.trimmedBase(baseURL) + "/chat/completions") else {
+        guard let url = LLMHTTP.endpoint(baseURL, path: "/chat/completions") else {
             throw LLMError.invalidURL
         }
         let body = RequestBody(model: model, messages: [
@@ -36,8 +42,11 @@ struct OpenAICompatibleClient: LLMClient {
         ])
         let request = try LLMHTTP.makeRequest(url: url, headers: ["Authorization": "Bearer \(apiKey)"], body: body)
         let data = try await LLMHTTP.send(request, session: session)
-        guard let decoded = try? JSONDecoder().decode(ResponseBody.self, from: data),
-              let content = decoded.choices.first?.message.content,
+        guard let decoded = try? JSONDecoder().decode(ResponseBody.self, from: data) else {
+            throw LLMError.emptyResponse
+        }
+        if decoded.choices.first?.finishReason == "length" { throw LLMError.truncated }
+        guard let content = decoded.choices.first?.message.content,
               !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw LLMError.emptyResponse }
         return content

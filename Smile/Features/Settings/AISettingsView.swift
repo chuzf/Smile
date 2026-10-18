@@ -45,7 +45,7 @@ struct AISettingsView: View {
                 SecureField(hasSavedKey ? "已保存（输入新值可覆盖）" : "粘贴 API Key", text: $keyInput)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .onSubmit(saveKeyIfNeeded)
+                    .onSubmit { saveKeyIfNeeded() }
                 if hasSavedKey {
                     Button("清除 Key", role: .destructive, action: clearKey)
                 }
@@ -91,7 +91,7 @@ struct AISettingsView: View {
             store.save(newValue)
             testState = .idle
         }
-        .onDisappear(perform: saveKeyIfNeeded)
+        .onDisappear { saveKeyIfNeeded() }
     }
 
     private var presetBinding: Binding<AIPreset> {
@@ -120,16 +120,20 @@ struct AISettingsView: View {
         }
     }
 
-    private func saveKeyIfNeeded() {
+    /// 返回 false 表示输入了新 Key 但写入 Keychain 失败
+    @discardableResult
+    private func saveKeyIfNeeded() -> Bool {
         let trimmed = keyInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return true }
         do {
             try store.saveAPIKey(trimmed)
             keyInput = ""
             hasSavedKey = true
             keyError = nil
+            return true
         } catch {
             keyError = "API Key 保存失败，请重试"
+            return false
         }
     }
 
@@ -146,7 +150,8 @@ struct AISettingsView: View {
 
     @MainActor
     private func testConnection() async {
-        saveKeyIfNeeded()
+        // Key 没写进去时不能拿旧 Key 去测
+        guard saveKeyIfNeeded() else { return }
         guard let key = store.loadAPIKey(), config.isComplete(apiKey: key) else {
             testState = .failure(LLMError.notConfigured.userMessage)
             return
@@ -157,7 +162,12 @@ struct AISettingsView: View {
             _ = try await client.complete(system: "只回复 OK", user: "ping")
             testState = .success
         } catch let error as LLMError {
-            testState = .failure(error.userMessage)
+            // 测试连接时附上响应体，方便排查模型名、参数等 400 错误；响应体里不含 Key
+            if case .http(_, let body) = error, !body.isEmpty {
+                testState = .failure(error.userMessage + "\n" + body)
+            } else {
+                testState = .failure(error.userMessage)
+            }
         } catch {
             testState = .failure(LLMError.network(error.localizedDescription).userMessage)
         }

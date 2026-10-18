@@ -4,6 +4,7 @@ import Foundation
 struct FormattingSnapshot: Equatable {
     let input: FormattingInput
     let textSegmentIDs: [UUID]   // 与 input.segments 一一对应；[0] 是承载标题的首个文字段
+    let originalContents: [String] // 各文字段取快照时的完整内容；写回前比对，有变化就拒绝
     let layout: [Block]          // 文字段与照片的排列，供预览显示照片占位
 
     enum Block: Equatable { case text(Int), photo }
@@ -14,6 +15,7 @@ extension iOSNoteEditorModel {
         var title = ""
         var parts: [String] = []
         var ids: [UUID] = []
+        var originals: [String] = []
         var layout: [FormattingSnapshot.Block] = []
         for seg in segments {
             switch seg {
@@ -28,13 +30,14 @@ extension iOSNoteEditorModel {
                 }
                 layout.append(.text(ids.count))
                 ids.append(id)
+                originals.append(content)
             case .photo:
                 layout.append(.photo)
             }
         }
         guard !ids.isEmpty else { return nil }
         return FormattingSnapshot(input: FormattingInput(title: title, segments: parts),
-                                  textSegmentIDs: ids, layout: layout)
+                                  textSegmentIDs: ids, originalContents: originals, layout: layout)
     }
 
     var canFormat: Bool {
@@ -44,16 +47,20 @@ extension iOSNoteEditorModel {
         }
     }
 
-    /// 段数不符或快照里的文字段已不存在时不做任何修改，返回 false
+    /// 段数不符、快照里的文字段已不存在或内容已变化时不做任何修改，返回 false
     @discardableResult
     func applyFormatting(_ result: FormattingResult, to snapshot: FormattingSnapshot) -> Bool {
         guard result.segments.count == snapshot.textSegmentIDs.count else { return false }
-        let currentIDs = Set(segments.compactMap { seg -> UUID? in
-            if case .text(let id, _, _) = seg { return id } else { return nil }
-        })
-        guard snapshot.textSegmentIDs.allSatisfy(currentIDs.contains) else { return false }
+        var current: [UUID: String] = [:]
+        for seg in segments {
+            if case .text(let id, let content, _) = seg { current[id] = content }
+        }
+        guard zip(snapshot.textSegmentIDs, snapshot.originalContents).allSatisfy({ current[$0] == $1 }) else {
+            return false
+        }
 
-        let title = result.title.replacingOccurrences(of: "\n", with: " ")
+        // 按 Character 拆分："\r\n" 是一个字符，不会变成两个空格
+        let title = result.title.split(whereSeparator: \.isNewline).joined(separator: " ")
         for (index, id) in snapshot.textSegmentIDs.enumerated() {
             let body = result.segments[index]
             let content = index == 0 ? (body.isEmpty ? title : title + "\n" + body) : body

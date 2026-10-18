@@ -78,6 +78,12 @@ struct TextFormattingServiceTests {
         await #expect(throws: FormattingError.llm(.rateLimited)) { try await svc.format(input) }
     }
 
+    @Test func cancellationIsNotWrapped() async {
+        let client = FakeLLMClient(.failure(CancellationError()))
+        let svc = TextFormattingService(client: client, style: .light, customPrompt: "")
+        await #expect(throws: CancellationError.self) { try await svc.format(input) }
+    }
+
     @Test func userMessages() {
         #expect(FormattingError.malformedResponse.userMessage == "整理结果格式异常，请重试或换个模型")
         #expect(FormattingError.llm(.unauthorized).userMessage == LLMError.unauthorized.userMessage)

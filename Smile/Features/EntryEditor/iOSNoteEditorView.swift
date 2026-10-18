@@ -59,6 +59,8 @@ struct iOSNoteEditorView: View {
     @State private var formattingTask: Task<Void, Never>?
     @State private var formattingPreview: FormattingPreview?
     @State private var formattingErrorMessage: String?
+    /// 预览 sheet 关闭后才显示的错误
+    @State private var pendingFormattingError: String?
     @State private var showAISetupAlert = false
     @State private var showAISettings = false
     @FocusState private var focusedSegmentID: UUID?
@@ -372,7 +374,7 @@ struct iOSNoteEditorView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(AppColors.warmOrange)
             }
-            .disabled(dictationService.isActive || isFormatting || !model.canFormat)
+            .disabled(dictationService.isActive || isFormatting || pendingPhotoInserts > 0 || !model.canFormat)
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -402,13 +404,13 @@ struct iOSNoteEditorView: View {
     }
 
     private func startFormatting() {
+        guard !isFormatting else { return }
         let store = AIConfigStore()
         let config = store.load()
         guard let apiKey = store.loadAPIKey(), config.isComplete(apiKey: apiKey) else {
             showAISetupAlert = true
             return
         }
-        guard let snapshot = model.formattingSnapshot() else { return }
         let client: LLMClient
         do {
             client = try LLMClientFactory.make(config: config, apiKey: apiKey)
@@ -420,6 +422,14 @@ struct iOSNoteEditorView: View {
         focusedSegmentID = nil
         isFormatting = true
         formattingTask = Task { @MainActor in
+            // 先收起键盘，等输入法未确认的文字提交进 model 后再取快照
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            guard let snapshot = model.formattingSnapshot() else {
+                isFormatting = false
+                formattingTask = nil
+                return
+            }
             do {
                 let result = try await service.format(snapshot.input)
                 guard !Task.isCancelled else { return }
@@ -447,15 +457,11 @@ struct iOSNoteEditorView: View {
     }
 
     fileprivate func applyFormattingPreview(_ preview: FormattingPreview) {
-        formattingPreview = nil
-        guard model.applyFormatting(preview.result, to: preview.snapshot) else {
-            Task {
-                // 等 sheet 退场后再弹提示
-                try? await Task.sleep(for: .milliseconds(350))
-                formattingErrorMessage = "内容已变化，未能替换，请重新整理。"
-            }
-            return
+        if !model.applyFormatting(preview.result, to: preview.snapshot) {
+            // sheet 完全退场后（onDismiss）再弹，避免和其它弹窗抢着呈现
+            pendingFormattingError = "内容已变化，未能替换，请重新整理。"
         }
+        formattingPreview = nil
     }
 
     // MARK: - Helpers
@@ -795,7 +801,7 @@ struct iOSNoteEditorView: View {
     private var isPresentingOther: Bool {
         showPhotoPicker || showCamera || showVoiceRecorder || showTagPicker ||
         showUnsavedAlert || showInsertPhotoError || showShareReadError || showSaveError || dictationError != nil ||
-        isFormatting || formattingPreview != nil || formattingErrorMessage != nil || showAISetupAlert || showAISettings
+        isFormatting || formattingPreview != nil || formattingErrorMessage != nil || pendingFormattingError != nil || showAISetupAlert || showAISettings
     }
 
     private func presentSharePromptsIfNeeded() {
@@ -1005,7 +1011,12 @@ private extension View {
 extension iOSNoteEditorView {
     fileprivate func applyFormattingHandling<Content: View>(to content: Content) -> some View {
         content
-            .sheet(item: $formattingPreview) { preview in
+            .sheet(item: $formattingPreview, onDismiss: {
+                if let message = pendingFormattingError {
+                    pendingFormattingError = nil
+                    formattingErrorMessage = message
+                }
+            }) { preview in
                 FormattingPreviewSheet(preview: preview) {
                     applyFormattingPreview(preview)
                 } onCancel: {

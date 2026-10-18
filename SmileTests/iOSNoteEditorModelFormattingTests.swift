@@ -83,6 +83,39 @@ struct iOSNoteEditorModelFormattingTests {
         #expect(!model.isDirty)
     }
 
+    @Test func applyReplacesCRLFAndLineSeparatorInTitle() throws {
+        let model = makeModel()
+        let snap = try #require(model.formattingSnapshot())
+        model.applyFormatting(FormattingResult(title: "甲\r\n乙\u{2028}丙", segments: ["x", "y"]), to: snap)
+        #expect(model.textContent(for: a) == "甲 乙 丙\nx")
+    }
+
+    @Test func emptyTitleLineGetsGeneratedTitle() throws {
+        let model = iOSNoteEditorModel()
+        model.segments = [.text(id: a, content: "\n正文", alignment: .leading)]
+        let snap = try #require(model.formattingSnapshot())
+        #expect(snap.input == FormattingInput(title: "", segments: ["正文"]))
+        #expect(model.applyFormatting(FormattingResult(title: "生成标题", segments: ["正文。"]), to: snap))
+        #expect(model.textContent(for: a) == "生成标题\n正文。")
+    }
+
+    @Test func emptyGeneratedTitleKeepsLeadingNewline() throws {
+        let model = iOSNoteEditorModel()
+        model.segments = [.text(id: a, content: "\n正文", alignment: .leading)]
+        let snap = try #require(model.formattingSnapshot())
+        #expect(model.applyFormatting(FormattingResult(title: "", segments: ["正文。"]), to: snap))
+        #expect(model.textContent(for: a) == "\n正文。")
+    }
+
+    @Test func applyRejectsChangedContent() throws {
+        let model = makeModel()
+        let snap = try #require(model.formattingSnapshot())
+        model.updateText("正文二改", for: b)
+        #expect(!model.applyFormatting(FormattingResult(title: "T", segments: ["x", "y"]), to: snap))
+        #expect(model.textContent(for: a) == "嗯标题\n那个正文一")
+        #expect(model.textContent(for: b) == "正文二改")
+    }
+
     @Test func applyRejectsMissingSegment() throws {
         let model = makeModel()
         let snap = try #require(model.formattingSnapshot())

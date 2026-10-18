@@ -34,12 +34,28 @@ struct AnthropicClient: LLMClient {
             let text: String?
         }
         let content: [Block]
+        let stopReason: String?
+
+        enum CodingKeys: String, CodingKey {
+            case content
+            case stopReason = "stop_reason"
+        }
     }
 
-    /// base 已以 /v1 结尾时只拼 /messages
+    /// base 已以 /v1 结尾时只拼 /messages；已是完整端点时原样使用
     var endpoint: URL? {
         let base = LLMHTTP.trimmedBase(baseURL)
+        if base.hasSuffix("/v1/messages") { return URL(string: base) }
         return URL(string: base.hasSuffix("/v1") ? base + "/messages" : base + "/v1/messages")
+    }
+
+    /// 官方 API 只认 x-api-key；不少第三方网关按 Bearer 鉴权，所以非官方地址两个头都带
+    var headers: [String: String] {
+        var headers = ["x-api-key": apiKey, "anthropic-version": Self.apiVersion]
+        if baseURL.host()?.lowercased() != "api.anthropic.com" {
+            headers["Authorization"] = "Bearer \(apiKey)"
+        }
+        return headers
     }
 
     func complete(system: String, user: String) async throws -> String {
@@ -48,13 +64,14 @@ struct AnthropicClient: LLMClient {
                                messages: [Message(role: "user", content: user)])
         let request = try LLMHTTP.makeRequest(
             url: url,
-            headers: ["x-api-key": apiKey, "anthropic-version": Self.apiVersion],
+            headers: headers,
             body: body
         )
         let data = try await LLMHTTP.send(request, session: session)
         guard let decoded = try? JSONDecoder().decode(ResponseBody.self, from: data) else {
             throw LLMError.emptyResponse
         }
+        if decoded.stopReason == "max_tokens" { throw LLMError.truncated }
         // 只取 text 块，忽略 thinking 等；refusal 时 content 为空
         let text = decoded.content.filter { $0.type == "text" }.compactMap(\.text).joined()
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw LLMError.emptyResponse }
