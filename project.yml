@@ -15,6 +15,14 @@ settings:
     CODE_SIGNING_ALLOWED: YES
     CODE_SIGNING_REQUIRED: NO
     CODE_SIGN_IDENTITY: "-"
+settingGroups:
+  iphoneOnly:
+    DEVELOPMENT_TEAM: J3X5545WTD
+    SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+    SUPPORTS_MACCATALYST: NO
+    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+    SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    TARGETED_DEVICE_FAMILY: "1"
 targets:
   Smile:
     type: application
@@ -23,9 +31,13 @@ targets:
       - path: Smile
         excludes: [Info.plist, Smile.entitlements]
     settings:
+      groups: [iphoneOnly]
       base:
         CODE_SIGN_ENTITLEMENTS: Smile/Smile.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile
+        CURRENT_PROJECT_VERSION: 6
+        MARKETING_VERSION: V1.0
+        INFOPLIST_KEY_CFBundleDisplayName: 微笑储蓄罐
     info:
       path: Smile/Info.plist
       properties:
@@ -65,6 +77,7 @@ targets:
     platform: iOS
     sources: [SmileTests]
     settings:
+      groups: [iphoneOnly]
       base:
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
