@@ -117,18 +117,20 @@ enum PullResult { case nothing, ready(count: Int), allFailed(failures: Int) }
 func takeIncoming() -> (urls: [URL], failures: Int)
 /// 放弃当前这批：删除文件及认领目录
 func discardIncoming()
+/// 交接结束：删除残留文件，并取消对认领目录的清理保护（每批 takeIncoming 后恰好调用一次）
+func finishHandOff(of urls: [URL])
 /// 删除已交接的文件，认领目录空了一并删除
 nonisolated static func deleteHandedOffFile(_ url: URL)
 
 func deferReadFailureNotice()
 func clearReadFailure()
-/// 清理扩展遗留的 `.tmp-*`，以及超过 1 小时未改动的 `tmp/ShareProcessing/*`（当前持有的那批除外）
+/// 清理扩展遗留的 `.tmp-*`，以及超过 1 小时未改动的 `tmp/ShareProcessing/*`（当前持有的、以及已交给编辑器尚未 finishHandOff 的除外）
 func purgeStaleTemporaries(olderThan: TimeInterval = 3600, now: Date = .now)
 ```
 
 - `inbox` 依赖注入（`SharedInbox?`），测试用临时目录；`processingRoot` 同样可注入。
 - 认领：处理前先把 batch 从收件箱移到 `tmp/ShareProcessing/<batchID>/`（并刷新目录修改时间），这样后续全分辨率解码若导致进程被杀，batch 不会变成每次启动都触发崩溃的「毒 batch」。认领目录不在拉取后删除，归交接出去的这批照片所有。
-- 校验（后台、不解码像素）：`CGImageSourceCreateWithURL` 成功、`CGImageSourceGetCount > 0`、首帧属性的像素宽高为正。有效文件按原顺序保留；无效文件当场删除并计入 `incomingFailures`。全部无效时删除认领目录，返回 `.allFailed`，不设置 `incomingPhotoURLs`。
+- 校验（后台、不解码像素）：`CGImageSourceCreateWithURL` 成功、`CGImageSourceGetCount > 0`、首帧属性的像素宽高为正。有效文件按原顺序保留；无效文件当场删除并计入 `incomingFailures`。全部无效时删除认领目录，返回 `.allFailed`，不设置 `incomingPhotoURLs`。校验只检查文件头与首帧属性，截断/损坏的文件可能通过校验，之后由编辑器解码时计为读取失败，或只保存出部分图像。
 - 中心只持有文件 URL，不持有解码后的图片；全分辨率解码由编辑器逐张完成（见第 5 节），避免 9 张 48MP 原图同时解码（每张约 190MB）。
 
 ---
@@ -152,7 +154,7 @@ func purgeStaleTemporaries(olderThan: TimeInterval = 3600, now: Date = .now)
 ## 5. iOSNoteEditorView 变更
 
 - ~~新增参数 `initialImages: [UIImage] = []`~~。**最终实现**：没有 `initialImages` 参数；`onAppear` 中 `initialize()` 之后检查 `center.incomingPhotoURLs`，若本编辑器是全新、空白、未改动且没有照片正在编码，则直接 `takeIncoming()` 插入（`focusedSegmentID == nil`，照片追加在首个文本段之后，首行仍留给标题），否则弹收图询问。
-- 插入分享照片：`insertPhotos` 接受 `PhotoSource`（`.image(UIImage)` 来自相册选择器，`.file(URL)` 来自分享）。`.file` 在后台 `Task.detached { autoreleasepool { … } }` 中逐张 `UIImage(contentsOfFile:)` → `jpegData(compressionQuality: 0.9)` → `ThumbnailGenerator` 缩略图，随后删除源文件；同一时刻只解码一张全分辨率原图，结果与相册选择器（`PHImageManagerMaximumSize` + JPEG 0.9）一致，方向随 EXIF 保留。编辑器中途关闭时删除已写入未插入的照片以及剩余未处理的源文件。
+- 插入分享照片：`insertPhotos` 接受 `PhotoSource`（`.image(UIImage)` 来自相册选择器，`.file(URL)` 来自分享）。`.file` 在后台 `Task.detached { autoreleasepool { … } }` 中逐张 `UIImage(contentsOfFile:)` → `jpegData(compressionQuality: 0.9)` ，缩略图直接从源文件用 ImageIO 生成（不再整张解码 JPEG），随后删除源文件；编辑器内所有照片插入（相册与分享各批）串行排队，同一时刻只解码一张全分辨率原图，结果与相册选择器（`PHImageManagerMaximumSize` + JPEG 0.9）一致，方向随 EXIF 保留。编辑器中途关闭时删除已写入未插入的照片以及剩余未处理的源文件；无论哪种结局，都调用一次 `finishHandOff(of:)` 结束交接。
 - `onAppear` 调 `center.editorDidAppear()`，`onDisappear` 调 `center.editorDidDisappear()`。
 - 收图弹窗：编辑器本地 `@State showShareChoice`，在 `onAppear` 及 `center.incomingPhotoURLs` 由 nil 变为非 nil 时置 true；`.alert("收到 N 张照片", isPresented: $showShareChoice)`。
   - 三处调用点（RootView 的 +、GroupDetailView 新增、EntryDetailView 编辑）同一时刻最多只有一个编辑器存在，无需判断「哪个编辑器是目标」。
@@ -162,7 +164,7 @@ func purgeStaleTemporaries(olderThan: TimeInterval = 3600, now: Date = .now)
   - **新建记录**：保留 `incomingPhotoURLs`；若 `canSave` 则 `await save()`（内部会 dismiss），否则直接 `dismiss()`。由 RootView 在计数归零后打开新编辑器。
   - **取消**：`discardIncoming()`，删除这批文件。
 - 冷启动补选分组：`.onChange(of: allGroups.count)`，若 `model.selectedGroupID == nil` 则 `model.selectDefaultGroup(...)`。
-- 读取失败（中心校验不通过的 `incomingFailures` + 编辑器解码/编码 `.file` 失败的张数）> 0 → 「照片读取失败」；落盘失败 → 「照片插入失败」（提示存储空间）。
+- 读取失败（中心校验不通过的 `incomingFailures` + 编辑器解码/编码 `.file` 失败的张数）> 0 → 「照片读取失败」；落盘失败 → 「照片插入失败」（提示存储空间）。两者同时发生时只提示「照片插入失败」。
 
 ---
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import ImageIO
 
 struct iOSNoteEditorView: View {
     @Environment(\.modelContext) private var context
@@ -50,8 +51,10 @@ struct iOSNoteEditorView: View {
     @State private var isRegisteredWithShareCenter = false
     /// 已开始关闭（dismiss 已调用）；此后不再接收分享照片、不再自动保存、不再写入照片
     @State private var isClosing = false
-    /// 正在进行中的 insertPhotos 调用数；编码期间 model 还没更新，编辑器看起来仍是空白
+    /// 已排队或正在进行的 insertPhotos 调用数；编码期间 model 还没更新，编辑器看起来仍是空白
     @State private var pendingPhotoInserts = 0
+    /// 最近一次排队的插入；新的插入等它结束才开始，保证同一时刻只解码一张全分辨率图片
+    @State private var insertChain: Task<Void, Never>?
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -584,43 +587,62 @@ struct iOSNoteEditorView: View {
         case file(URL)
     }
 
+    /// 排队插入照片：所有插入串行执行（相册、分享多批之间也是），同一时刻只有一张图片在解码/编码。
+    /// 入队时就计入 `pendingPhotoInserts`，`canSave` / `startNewEntryFromShare` 会等排队中的插入完成。
+    /// `extraReadFailures`：分享中心校验阶段已发现的无法读取的文件数，与本次读取失败一起提示。
+    @MainActor
+    private func insertPhotos(_ sources: [PhotoSource], extraReadFailures: Int = 0) async {
+        pendingPhotoInserts += 1
+        let previous = insertChain
+        let task = Task { @MainActor in
+            await previous?.value
+            await performInsertPhotos(sources, extraReadFailures: extraReadFailures)
+        }
+        insertChain = task
+        await task.value
+    }
+
     /// 逐张在后台编码为 JPEG 0.9 并落盘，全部完成后按顺序一次性插入。
     /// `.file` 每次只解码一张全分辨率原图，避免多张大图同时驻留内存。
-    /// 返回 `.file` 中读取/编码失败的张数（「照片读取失败」）；保存失败仍走「照片插入失败」。
+    /// 读取/编码 `.file` 失败计为读取失败（「照片读取失败」）；落盘失败为「照片插入失败」，两者只提示一个。
     @MainActor
-    @discardableResult
-    private func insertPhotos(_ sources: [PhotoSource]) async -> Int {
+    private func performInsertPhotos(_ sources: [PhotoSource], extraReadFailures: Int) async {
+        // 视图消失后不再读取 environment：先把 center 取出来
+        let center = shareCenter
+        let fileURLs = sources.compactMap { source -> URL? in
+            if case .file(let url) = source { return url } else { return nil }
+        }
         let anchor = focusedSegmentID
         var drafts: [DraftAttachment] = []
         let mediaStore = MediaStore.production()
         var hadSaveFailure = false
-        var readFailures = 0
-        pendingPhotoInserts += 1
+        var readFailures = extraReadFailures
         defer {
             pendingPhotoInserts -= 1
-            // 分享的源文件无论成功、失败还是中途关闭都要删掉（已处理过的会被重复删除，无害）
-            for case .file(let url) in sources { ShareInboxCenter.deleteHandedOffFile(url) }
+            // 分享的源文件无论成功、失败还是中途关闭都要删掉，并结束交接（只此一处）
+            if !fileURLs.isEmpty { center.finishHandOff(of: fileURLs) }
         }
         for source in sources {
             guard !isClosing else { break }
             // 解码、JPEG 编码与缩略图生成较重，放到后台线程；落盘和状态修改留在主线程
             let encoded = await Task.detached(priority: .userInitiated) {
                 autoreleasepool { () -> (data: Data, thumbnail: UIImage?)? in
-                    let data: Data?
                     switch source {
                     case .image(let image):
-                        data = image.jpegData(compressionQuality: 0.9)
+                        guard let data = image.jpegData(compressionQuality: 0.9) else { return nil }
+                        let thumb = ThumbnailGenerator.makePhotoThumbnail(from: data).flatMap { UIImage(data: $0) }
+                        return (data, thumb)
                     case .file(let url):
+                        defer { ShareInboxCenter.deleteHandedOffFile(url) }
                         // 与相册选择器一致：全分辨率 UIImage → JPEG 0.9，方向随 EXIF 保留。
-                        // 内层 autoreleasepool 让解码出的位图在生成缩略图前就释放
-                        data = autoreleasepool {
+                        // 内层 autoreleasepool 让解码出的位图尽早释放
+                        let data = autoreleasepool {
                             UIImage(contentsOfFile: url.path)?.jpegData(compressionQuality: 0.9)
                         }
-                        ShareInboxCenter.deleteHandedOffFile(url)
+                        guard let data else { return nil }
+                        // 缩略图直接从原文件用 ImageIO 生成，不再把刚编码的 JPEG 整张解码一遍
+                        return (data, Self.fileThumbnail(at: url))
                     }
-                    guard let data else { return nil }
-                    let thumb = ThumbnailGenerator.makePhotoThumbnail(from: data).flatMap { UIImage(data: $0) }
-                    return (data, thumb)
                 }
             }.value
             guard !isClosing else { break }
@@ -640,13 +662,32 @@ struct iOSNoteEditorView: View {
         if isClosing {
             // 编辑器已在关闭：本次写入但未进 model 的文件会成为孤儿，删掉（未处理的源文件由 defer 删除）
             for draft in drafts { try? mediaStore.delete(relativePath: draft.relativePath) }
-            return 0
+            return
         }
-        if hadSaveFailure { showInsertPhotoError = true }
-        guard !drafts.isEmpty else { return readFailures }
+        // 同一轮里设置两个 alert 只会显示一个：存储问题优先
+        if hadSaveFailure {
+            showInsertPhotoError = true
+        } else if readFailures > 0 {
+            showShareReadError = true
+        }
+        guard !drafts.isEmpty else { return }
         model.insertPhotos(drafts, afterSegmentID: anchor)
         model.isDirty = true
-        return readFailures
+    }
+
+    /// 与 ThumbnailGenerator 的结果一致：长边 400pt × 3x，按 EXIF 方向摆正；只解码缩小后的图
+    nonisolated private static func fileThumbnail(at url: URL) -> UIImage? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else {
+            return nil
+        }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: 1200,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     /// 是否有其它 sheet / 全屏 / alert 正在呈现；此时弹收图询问会被系统吞掉
@@ -679,8 +720,7 @@ struct iOSNoteEditorView: View {
     private func insertSharedPhotos() {
         let incoming = shareCenter.takeIncoming()
         Task {
-            let readFailures = await insertPhotos(incoming.urls.map(PhotoSource.file))
-            if readFailures + incoming.failures > 0 && !isClosing { showShareReadError = true }
+            await insertPhotos(incoming.urls.map(PhotoSource.file), extraReadFailures: incoming.failures)
         }
     }
 

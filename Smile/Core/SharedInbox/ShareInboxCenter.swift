@@ -30,6 +30,9 @@ final class ShareInboxCenter {
     private var isPulling = false
     /// `incomingPhotoURLs` 所在的认领目录；`purgeStaleTemporaries` 不能删它
     private var incomingDirectory: URL?
+    /// 已经 `takeIncoming` 交给编辑器、尚未 `finishHandOff` 的认领目录（标准化路径）。
+    /// 编辑器可能在插入途中被挂起很久，不能只靠修改时间判断是否遗留
+    private var handedOffDirectories: Set<String> = []
 
     enum PullResult: Equatable {
         /// 没有可用的新 batch（或已有待处理照片 / 正在拉取中）
@@ -102,9 +105,13 @@ final class ShareInboxCenter {
         return .ready(count: valid.count)
     }
 
-    /// 取走照片文件与失败计数并清空状态。调用方从此拥有这些文件，用完必须用 `deleteHandedOffFile` 删除。
+    /// 取走照片文件与失败计数并清空状态。调用方从此拥有这些文件，
+    /// 处理完（或放弃）后必须调用且只调用一次 `finishHandOff(of:)`。
     func takeIncoming() -> (urls: [URL], failures: Int) {
         let result = (urls: incomingPhotoURLs ?? [], failures: incomingFailures)
+        if let dir = incomingDirectory, !result.urls.isEmpty {
+            handedOffDirectories.insert(dir.standardizedFileURL.path)
+        }
         incomingPhotoURLs = nil
         incomingFailures = 0
         incomingDirectory = nil
@@ -115,8 +122,16 @@ final class ShareInboxCenter {
     func discardIncoming() {
         let dir = incomingDirectory
         let taken = takeIncoming()
-        for url in taken.urls { try? FileManager.default.removeItem(at: url) }
+        finishHandOff(of: taken.urls)
         if let dir { try? FileManager.default.removeItem(at: dir) }
+    }
+
+    /// 交接结束：删除仍残留的文件（目录空了一并删除），并让 `purgeStaleTemporaries` 不再保护这些目录
+    func finishHandOff(of urls: [URL]) {
+        for url in urls { Self.deleteHandedOffFile(url) }
+        for dir in Set(urls.map { $0.deletingLastPathComponent().standardizedFileURL.path }) {
+            handedOffDirectories.remove(dir)
+        }
     }
 
     /// 删除一个已交接的照片文件；所在认领目录空了就一起删掉
@@ -133,13 +148,15 @@ final class ShareInboxCenter {
     func deferReadFailureNotice() { hasUnreportedReadFailure = true }
     func clearReadFailure() { hasUnreportedReadFailure = false }
 
-    /// 清理扩展遗留的 `.tmp-*`，以及插入过程中崩溃遗留的、超过 `age` 未改动的认领目录（当前持有的那批除外）
+    /// 清理扩展遗留的 `.tmp-*`，以及插入过程中崩溃遗留的、超过 `age` 未改动的认领目录
+    /// （当前持有的那批、以及已交给编辑器还在处理中的除外）
     func purgeStaleTemporaries(olderThan age: TimeInterval = 3600, now: Date = .now) {
         inbox?.purgeStaleTemporaries(olderThan: age, now: now)
         let fm = FileManager.default
         let dirs = (try? fm.contentsOfDirectory(at: processingRoot, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
-        let held = incomingDirectory?.standardizedFileURL.path
-        for dir in dirs where dir.standardizedFileURL.path != held {
+        var protected = handedOffDirectories
+        if let held = incomingDirectory?.standardizedFileURL.path { protected.insert(held) }
+        for dir in dirs where !protected.contains(dir.standardizedFileURL.path) {
             // 读不到时间时不删，避免误删正在使用的目录
             guard let modified = try? dir.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
             else { continue }

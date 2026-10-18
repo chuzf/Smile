@@ -245,6 +245,31 @@ struct ShareInboxCenterTests {
         #expect(center.incomingPhotoURLs?.allSatisfy(exists) == true)
     }
 
+    @Test func purgeKeepsHandedOffDirUntilFinishHandOff() async throws {
+        let inbox = makeInbox()
+        let batch = try commitBatch(inbox, good: 2)
+        let center = makeCenter(inbox)
+        #expect(await center.pullNextBatch() == .ready(count: 2))
+        let urls = center.takeIncoming().urls
+        let dir = processingRoot.appendingPathComponent(batch.id.uuidString)
+        let farFuture = Date(timeIntervalSinceNow: 10 * 86400)
+
+        // 编辑器还在处理（例如 App 被挂起很久后回到前台）：不能删
+        center.purgeStaleTemporaries(now: farFuture)
+        #expect(urls.allSatisfy(exists))
+
+        // 编辑器处理了第一张后交接结束（第二张因故没处理）：残留的会被删掉
+        ShareInboxCenter.deleteHandedOffFile(urls[0])
+        center.finishHandOff(of: urls)
+        #expect(!exists(urls[1]))
+        #expect(!exists(dir))
+
+        // 交接结束后目录不再受保护：模拟残留目录（例如删除失败）会被清理
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        center.purgeStaleTemporaries(now: farFuture)
+        #expect(!exists(dir))
+    }
+
     @Test func readFailureNoticeCanBeDeferredAndCleared() {
         let center = makeCenter(nil)
         #expect(center.hasUnreportedReadFailure == false)

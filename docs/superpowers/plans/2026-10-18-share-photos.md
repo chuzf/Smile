@@ -446,7 +446,7 @@ Expected: 编译失败，`cannot find 'ShareInboxCenter' in scope`。
 
 - [ ] **Step 3: 实现 ShareInboxCenter**
 
-> 注：代码 review 后最终 API 有调整，以仓库中 `Smile/Core/SharedInbox/ShareInboxCenter.swift` 为准：`pullNextBatch() async -> PullResult`（`.nothing` / `.ready(count:)` / `.allFailed(failures:)`，后台 ImageIO 下采样到长边 4096 并应用 EXIF 方向）；`lastDecodeFailures` 改为 `incomingFailures`（只在 `incomingImages != nil` 时有意义）。`takeIncoming()` / `discardIncoming()` / `openEditorCount` 不变。
+> 注：代码 review 后最终 API 有调整，以仓库中 `Smile/Core/SharedInbox/ShareInboxCenter.swift` 为准：`pullNextBatch() async -> PullResult`（`.nothing` / `.ready(count:)` / `.allFailed(failures:)`，后台只做 ImageIO 文件头校验、不解码像素）；`incomingImages` 改为 `incomingPhotoURLs: [URL]?`，`lastDecodeFailures` 改为 `incomingFailures`（只在 `incomingPhotoURLs != nil` 时有意义）；`takeIncoming() -> (urls:, failures:)` 交出文件所有权，处理完调用 `finishHandOff(of:)`；照片由编辑器逐张全分辨率存为 JPEG 0.9（不再降采样到 4096）。`discardIncoming()` / `openEditorCount` 不变。
 
 创建 `Smile/Core/SharedInbox/ShareInboxCenter.swift`：
 
