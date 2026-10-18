@@ -139,6 +139,8 @@ func discardIncoming()
 - `onAppear` 调 `center.editorDidAppear()`，`onDisappear` 调 `center.editorDidDisappear()`。
 - 收图弹窗：编辑器本地 `@State showShareChoice`，在 `onAppear` 及 `center.incomingImages` 由 nil 变为非 nil 时置 true；`.alert("收到 N 张照片", isPresented: $showShareChoice)`。
   - 三处调用点（RootView 的 +、GroupDetailView 新增、EntryDetailView 编辑）同一时刻最多只有一个编辑器存在，无需判断「哪个编辑器是目标」。
+  - 当前编辑器是**空白的新记录**（无内容、未修改）时不弹窗，直接插入（两个选项结果相同）。
+  - 编辑器上有其他 alert/sheet/相机正在显示时，弹窗排队，待其关闭后约 0.35s 再弹。
   - **插入当前记录**：`center.takeIncoming()` 后 `insertPhotos`（锚点为当前焦点段，没有则末尾）。
   - **新建记录**：保留 `incomingImages`；若 `canSave` 则 `await save()`（内部会 dismiss），否则直接 `dismiss()`。由 RootView 在计数归零后打开新编辑器。
   - **取消**：清空 `incomingImages`。
@@ -156,7 +158,9 @@ func discardIncoming()
 | 连续多次分享未打开 App | 逐批处理，每批一条记录 |
 | 扩展崩溃留下 `.tmp-*` | 主 App 前台时清理超过 1 小时的临时目录 |
 | openURL 被系统封禁 | 扩展提示手动打开；前台检查兜底 |
-| 编辑器内正打开相册/相机/语音等子页面 | 已知限制：弹窗待子页面关闭后显示 |
+| 编辑器内正打开相册/相机/语音等子页面或其他弹窗 | 弹窗排队，待其关闭后显示 |
+| 「新建记录」时保存失败 | 显示保存失败，关闭后重新询问；照片保留在 center |
+| 带图打开后「放弃」 | 删除该草稿的媒体目录（自动保存已建出记录时保留） |
 | 「新建记录」时当前编辑器无内容 | 直接关闭，不保存 |
 
 ---
