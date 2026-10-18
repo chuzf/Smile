@@ -268,7 +268,7 @@ enum EditorSegment: Identifiable {
         defer { isSaving = false }
         lastAutoSaveTime = Date()
         updatedAt = Date()
-        isDirty = false
+        // 自动保存只防意外退出丢内容，不算用户保存：isDirty 保持不变，返回时仍询问保存还是放弃
         autoSaveSignal += 1   // signal view to call its real save path
     }
 

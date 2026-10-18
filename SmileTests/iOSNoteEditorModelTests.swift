@@ -27,6 +27,17 @@ struct iOSNoteEditorModelTests {
         #expect(model.autoSaveSignal == 0)
     }
 
+    @Test("Autosave keeps dirty flag so leaving still asks save or discard")
+    @MainActor
+    func performAutoSave_keepsDirty() async {
+        let model = iOSNoteEditorModel()
+        model.isDirty = true
+        await model.performAutoSave()
+
+        #expect(model.isDirty == true)
+        #expect(model.autoSaveSignal == 1)
+    }
+
     @Test("Reset clears all state")
     func reset_clearsAllState() {
         let model = iOSNoteEditorModel()

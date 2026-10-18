@@ -64,6 +64,17 @@ struct iOSNoteEditorView: View {
     @State private var showAISetupAlert = false
     @State private var showAISettings = false
     @State private var focusedSegmentID: UUID?
+    /// 自动保存是否已写过库；放弃时据此撤销
+    @State private var hasAutosaved = false
+    /// 编辑已有记录时，打开那一刻的内容；放弃时用它撤销自动保存写进去的改动
+    @State private var originalEntryState: OriginalEntryState?
+
+    private struct OriginalEntryState {
+        let title: String
+        let bodyText: String
+        let updatedAt: Date
+        let tagIDs: Set<PersistentIdentifier>
+    }
 
     private var allGroups: [Group] { builtinGroups + customGroups }
 
@@ -529,6 +540,9 @@ struct iOSNoteEditorView: View {
             if let entry = try? context.fetch(descriptor).first {
                 model.load(from: entry)
                 entryDraftID = entry.id
+                originalEntryState = OriginalEntryState(title: entry.title, bodyText: entry.bodyText,
+                                                        updatedAt: entry.updatedAt,
+                                                        tagIDs: Set(entry.tags.map(\.persistentModelID)))
                 Task { await loadExistingThumbnails() }
             } else {
                 model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
@@ -567,12 +581,37 @@ struct iOSNoteEditorView: View {
         dismiss()
     }
 
-    /// 放弃编辑并关闭：取消待触发的自动保存，清理未落库新记录的草稿照片
+    /// 放弃编辑并关闭：取消待触发的自动保存、撤销已自动保存的内容，清理未落库新记录的草稿照片
     private func discardAndClose() {
         isClosing = true
         model.cancelAutoSave()
+        revertAutosave()
         discardUnsavedDraftMedia()
         dismiss()
+    }
+
+    /// 新记录：删掉自动保存建出的记录；已有记录：恢复成打开编辑器时的内容
+    private func revertAutosave() {
+        guard hasAutosaved else { return }
+        if let editID = editingEntryID {
+            guard let original = originalEntryState else { return }
+            var descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { $0.persistentModelID == editID })
+            descriptor.fetchLimit = 1
+            guard let entry = try? context.fetch(descriptor).first else { return }
+            entry.title = original.title
+            entry.bodyText = original.bodyText
+            entry.updatedAt = original.updatedAt
+            let allTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
+            entry.tags = allTags.filter { original.tagIDs.contains($0.persistentModelID) }
+        } else {
+            let draftID = entryDraftID
+            var descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == draftID })
+            descriptor.fetchLimit = 1
+            guard let entry = try? context.fetch(descriptor).first else { return }
+            context.delete(entry)
+        }
+        try? context.save()
+        hasAutosaved = false
     }
 
     private func handleComplete() { Task { await save() } }
@@ -663,6 +702,7 @@ struct iOSNoteEditorView: View {
         }
         onSaved?(group.id, entry.id)
         model.isDirty = false
+        hasAutosaved = false
         close()
         return true
     }
@@ -930,6 +970,8 @@ struct iOSNoteEditorView: View {
 
         let allTags = (try? context.fetch(FetchDescriptor<Tag>())) ?? []
         entry.tags = allTags.filter { model.selectedTags.contains($0.persistentModelID) }
+        // 写库失败时改动仍留在 context 里，同样需要放弃时撤销
+        hasAutosaved = true
         try? context.save()
     }
 
