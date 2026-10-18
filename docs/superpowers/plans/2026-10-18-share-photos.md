@@ -1054,6 +1054,8 @@ git commit -m "feat: 编辑器支持分享照片插入与收图询问"
 
 ## Task 6: RootView 接收分享并打开编辑器
 
+> 注：review 后最终实现与下文不同，以仓库代码为准：照片不经 RootView 中转，留在 `ShareInboxCenter`，由新编辑器 onAppear 时（空白编辑器直接插入）取用；因此编辑器的 `initialImages` 等参数已删除。`openShareEditor()` 只设 `showEntryEditor = true` 并带 1 秒看门狗（按呈现世代复位）；编辑器弹出期间到达的分享会被推迟，编辑器出现后再拉取。
+
 **Files:**
 - Modify: `Smile/App/RootView.swift`
 
