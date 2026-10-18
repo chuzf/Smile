@@ -73,11 +73,12 @@ struct SharedInbox {
     struct Batch: Identifiable { let id: UUID; let url: URL; let createdAt: Date }
 
     func beginBatch() throws -> PendingBatch   // 创建 .tmp-<uuid>/
-    func commit(_ pending: PendingBatch) throws  // 原子重命名为 <uuid>/
+    func commit(_ pending: PendingBatch) throws -> Batch  // 原子重命名为 <uuid>/
+    func discard(_ pending: PendingBatch)      // 扩展出错时丢弃临时目录
     func pendingBatches() -> [Batch]           // 仅已提交的，按 createdAt 升序
     func fileURLs(in batch: Batch) -> [URL]    // 按文件名排序
     func remove(_ batch: Batch)
-    func purgeStaleTemporaries(olderThan: TimeInterval = 3600)  // 清理扩展崩溃遗留的 .tmp-*
+    func purgeStaleTemporaries(olderThan: TimeInterval = 3600, now: Date = .now)  // 清理扩展崩溃遗留的 .tmp-*
 }
 
 struct PendingBatch { let id: UUID; let url: URL
@@ -98,7 +99,7 @@ struct PendingBatch { let id: UUID; let url: URL
 ```swift
 private(set) var openEditorCount = 0
 var incomingImages: [UIImage]?        // 已解码、待交给编辑器的一批
-var newEntryRequested = false         // 编辑器选择「新建记录」后置 true
+private(set) var lastDecodeFailures = 0
 
 func editorDidAppear()  { openEditorCount += 1 }
 func editorDidDisappear() { openEditorCount = max(0, openEditorCount - 1) }
@@ -107,12 +108,13 @@ func editorDidDisappear() { openEditorCount = max(0, openEditorCount - 1) }
 /// 填入 incomingImages 并删除该 batch。返回是否取到。
 @discardableResult func pullNextBatch() -> Bool
 
-/// RootView 打开新编辑器时调用：取走图片并清空状态
-func takeImagesForNewEntry() -> [UIImage]
+/// 取走图片与失败计数并清空状态（新建编辑器或插入当前记录时调用）
+func takeIncoming() -> (images: [UIImage], failures: Int)
+func discardIncoming()
 ```
 
 - `inbox` 依赖注入（`SharedInbox?`），测试用临时目录。
-- 解码：`UIImage(contentsOfFile:)` 逐个读取；失败的文件跳过并计数 `lastDecodeFailures`，供 UI 提示。
+- 解码：`UIImage(contentsOfFile:)` 逐个读取；失败的文件跳过并计数 `lastDecodeFailures`，供 UI 提示。全部失败时不设置 `incomingImages`，返回 false。
 
 ---
 
@@ -120,12 +122,14 @@ func takeImagesForNewEntry() -> [UIImage]
 
 - `.onOpenURL`：`url.scheme == "smilejar" && url.host == "share"` → `checkShareInbox()`；其余保持原 zip 逻辑。
 - `.onChange(of: scenePhase)` 到 `.active` → `checkShareInbox()`（同时调用 `purgeStaleTemporaries`）。
-- `checkShareInbox()`：`center.pullNextBatch()`；之后若 `center.openEditorCount == 0` 则 `openShareEditor()`。若 >0，由已打开的编辑器自己弹窗（见第 5 节）。
-- `openShareEditor()`：`shareImages = center.takeImagesForNewEntry()`；`showEntryEditor = true`。现有 + 号 sheet 改为把 `shareImages` 作为 `initialImages` 传入，`onDismiss` 时清空 `shareImages`。
-- `.onChange(of: center.openEditorCount)`：降到 0 时——
-  - 若 `center.newEntryRequested && center.incomingImages != nil` → 置回 false，`openShareEditor()`；
-  - 否则若收件箱还有 batch → `checkShareInbox()`（连续分享多次的情况逐批处理）。
-- 编辑器 sheet 已在关闭动画中时直接设 `showEntryEditor = true` 可能失效：`openShareEditor()` 在计数归零的回调里延迟到下一个 runloop（`Task { @MainActor in ... }`）执行。
+- `checkShareInbox()`：
+  - 若 + 号编辑器正在弹出但尚未 `onAppear`（`showEntryEditor && openEditorCount == 0`）→ 直接返回，等计数变化时再处理（避免 `onOpenURL` 与前台检查双触发时覆盖第一批）。
+  - `center.pullNextBatch()`；若 `openEditorCount > 0` 则到此为止，由已打开的编辑器弹窗（见第 5 节）。
+  - 否则取到图片 → `openShareEditor()`；全部解码失败 → 弹「照片读取失败」。
+- `openShareEditor()`：`center.takeIncoming()` 写入 `shareImages` / `shareFailures`，`showEntryEditor = true`。+ 号 sheet 把它们作为 `initialImages` / `initialImageFailures` 传入。用户点 + 号 tab 时先清空这两个状态（不在 `onDismiss` 里清，避免与新编辑器的打开时序冲突）。
+- `.onChange(of: center.openEditorCount)` 降到 0 时，等待 350ms（让上一个 sheet 的关闭动画结束），然后：
+  - 若 `center.incomingImages != nil`（用户在编辑器里选了「新建记录」）→ `openShareEditor()`；
+  - 否则 `checkShareInbox()`（连续分享多次时逐批处理）。
 
 ---
 
@@ -133,10 +137,10 @@ func takeImagesForNewEntry() -> [UIImage]
 
 - 新增参数 `initialImages: [UIImage] = []`。`onAppear` 中 `initialize()` 之后，若非空则 `await insertPhotos(initialImages)`（新建记录时 `focusedSegmentID == nil`，照片追加在首个文本段之后，首行仍留给标题）。随后照常延迟聚焦首行。
 - `onAppear` 调 `center.editorDidAppear()`，`onDisappear` 调 `center.editorDidDisappear()`。
-- 收图弹窗：`.alert("收到 \(n) 张照片", isPresented: center.incomingImages != nil && 本编辑器是最上层)`。
-  - 「最上层」判断：三处调用点（RootView 的 +、GroupDetailView 新增、EntryDetailView 编辑）同一时刻最多只有一个编辑器存在，计数 > 0 时即视为当前编辑器为目标，无需额外判断。
-  - **插入当前记录**：`insertPhotos(center.incomingImages!)`（锚点为当前焦点段，没有则末尾），清空 `incomingImages`。
-  - **新建记录**：`center.newEntryRequested = true`；若 `canSave` 则 `await save()`（内部会 dismiss），否则直接 `dismiss()`。由 RootView 在计数归零后打开新编辑器。
+- 收图弹窗：编辑器本地 `@State showShareChoice`，在 `onAppear` 及 `center.incomingImages` 由 nil 变为非 nil 时置 true；`.alert("收到 N 张照片", isPresented: $showShareChoice)`。
+  - 三处调用点（RootView 的 +、GroupDetailView 新增、EntryDetailView 编辑）同一时刻最多只有一个编辑器存在，无需判断「哪个编辑器是目标」。
+  - **插入当前记录**：`center.takeIncoming()` 后 `insertPhotos`（锚点为当前焦点段，没有则末尾）。
+  - **新建记录**：保留 `incomingImages`；若 `canSave` 则 `await save()`（内部会 dismiss），否则直接 `dismiss()`。由 RootView 在计数归零后打开新编辑器。
   - **取消**：清空 `incomingImages`。
 - 冷启动补选分组：`.onChange(of: allGroups.count)`，若 `model.selectedGroupID == nil` 则 `model.selectDefaultGroup(...)`。
 - 带图打开时 `initialImages` 解码失败计数 > 0 → 复用现有「照片插入失败」弹窗。
@@ -161,7 +165,7 @@ func takeImagesForNewEntry() -> [UIImage]
 
 **单元测试**
 - `SharedInboxTests`：begin+commit 后可列出；未 commit 的不可列出；多 batch 按时间升序；`fileURLs` 按序号排序；remove 后不再列出；`purgeStaleTemporaries` 仅删过期临时目录。
-- `ShareInboxCenterTests`：`pullNextBatch` 解码并删除 batch、跳过坏文件并计数；已有 `incomingImages` 时不重复拉取；`takeImagesForNewEntry` 清空状态；`editorDidAppear/Disappear` 计数且不为负。
+- `ShareInboxCenterTests`：`pullNextBatch` 解码并删除 batch、跳过坏文件并计数；已有 `incomingImages` 时不重复拉取；`takeIncoming` 清空状态；`editorDidAppear/Disappear` 计数且不为负。
 
 **真机手动测试**
 1. 照片 App 分享 1 张 → 自动跳回并进入新编辑器，照片在标题行下方。
