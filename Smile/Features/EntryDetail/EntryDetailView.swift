@@ -12,43 +12,25 @@ struct EntryDetailView: View {
     @State private var showShareSheet = false
     @State private var viewerItem: PhotoViewerItem?
 
+    @AppStorage(ArticleStyle.storageKey) private var styleRaw = ArticleStyle.default.rawValue
+
+    private var style: ArticleStyle { ArticleStyle(rawValue: styleRaw) ?? .default }
+
     var body: some View {
         ZStack {
-            AppColors.backgroundGradient.ignoresSafeArea()
+            style.background.ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(dateLabel)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AppColors.textSecondary)
-
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(entry.title.isEmpty ? "(无标题)" : entry.title)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(AppColors.textPrimary)
-                        if entry.titleSource == .ai {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 12))
-                                .foregroundStyle(AppColors.warmOrange)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                        .padding(.bottom, 28)
 
                     bodyContent
 
-                    ForEach(voiceAttachments) { att in
-                        VoicePlayerRow(attachment: att)
-                    }
-
-                    if !entry.tags.isEmpty {
-                        HStack(spacing: 6) {
-                            ForEach(entry.tags) { tag in
-                                TagChip(name: tag.name,
-                                        color: Color(hex: tag.colorHex),
-                                        selected: false)
-                            }
-                        }
-                    }
+                    footer
                 }
-                .padding(16)
+                .padding(.horizontal, style.metrics.horizontalMargin)
+                .padding(.top, 16)
+                .padding(.bottom, 40)
             }
         }
         .navigationTitle("")
@@ -82,30 +64,75 @@ struct EntryDetailView: View {
         }
     }
 
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(entry.title.isEmpty ? "(无标题)" : entry.title)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(Color(uiColor: ArticleStyle.bodyColor))
+                    .lineSpacing(6)
+                if entry.titleSource == .ai {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppColors.warmOrange)
+                }
+            }
+            HStack(spacing: 8) {
+                if let groupName = entry.group?.name, !groupName.isEmpty {
+                    Text(groupName).foregroundStyle(AppColors.warmOrange)
+                }
+                Text(dateLabel).foregroundStyle(AppColors.textSecondary)
+            }
+            .font(.system(size: 14))
+        }
+    }
+
+    /// 正文段之间、正文与图片之间的间距
+    private static let blockSpacing: CGFloat = 24
+
     @ViewBuilder
     private var bodyContent: some View {
         let segs = parseBodySegments()
         if !segs.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Self.blockSpacing) {
                 ForEach(segs.indices, id: \.self) { idx in
                     let seg = segs[idx]
                     switch seg.kind {
                     case .text:
-                        if let text = seg.content, !text.isEmpty {
-                            Text(text)
-                                .font(.system(size: 15))
-                                .foregroundStyle(AppColors.textPrimary.opacity(0.9))
-                                .lineSpacing(4)
-                                .multilineTextAlignment(seg.textAlignment)
-                                .frame(maxWidth: .infinity, alignment: seg.frameAlignment)
+                        if let text = seg.content, !ArticleStyle.paragraphs(from: text).isEmpty {
+                            ArticleTextBlock(text: text, centered: seg.alignment == "center", style: style)
                         }
                     case .photo:
                         if let path = seg.path, let url = existingPhotoURL(path) {
-                            DetailPhotoView(url: url) { openViewer(at: url, in: segs) }
+                            DetailPhotoView(url: url, cornerRadius: style.metrics.photoCornerRadius) {
+                                openViewer(at: url, in: segs)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        if !voiceAttachments.isEmpty || !entry.tags.isEmpty {
+            VStack(alignment: .leading, spacing: 16) {
+                Divider()
+                ForEach(voiceAttachments) { att in
+                    VoicePlayerRow(attachment: att)
+                }
+                if !entry.tags.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(entry.tags) { tag in
+                            TagChip(name: tag.name,
+                                    color: Color(hex: tag.colorHex),
+                                    selected: false)
+                        }
+                    }
+                }
+            }
+            .padding(.top, 32)
         }
     }
 
@@ -200,6 +227,7 @@ private struct DetailPhotoView: View {
     static let maxPixel = 1600
 
     let url: URL
+    let cornerRadius: CGFloat
     let onTap: () -> Void
 
     @State private var image: UIImage?
@@ -210,7 +238,7 @@ private struct DetailPhotoView: View {
         if !failed {
             content
                 .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 .contentShape(Rectangle())
                 .onTapGesture { if image != nil { onTap() } }
                 .task(id: url) { await load() }
@@ -224,7 +252,7 @@ private struct DetailPhotoView: View {
                 .resizable()
                 .scaledToFit()
         } else {
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(AppColors.cardSurface)
                 .aspectRatio(aspectRatio ?? 4 / 3, contentMode: .fit)
         }

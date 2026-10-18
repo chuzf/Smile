@@ -29,6 +29,8 @@ struct SettingsView: View {
     @State private var importPassword = ""
     @State private var pendingImportURL: URL?
 
+    @AppStorage(ArticleStyle.storageKey) private var articleStyleRaw = ArticleStyle.default.rawValue
+
     var body: some View {
         Form {
             Section("AI") {
@@ -37,6 +39,18 @@ struct SettingsView: View {
                 } label: {
                     Label("AI 整理", systemImage: "wand.and.stars")
                 }
+            }
+            Section {
+                Picker("详情排版", selection: $articleStyleRaw) {
+                    ForEach(ArticleStyle.allCases) { Text($0.displayName).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+                ArticleStylePreview(style: ArticleStyle(rawValue: articleStyleRaw) ?? .default)
+                    .listRowInsets(EdgeInsets())
+            } header: {
+                Text("阅读")
+            } footer: {
+                Text("只改变记录详情页的显示效果，不影响已保存的内容。")
             }
             Section("数据") {
                 Button {
@@ -262,4 +276,20 @@ private struct ShareSheetForURL: UIViewControllerRepresentable {
         UIActivityViewController(activityItems: [url], applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// 设置页里按所选风格实时渲染的一小段示例
+private struct ArticleStylePreview: View {
+    let style: ArticleStyle
+
+    private static let sample = "早上醒来，窗外下着小雨。孩子趴在窗边看了好久，说雨滴像是在玻璃上赛跑。\n吃过早饭，我们撑着伞去了楼下的小公园，她穿着新雨靴踩过一个个小水洼。"
+
+    var body: some View {
+        ArticleTextBlock(text: Self.sample, centered: false, style: style)
+            .padding(.horizontal, style.metrics.horizontalMargin)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity)
+            .background(style.background)
+            .animation(.easeInOut(duration: 0.2), value: style)
+    }
 }
