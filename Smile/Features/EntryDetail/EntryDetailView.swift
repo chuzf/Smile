@@ -10,6 +10,7 @@ struct EntryDetailView: View {
     @State private var showEditor = false
     @State private var sharedImage: UIImage?
     @State private var showShareSheet = false
+    @State private var viewerItem: PhotoViewerItem?
 
     var body: some View {
         ZStack {
@@ -67,6 +68,10 @@ struct EntryDetailView: View {
                 }
             }
         }
+        .fullScreenCover(item: $viewerItem) { item in
+            PhotoViewer(urls: item.urls, initialIndex: item.initialIndex) { viewerItem = nil }
+                .presentationBackground(.clear)
+        }
         .sheet(isPresented: $showEditor) {
             iOSNoteEditorView(editingEntryID: entry.persistentModelID)
         }
@@ -95,19 +100,27 @@ struct EntryDetailView: View {
                                 .frame(maxWidth: .infinity, alignment: seg.frameAlignment)
                         }
                     case .photo:
-                        if let path = seg.path,
-                           let data = try? MediaStore.production().loadData(relativePath: path),
-                           let img = UIImage(data: data) {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: .infinity)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        if let path = seg.path, let url = existingPhotoURL(path) {
+                            DetailPhotoView(url: url) { openViewer(at: url, in: segs) }
                         }
                     }
                 }
             }
         }
+    }
+
+    /// 文件不存在的照片不显示，也不进查看器
+    private func existingPhotoURL(_ path: String) -> URL? {
+        let url = MediaStore.production().absoluteURL(relativePath: path)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func openViewer(at url: URL, in segs: [BodySegment]) {
+        let urls = segs.compactMap { seg -> URL? in
+            guard seg.kind == .photo, let path = seg.path else { return nil }
+            return existingPhotoURL(path)
+        }
+        viewerItem = PhotoViewerItem(urls: urls, initialIndex: urls.firstIndex(of: url) ?? 0)
     }
 
     private func parseBodySegments() -> [BodySegment] {
@@ -177,4 +190,56 @@ struct EntryDetailView: View {
 private struct ShareImageWrapper: Identifiable {
     let id = UUID()
     let image: UIImage
+}
+
+// MARK: - 正文照片
+
+/// 后台解码缩小后的图并缓存；加载前用文件头里的尺寸占位，避免布局跳动
+private struct DetailPhotoView: View {
+    /// 屏幕宽度 × 3 倍屏，足够正文显示；放大查看由 PhotoViewer 读原图
+    static let maxPixel = 1600
+
+    let url: URL
+    let onTap: () -> Void
+
+    @State private var image: UIImage?
+    @State private var aspectRatio: CGFloat?
+    @State private var failed = false
+
+    var body: some View {
+        if !failed {
+            content
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .onTapGesture { if image != nil { onTap() } }
+                .task(id: url) { await load() }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let image {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+        } else {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(AppColors.cardSurface)
+                .aspectRatio(aspectRatio ?? 4 / 3, contentMode: .fit)
+        }
+    }
+
+    private func load() async {
+        let url = url
+        // 先读文件头定好占位比例，再解码图片
+        let size = await Task.detached(priority: .userInitiated) { ImageLoader.orientedPixelSize(url: url) }.value
+        if let size, size.height > 0 { aspectRatio = size.width / size.height }
+        let loaded = await Task.detached(priority: .userInitiated) {
+            ImageLoader.cachedDownsampled(url: url, maxPixel: Self.maxPixel)
+        }.value
+        guard !Task.isCancelled else { return }
+        image = loaded
+        failed = loaded == nil
+    }
 }
