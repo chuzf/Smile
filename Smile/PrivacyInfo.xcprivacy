@@ -29,8 +29,10 @@
 			    对 App 容器内临时目录及备份文件进行读写操作
 			  - ZIPFoundation 在压缩 / 解压过程中访问文件元数据
 			  - ImportService 处理用户通过文档选取器打开的 .smilejar / .zip 备份文件
+			  - SharedInbox 读取 App Group 容器 ShareInbox/ 下目录的创建时间，
+			    用于按分享先后处理照片、清理过期临时目录
 			理由：
-			  C617.1 —— 访问 App 容器内（Documents/Media/、临时目录）文件的元数据，
+			  C617.1 —— 访问 App 容器 / App Group 容器内（Documents/Media/、临时目录、ShareInbox/）文件的元数据，
 			            仅用于 App 内部文件管理，不对外传输。
 			  3B52.1 —— 访问用户通过文档选取器明确授权的备份文件的元数据（导入还原功能）。
 		-->

@@ -89,6 +89,8 @@ targets:
       groups: [iphoneOnly]
       base:
         CODE_SIGN_ENTITLEMENTS: SmileShare/SmileShare.entitlements
+        # XcodeGen 只为 application 预设签名身份；扩展带 App Group，不能继承项目级的 ad-hoc "-"
+        CODE_SIGN_IDENTITY: "Apple Development"
         PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile.share
         CURRENT_PROJECT_VERSION: 6
         MARKETING_VERSION: V1.0
