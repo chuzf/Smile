@@ -53,6 +53,8 @@ struct iOSNoteEditorView: View {
     @State private var dictationError: DictationService.DictationError?
     @State private var recordingPulse = false
     @State private var showShareChoice = false
+    /// 「新建记录」等待保存期间，挡住收图询问的重复弹出
+    @State private var isStartingNewEntryFromShare = false
     /// 弹窗标题用的张数；点按钮后 incomingImages 会立刻变 nil，避免标题闪成「收到 0 张照片」
     @State private var shareChoiceCount = 0
     /// 防止重复 onAppear 让 shareCenter 的打开编辑器计数多加
@@ -445,7 +447,8 @@ struct iOSNoteEditorView: View {
     }
 
     private var canSave: Bool {
-        model.selectedGroupID != nil && model.hasContent
+        // 照片还在后台编码时不能保存，否则保存出的记录会缺这些照片
+        model.selectedGroupID != nil && model.hasContent && pendingPhotoInserts == 0
     }
 
     // MARK: - Lifecycle
@@ -509,6 +512,10 @@ struct iOSNoteEditorView: View {
     @MainActor
     @discardableResult
     private func save() async -> Bool {
+        // 未保存弹窗里的「保存」不经过 canSave，等正在编码的照片插入完再保存
+        while pendingPhotoInserts > 0 {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
         guard let groupID = model.selectedGroupID,
               let group = allGroups.first(where: { $0.persistentModelID == groupID }) else {
             showSaveError = true
@@ -661,7 +668,7 @@ struct iOSNoteEditorView: View {
         // 已关闭/正在关闭的编辑器（onDisappear 后 model 被 reset，看起来是空白的）不能接收照片
         guard isRegisteredWithShareCenter, !isClosing,
               let incoming = shareCenter.incomingImages,
-              !isPresentingOther, !showShareChoice else { return }
+              !isPresentingOther, !showShareChoice, !isStartingNewEntryFromShare else { return }
         // 全新、空白、未改动、且不是从分享打开、也没有照片正在编码的编辑器：不用问，直接插入
         if editingEntryID == nil && initialImages.isEmpty && pendingPhotoInserts == 0
             && !model.hasContent && !model.isDirty {
@@ -683,6 +690,8 @@ struct iOSNoteEditorView: View {
     /// incomingImages 保留在 shareCenter 中，本编辑器关闭后由 RootView 用它新建记录
     @MainActor
     private func startNewEntryFromShare() async {
+        isStartingNewEntryFromShare = true
+        defer { isStartingNewEntryFromShare = false }
         // 等收图询问框退场完，避免保存失败提示在它消失过程中被设置而被吞掉
         try? await Task.sleep(for: .milliseconds(350))
         if canSave {
