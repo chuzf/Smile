@@ -60,44 +60,47 @@ enum ArticleStyle: String, CaseIterable, Identifiable {
 
 // MARK: - 正文段落
 
-/// 一个文字段按当前风格排版：段落之间用段间距分隔
+/// 一个文字段按当前风格排版：段落之间用段间距分隔；整段放在一个可选择的文本视图里，能跨段落选择复制
 struct ArticleTextBlock: View {
     let text: String
     let centered: Bool
     let style: ArticleStyle
 
     var body: some View {
-        VStack(alignment: centered ? .center : .leading, spacing: style.metrics.paragraphSpacing) {
-            ForEach(Array(ArticleStyle.paragraphs(from: text).enumerated()), id: \.offset) { _, paragraph in
-                ArticleText(text: paragraph, metrics: style.metrics, centered: centered)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        ArticleText(paragraphs: ArticleStyle.paragraphs(from: text), metrics: style.metrics, centered: centered)
+            .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 }
 
-/// SwiftUI 的 Text 不支持两端对齐、固定行高和首行缩进，用 UILabel 渲染
+/// SwiftUI 的 Text 不支持两端对齐、固定行高和首行缩进，用只读的 UITextView 渲染（UILabel 不能选择复制文字）
 struct ArticleText: UIViewRepresentable {
-    let text: String
+    let paragraphs: [String]
     let metrics: ArticleStyle.Metrics
     /// 居中段落不缩进、不两端对齐
     let centered: Bool
 
-    func makeUIView(context: Context) -> UILabel {
-        let label = UILabel()
-        label.numberOfLines = 0
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return label
+    func makeUIView(context: Context) -> UITextView {
+        // TextKit 1 与 UILabel 的固定行高效果一致；TextKit 2 下行距会偏小
+        let view = UITextView(usingTextLayoutManager: false)
+        view.isEditable = false
+        view.isSelectable = true
+        view.isScrollEnabled = false
+        view.backgroundColor = .clear
+        view.textContainerInset = .zero
+        view.textContainer.lineFragmentPadding = 0
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return view
     }
 
-    func updateUIView(_ label: UILabel, context: Context) {
+    func updateUIView(_ view: UITextView, context: Context) {
         let font = UIFont.systemFont(ofSize: metrics.fontSize)
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = centered ? .center : .justified
         paragraph.minimumLineHeight = metrics.lineHeight
         paragraph.maximumLineHeight = metrics.lineHeight
         paragraph.firstLineHeadIndent = centered ? 0 : metrics.firstLineIndent
-        label.attributedText = NSAttributedString(string: text, attributes: [
+        paragraph.paragraphSpacing = metrics.paragraphSpacing
+        let attributed = NSAttributedString(string: paragraphs.joined(separator: "\n"), attributes: [
             .font: font,
             .kern: metrics.kern,
             .foregroundColor: ArticleStyle.bodyColor,
@@ -105,11 +108,12 @@ struct ArticleText: UIViewRepresentable {
             // 固定行高时字形贴着行底，上移一点让文字在行内居中
             .baselineOffset: (metrics.lineHeight - font.lineHeight) / 4,
         ])
+        if view.attributedText != attributed { view.attributedText = attributed }
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let width = proposal.width ?? UIScreen.main.bounds.width
         let height = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-        return CGSize(width: width, height: height)
+        return CGSize(width: width, height: ceil(height))
     }
 }

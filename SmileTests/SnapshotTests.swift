@@ -47,6 +47,19 @@ struct SnapshotTests {
         assertSnapshot(of: UIHostingController(rootView: view), as: .image(on: .iPhone13))
     }
 
+    @Test(arguments: ArticleStyle.allCases)
+    func articleTextBlock(style: ArticleStyle) {
+        let view = VStack(spacing: 24) {
+            ArticleTextBlock(text: "　　山顶的风很大，大家一起拍了合照。阳光很好，远处的云一层一层铺开，像是谁把棉花摊在了天边。\n\n　　下山路上还看到了松鼠。", centered: false, style: style)
+            ArticleTextBlock(text: "居中的一句话\n第二行", centered: true, style: style)
+        }
+        .padding(.horizontal, style.metrics.horizontalMargin)
+        .frame(width: 390)
+        .background(style.background)
+
+        assertSnapshot(of: UIHostingController(rootView: view), as: .image(on: .iPhone13), named: style.rawValue)
+    }
+
     @Test func shareCardSnapshot() {
         let data = ShareCardRenderer.CardData(
             groupName: "微笑储蓄罐", dateText: "5月23日",

@@ -72,6 +72,7 @@ struct EntryDetailView: View {
                     .foregroundStyle(Color(uiColor: ArticleStyle.bodyColor))
                     .lineSpacing(6)
                     .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
                 if entry.titleSource == .ai {
                     Image(systemName: "sparkles")
                         .font(.system(size: 12))

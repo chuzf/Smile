@@ -78,6 +78,7 @@
 		929A07B791259D451F4CD615 /* PhotoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */; };
 		93FE542694FFE4592F275939 /* AnthropicClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600489AD8EDC67EAFF6DF150 /* AnthropicClient.swift */; };
 		968FD7717B6634C2FD25CD30 /* iOSNoteEditorModelFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17358EF211CF6F244687EF0 /* iOSNoteEditorModelFormattingTests.swift */; };
+		9691C09DDC3317A4A20B6DCB /* articleTextBlock-style.wechat.png in Resources */ = {isa = PBXBuildFile; fileRef = 101F701AF44F49836646D635 /* articleTextBlock-style.wechat.png */; };
 		997E0FC7E7467787DAED4B2B /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F06C3F03028AF0735E10E6E /* LLMClient.swift */; };
 		9B7AA30557B8FC74EFF692AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 30E09AD479029B6C92808BBD /* PrivacyInfo.xcprivacy */; };
 		9FBCE81C64997CF5575DE019 /* SmileShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4EE0427078A177C8E344386E /* SmileShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -104,6 +105,7 @@
 		DF04B50E7FDF7B132634BA50 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */; };
 		DF914847D03917F6DA8A659F /* ArticleStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B3C1C85B12D163BBF974BA /* ArticleStyleTests.swift */; };
 		E34B22109570C1C256CE398C /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 747B9125FFC60158D36721A5 /* EntryDetailView.swift */; };
+		ECE8BFAC5FEEBE444C0D433E /* articleTextBlock-style.book.png in Resources */ = {isa = PBXBuildFile; fileRef = C7606F80C9226677A6D43331 /* articleTextBlock-style.book.png */; };
 		F159ED17491E9257BDC78BC5 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8536370776994B527AD1869B /* SearchService.swift */; };
 		F189B72050C9ECE4CCE5734C /* EntryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531684AD5683F033B966D87D /* EntryEditorView.swift */; };
 		F59653CFE3B014776D95E0F6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B82C1211D32BD2B9696089 /* RootView.swift */; };
@@ -147,6 +149,7 @@
 		005963F7E630CBE9FF6342D0 /* DraftAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftAttachment.swift; sourceTree = "<group>"; };
 		04C8F65472AF08ABA7DAB988 /* TagPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPickerSheet.swift; sourceTree = "<group>"; };
 		0D0E6ECCE5E82FA4B0537FF6 /* DictationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationService.swift; sourceTree = "<group>"; };
+		101F701AF44F49836646D635 /* articleTextBlock-style.wechat.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "articleTextBlock-style.wechat.png"; sourceTree = "<group>"; };
 		11ED55795EC7FBBEF4253681 /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
 		16D07B579C730148F997628D /* iOSNoteEditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModel.swift; sourceTree = "<group>"; };
 		1A0DBCDA57028F5636C7948D /* AppColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppColors.swift; sourceTree = "<group>"; };
@@ -223,6 +226,7 @@
 		C22D6F0C222F61BBEE7B15AD /* SharedInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedInboxTests.swift; sourceTree = "<group>"; };
 		C61F68ABA8A0B38902A1C1B0 /* TextFormattingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextFormattingServiceTests.swift; sourceTree = "<group>"; };
 		C6ED35FF070D546AEE1D0582 /* LLMClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMClientTests.swift; sourceTree = "<group>"; };
+		C7606F80C9226677A6D43331 /* articleTextBlock-style.book.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "articleTextBlock-style.book.png"; sourceTree = "<group>"; };
 		C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPreviewView.swift; sourceTree = "<group>"; };
 		C85DD7DC515EA89B489558D0 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		CBE877647FBB33553DFF690F /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
@@ -584,6 +588,8 @@
 		F73A4CAA46B214FC906AE71D /* SnapshotTests */ = {
 			isa = PBXGroup;
 			children = (
+				C7606F80C9226677A6D43331 /* articleTextBlock-style.book.png */,
+				101F701AF44F49836646D635 /* articleTextBlock-style.wechat.png */,
 				2363E5314015B0A47BCB8E7C /* customGroupJarCard.1.png */,
 				32058CB836D50944FAAF43C8 /* emptyJarCard.1.png */,
 				CF90E7ED7855411F59DAE468 /* noteEditorTitleStyle.1.png */,
@@ -718,6 +724,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ECE8BFAC5FEEBE444C0D433E /* articleTextBlock-style.book.png in Resources */,
+				9691C09DDC3317A4A20B6DCB /* articleTextBlock-style.wechat.png in Resources */,
 				CB9E761202DB0B9EE854D8EC /* customGroupJarCard.1.png in Resources */,
 				B064AA6BB890C9FA175CF3EE /* emptyJarCard.1.png in Resources */,
 				1BEB3E50F35100FA29C24D10 /* noteEditorTitleStyle.1.png in Resources */,
