@@ -74,8 +74,37 @@ targets:
               public.filename-extension:
                 - smilejar
     dependencies:
+      - target: SmileShare
       - package: ZIPFoundation
         product: ZIPFoundation
+  SmileShare:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SmileShare
+        excludes: [Info.plist, SmileShare.entitlements]
+      - path: Smile/Core/SharedInbox/SharedInbox.swift
+    settings:
+      groups: [iphoneOnly]
+      base:
+        CODE_SIGN_ENTITLEMENTS: SmileShare/SmileShare.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile.share
+        CURRENT_PROJECT_VERSION: 6
+        MARKETING_VERSION: V1.0
+    info:
+      path: SmileShare/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: $(DEVELOPMENT_LANGUAGE)
+        CFBundleDisplayName: 微笑储蓄罐
+        CFBundleShortVersionString: "1.0.6"
+        CFBundleVersion: "6"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 9
   SmileTests:
     type: bundle.unit-test
     platform: iOS
