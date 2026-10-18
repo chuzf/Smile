@@ -19,6 +19,7 @@
 		15CB6487264BC9621DC3ED16 /* TimeFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F79656BE75E9333AF78F79E /* TimeFilterSheet.swift */; };
 		1747B9824BB814546F42CB3D /* KeychainServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498E57499C8E4DEEF2B3E438 /* KeychainServiceTests.swift */; };
 		182632DE5FF018A5F4676E13 /* shareCardSnapshot.1.png in Resources */ = {isa = PBXBuildFile; fileRef = F8F9B6B9E597B31F4522CD76 /* shareCardSnapshot.1.png */; };
+		1864652FBC938D3825ECD580 /* AIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8D27829CAEB85E2F7D61FE /* AIConfig.swift */; };
 		194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */; };
 		1CAEC017F9E4BFBC94955243 /* DictationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0E6ECCE5E82FA4B0537FF6 /* DictationService.swift */; };
 		21AEA5F72A1412962A12F416 /* EditorModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452F88EC5458D85D8DD2C6F2 /* EditorModelTests.swift */; };
@@ -61,6 +62,7 @@
 		904A52A33A2E2831DC5E64AB /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D6481AF95E4B15A05FCE18E /* ImportService.swift */; };
 		91D61E115C871733227FAD5C /* MediaAttachmentChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */; };
 		929A07B791259D451F4CD615 /* PhotoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */; };
+		997E0FC7E7467787DAED4B2B /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F06C3F03028AF0735E10E6E /* LLMClient.swift */; };
 		9B7AA30557B8FC74EFF692AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 30E09AD479029B6C92808BBD /* PrivacyInfo.xcprivacy */; };
 		9FBCE81C64997CF5575DE019 /* SmileShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4EE0427078A177C8E344386E /* SmileShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A0A22F6EFB44787D4C52F57D /* PhotoCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33C499E09970813004CB542 /* PhotoCarousel.swift */; };
@@ -154,6 +156,7 @@
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
+		5F06C3F03028AF0735E10E6E /* LLMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMClient.swift; sourceTree = "<group>"; };
 		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
@@ -169,6 +172,7 @@
 		8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8D6481AF95E4B15A05FCE18E /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
 		8D840316B8C76FF3A1BF106F /* LockSessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManagerTests.swift; sourceTree = "<group>"; };
+		8F8D27829CAEB85E2F7D61FE /* AIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConfig.swift; sourceTree = "<group>"; };
 		942448E0BA73427D0F0F1082 /* iOSNoteEditorModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelTests.swift; sourceTree = "<group>"; };
 		95B9B57C135031AE18D364EC /* iOSNoteEditorModelDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorModelDictationTests.swift; sourceTree = "<group>"; };
 		98137F68B7D0E64DF6398BCD /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -268,6 +272,7 @@
 		4E2B8CAC48B7788B9515961C /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				C112B09B6CE4C93F14988B28 /* AI */,
 				705A1C2B130DC3CFC9DA8398 /* DataModel */,
 				8DF698B43801F1408C10AD4B /* Dictation */,
 				C8DB3380C95E3F1A2ADA14E0 /* Export */,
@@ -431,6 +436,15 @@
 				71EA3ACAE8410104425843C7 /* JarView.swift */,
 			);
 			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		C112B09B6CE4C93F14988B28 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				8F8D27829CAEB85E2F7D61FE /* AIConfig.swift */,
+				5F06C3F03028AF0735E10E6E /* LLMClient.swift */,
+			);
+			path = AI;
 			sourceTree = "<group>";
 		};
 		C8DB3380C95E3F1A2ADA14E0 /* Export */ = {
@@ -677,6 +691,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1864652FBC938D3825ECD580 /* AIConfig.swift in Sources */,
 				0CBFE4F865391369F2B4F10E /* AddGroupSheet.swift in Sources */,
 				52D73568A20F33A9762C7896 /* AppColors.swift in Sources */,
 				FD7EA05B8682A61D2D51B22A /* CameraPickerView.swift in Sources */,
@@ -699,6 +714,7 @@
 				32E6283D3DC77A04F437171D /* JarCardView.swift in Sources */,
 				645F7B7A0FB470026386AECD /* JarView.swift in Sources */,
 				520905D61AF750DE07650D35 /* KeychainService.swift in Sources */,
+				997E0FC7E7467787DAED4B2B /* LLMClient.swift in Sources */,
 				8BD9DF11D10A8B0BE568551E /* LockSessionManager.swift in Sources */,
 				C83798A6B01D17C6FB52A05A /* MeTabView.swift in Sources */,
 				AEE9F6B8092DD32CE39790C1 /* MediaAttachment.swift in Sources */,
