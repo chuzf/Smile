@@ -114,7 +114,8 @@ final class ShareViewController: UIViewController {
             return true
         }
 
-        // 最后兜底：UIImage 会被完整解码，按长边 4096 缩小后再编码，降低超出内存上限的风险
+        // 最后兜底（前两种都失败才会走到）：UIImage 绘制时仍会完整解码原图，
+        // 缩小到长边 4096 只是减小输出缓冲和写入的数据量
         let jpeg: Data? = await withCheckedContinuation { cont in
             _ = provider.loadObject(ofClass: UIImage.self) { object, _ in
                 cont.resume(returning: (object as? UIImage).flatMap { downscaledJPEG($0) })
@@ -138,7 +139,10 @@ final class ShareViewController: UIViewController {
         format.scale = 1
         format.opaque = true
         let renderer = UIGraphicsImageRenderer(size: target, format: format)
-        return renderer.jpegData(withCompressionQuality: 0.9) { _ in
+        return renderer.jpegData(withCompressionQuality: 0.9) { ctx in
+            // JPEG 没有透明通道，先铺白底，避免透明 PNG 变黑
+            UIColor.white.setFill()
+            ctx.fill(CGRect(origin: .zero, size: target))
             image.draw(in: CGRect(origin: .zero, size: target))
         }
     }
