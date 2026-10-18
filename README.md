@@ -7,7 +7,7 @@
 - 两个内置分组:**微笑储蓄罐** / **优势储蓄罐**,可添加自定义分组
 - 文本(类备忘录富文本编辑器)+ 照片(支持裁剪)+ 视频 + 语音的混合记录
 - 语音自动转写(本地 Speech 框架)
-- 可选 AI 自动标题(Claude Haiku 4.5,需自备 API Key)
+- 可选 **AI 整理**：把标题和正文交给大模型，去掉语气词、口头禅并润色（支持 Kimi、豆包、Anthropic 及任意 OpenAI / Anthropic 兼容接口，需自备 API Key）
 - 全文搜索 + 标签 + 时间筛选
 - **随机回忆**:随机取出一颗过往的微笑
 - 单条记录生成分享图
@@ -21,7 +21,7 @@
 - iOS 17+ · Swift 5.10 · SwiftUI · SwiftData
 - Xcode 26+ · XcodeGen
 - ZIPFoundation(备份导出/导入)
-- Anthropic API(可选)
+- 大模型 API（可选，OpenAI / Anthropic 兼容协议）
 
 ## 构建
 
@@ -40,13 +40,14 @@ open Smile.xcodeproj
 
 Xcode 中选择任一 iOS 17+ 模拟器,Cmd+R 运行。
 
-## 配置 AI 自动标题(可选)
+## 配置 AI 整理(可选)
 
-1. 在 [console.anthropic.com](https://console.anthropic.com) 创建 API Key
-2. App 内进入"我 → 设置 → AI 自动标题"
-3. 启用开关,粘贴 Key,点击"测试连接"
+1. App 内进入"我 → App 设置 → AI 整理"
+2. 选择服务商：Kimi / 豆包 / Anthropic 会自动填好接口地址；moacode 等第三方网关选"自定义"，再选 OpenAI 兼容或 Anthropic 兼容协议并填写地址
+3. 填写模型名（豆包填方舟模型 ID 或接入点 ID）和 API Key，点击"测试连接"
+4. 编辑记录时点工具栏"整理"，预览确认后点"替换"
 
-API Key 存于设备 Keychain,不离开本机。AI 调用仅发送文字和语音转写,**不发送照片/视频/语音原文件**。
+API Key 存于设备 Keychain，不离开本机。整理只发送标题和正文文字，**不发送照片/视频/语音**。
 
 ## 项目结构
 

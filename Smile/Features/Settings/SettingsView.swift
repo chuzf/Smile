@@ -31,6 +31,13 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("AI") {
+                NavigationLink {
+                    AISettingsView()
+                } label: {
+                    Label("AI 整理", systemImage: "wand.and.stars")
+                }
+            }
             Section("数据") {
                 Button {
                     Task { await startExport() }

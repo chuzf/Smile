@@ -11,6 +11,7 @@
 		06ACD74C68A8292C3455AEA1 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */; };
 		09C59CF54B517E03587A2F34 /* VoiceRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331CBCE6E4FC6CB1567AE6AE /* VoiceRecorderView.swift */; };
 		09CB0E01AB4EAD2DEBA8C521 /* AIConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82C1A3599359A94C1002B4A3 /* AIConfigTests.swift */; };
+		0BD3B25FB0887ED69F42D6CF /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */; };
 		0CA99BEE805B3AA347DDAE00 /* MediaStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */; };
 		0CBFE4F865391369F2B4F10E /* AddGroupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF911FDBE3B4D692BBC512A /* AddGroupSheet.swift */; };
 		0EB232627D80C2A0C3A50386 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98137F68B7D0E64DF6398BCD /* HomeView.swift */; };
@@ -193,6 +194,7 @@
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
 		9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		AB93BFEE45132D5D75176E51 /* iOSNoteEditorModel+Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOSNoteEditorModel+Formatting.swift"; sourceTree = "<group>"; };
+		AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
 		B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorComponents.swift; sourceTree = "<group>"; };
 		B0A8F8C288E935A92522C933 /* MediaAttachmentChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaAttachmentChip.swift; sourceTree = "<group>"; };
 		B0EC3DC9EFBA672649F50C60 /* ShareInboxCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareInboxCenter.swift; sourceTree = "<group>"; };
@@ -401,6 +403,7 @@
 		854A2470AA2DC91A3262F940 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */,
 				8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -719,6 +722,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1864652FBC938D3825ECD580 /* AIConfig.swift in Sources */,
+				0BD3B25FB0887ED69F42D6CF /* AISettingsView.swift in Sources */,
 				0CBFE4F865391369F2B4F10E /* AddGroupSheet.swift in Sources */,
 				93FE542694FFE4592F275939 /* AnthropicClient.swift in Sources */,
 				52D73568A20F33A9762C7896 /* AppColors.swift in Sources */,
