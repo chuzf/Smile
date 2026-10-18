@@ -19,6 +19,10 @@ struct RootView: View {
     @State private var importResult: ImportService.ImportResult?
     @State private var importError: String?
     @State private var showShareReadError = false
+    /// 编辑器弹出期间到达的分享被推迟了，编辑器出现后再拉取
+    @State private var deferredShareCheck = false
+    /// 每次 openShareEditor 递增，看门狗只复位自己那一次的呈现
+    @State private var shareEditorPresentGen = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -53,8 +57,12 @@ struct RootView: View {
         }
         .onChange(of: shareCenter.openEditorCount) { _, count in
             guard count == 0 else {
-                // 编辑器弹出期间到达的分享（checkShareInbox 当时提前返回了）：现在拉取，编辑器会弹窗询问
-                if shareCenter.incomingImages == nil { checkShareInbox() }
+                // 编辑器弹出期间到达的分享（checkShareInbox 当时提前返回了）：现在拉取，编辑器会弹窗询问。
+                // 只处理被推迟的那次，避免分享编辑器一出现就为收件箱里的下一批弹窗
+                if deferredShareCheck {
+                    deferredShareCheck = false
+                    checkShareInbox()
+                }
                 return
             }
             Task { @MainActor in
@@ -140,7 +148,10 @@ struct RootView: View {
     private func checkShareInbox() {
         Task { @MainActor in
             // + 号编辑器正在弹出、尚未 onAppear：等它出现后自己弹窗处理
-            if showEntryEditor && shareCenter.openEditorCount == 0 { return }
+            if showEntryEditor && shareCenter.openEditorCount == 0 {
+                deferredShareCheck = true
+                return
+            }
             let result = await shareCenter.pullNextBatch()
             // 解码期间用户可能已打开编辑器：编辑器 onAppear 会看到 incomingImages 并弹窗
             if showEntryEditor || shareCenter.openEditorCount > 0 { return }
@@ -157,8 +168,11 @@ struct RootView: View {
     /// 不切换 selectedTab：sheet 挂在 TabView 上，任意 tab 下都能弹出。
     private func openShareEditor() {
         showEntryEditor = true
+        shareEditorPresentGen += 1
+        let gen = shareEditorPresentGen
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1))
+            guard gen == shareEditorPresentGen else { return }
             // 呈现失败（已有别的 sheet/alert 在呈现）：复位，否则 + 号与后续分享都会失效。
             // 照片仍在 shareCenter 中，下次回到前台或编辑器数量变化时会重试
             if showEntryEditor && shareCenter.openEditorCount == 0 {
