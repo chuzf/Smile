@@ -58,6 +58,7 @@
 		7383C8313DE4081614A3806E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 811A4045F57350E9FB7B1DD9 /* PrivacyInfo.xcprivacy */; };
 		766BA5E66BCDC313ADA47FD2 /* TextFormattingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61F68ABA8A0B38902A1C1B0 /* TextFormattingServiceTests.swift */; };
 		77DA72BF4C9CA1AB4314BB44 /* PhotoCropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF19E010724A6A0A0167D07 /* PhotoCropTests.swift */; };
+		7B00EBCEE1917A2349619AEB /* FormattingPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E514224B8C3325E40EAC721 /* FormattingPreviewSheet.swift */; };
 		8141DE33ECBCC36BCD95EDDF /* EditGroupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5421DA96C0DE30293F36BFDC /* EditGroupSheet.swift */; };
 		81FB507614C283012121F4E8 /* RandomRecallSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE25EF3DD92D0A90C1E503ED /* RandomRecallSheet.swift */; };
 		84114EF03D1F972C347BC0F3 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B776FE2C097D81C9CC3D328B /* Components.swift */; };
@@ -168,6 +169,7 @@
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
+		5E514224B8C3325E40EAC721 /* FormattingPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingPreviewSheet.swift; sourceTree = "<group>"; };
 		5F06C3F03028AF0735E10E6E /* LLMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMClient.swift; sourceTree = "<group>"; };
 		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		600489AD8EDC67EAFF6DF150 /* AnthropicClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicClient.swift; sourceTree = "<group>"; };
@@ -265,6 +267,7 @@
 				005963F7E630CBE9FF6342D0 /* DraftAttachment.swift */,
 				B1EBDAC89DBB17F16E633AC4 /* EntryEditorModel.swift */,
 				531684AD5683F033B966D87D /* EntryEditorView.swift */,
+				5E514224B8C3325E40EAC721 /* FormattingPreviewSheet.swift */,
 				B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */,
 				16D07B579C730148F997628D /* iOSNoteEditorModel.swift */,
 				AB93BFEE45132D5D75176E51 /* iOSNoteEditorModel+Formatting.swift */,
@@ -739,6 +742,7 @@
 				F189B72050C9ECE4CCE5734C /* EntryEditorView.swift in Sources */,
 				39D7528E9C035CE5C7D21495 /* Enums.swift in Sources */,
 				388F6CA3B04967C02538BD1A /* ExportService.swift in Sources */,
+				7B00EBCEE1917A2349619AEB /* FormattingPreviewSheet.swift in Sources */,
 				47C4A9BDFFF39DE272203670 /* Group.swift in Sources */,
 				C01FB4AF18C5834BAD279D0B /* GroupDetailView.swift in Sources */,
 				0EB232627D80C2A0C3A50386 /* HomeView.swift in Sources */,

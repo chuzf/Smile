@@ -55,6 +55,12 @@ struct iOSNoteEditorView: View {
     @State private var pendingPhotoInserts = 0
     /// 最近一次排队的插入；新的插入等它结束才开始，保证同一时刻只解码一张全分辨率图片
     @State private var insertChain: Task<Void, Never>?
+    @State private var isFormatting = false
+    @State private var formattingTask: Task<Void, Never>?
+    @State private var formattingPreview: FormattingPreview?
+    @State private var formattingErrorMessage: String?
+    @State private var showAISetupAlert = false
+    @State private var showAISettings = false
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -84,6 +90,9 @@ struct iOSNoteEditorView: View {
                 Divider()
                 toolbarRow
             }
+            if isFormatting {
+                formattingOverlay
+            }
         }
         .onAppear {
             if !isRegisteredWithShareCenter {
@@ -101,6 +110,7 @@ struct iOSNoteEditorView: View {
             }
         }
         .onDisappear {
+            formattingTask?.cancel()
             if dictationService.isActive {
                 dictationService.stop()
                 // finalizeDictation keeps any partial text already written — intentional,
@@ -120,6 +130,7 @@ struct iOSNoteEditorView: View {
             }
         }
         .shareHandling(self)
+        .formattingHandling(self)
         .onChange(of: model.autoSaveSignal) { _, signal in
             guard signal > 0 else { return }
             Task { await performLightAutosave() }
@@ -294,7 +305,7 @@ struct iOSNoteEditorView: View {
 
     @ViewBuilder
     private var toolbarRow: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: 14) {
             Button { showPhotoPicker = true } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "photo.on.rectangle")
@@ -353,10 +364,98 @@ struct iOSNoteEditorView: View {
                 .foregroundStyle(AppColors.warmOrange)
             }
             .disabled(dictationService.isActive)
+            Button { startFormatting() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "wand.and.stars")
+                    Text("整理")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppColors.warmOrange)
+            }
+            .disabled(dictationService.isActive || isFormatting || !model.canFormat)
             Spacer()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    // MARK: - AI 整理
+
+    private var formattingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.25).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(AppColors.warmOrange)
+                Text("整理中…")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(AppColors.textPrimary)
+                Button("取消") { cancelFormatting() }
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppColors.warmOrange)
+            }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private func startFormatting() {
+        let store = AIConfigStore()
+        let config = store.load()
+        guard let apiKey = store.loadAPIKey(), config.isComplete(apiKey: apiKey) else {
+            showAISetupAlert = true
+            return
+        }
+        guard let snapshot = model.formattingSnapshot() else { return }
+        let client: LLMClient
+        do {
+            client = try LLMClientFactory.make(config: config, apiKey: apiKey)
+        } catch {
+            formattingErrorMessage = (error as? LLMError ?? .notConfigured).userMessage
+            return
+        }
+        let service = TextFormattingService(client: client, style: config.style, customPrompt: config.customPrompt)
+        focusedSegmentID = nil
+        isFormatting = true
+        formattingTask = Task { @MainActor in
+            do {
+                let result = try await service.format(snapshot.input)
+                guard !Task.isCancelled else { return }
+                formattingPreview = FormattingPreview(snapshot: snapshot, result: result)
+            } catch let error as FormattingError {
+                if !Task.isCancelled { formattingErrorMessage = error.userMessage }
+            } catch {
+                // CancellationError：用户已取消，不提示
+                if !Task.isCancelled && !(error is CancellationError) {
+                    formattingErrorMessage = LLMError.network(error.localizedDescription).userMessage
+                }
+            }
+            // 取消时 cancelFormatting() 已复位，这里不能覆盖新一轮的状态
+            if !Task.isCancelled {
+                isFormatting = false
+                formattingTask = nil
+            }
+        }
+    }
+
+    private func cancelFormatting() {
+        formattingTask?.cancel()
+        formattingTask = nil
+        isFormatting = false
+    }
+
+    fileprivate func applyFormattingPreview(_ preview: FormattingPreview) {
+        formattingPreview = nil
+        guard model.applyFormatting(preview.result, to: preview.snapshot) else {
+            Task {
+                // 等 sheet 退场后再弹提示
+                try? await Task.sleep(for: .milliseconds(350))
+                formattingErrorMessage = "内容已变化，未能替换，请重新整理。"
+            }
+            return
+        }
     }
 
     // MARK: - Helpers
@@ -695,7 +794,8 @@ struct iOSNoteEditorView: View {
     /// 是否有其它 sheet / 全屏 / alert 正在呈现；此时弹收图询问会被系统吞掉
     private var isPresentingOther: Bool {
         showPhotoPicker || showCamera || showVoiceRecorder || showTagPicker ||
-        showUnsavedAlert || showInsertPhotoError || showShareReadError || showSaveError || dictationError != nil
+        showUnsavedAlert || showInsertPhotoError || showShareReadError || showSaveError || dictationError != nil ||
+        isFormatting || formattingPreview != nil || formattingErrorMessage != nil || showAISetupAlert || showAISettings
     }
 
     private func presentSharePromptsIfNeeded() {
@@ -890,6 +990,51 @@ extension iOSNoteEditorView {
                 Button("好的", role: .cancel) { }
             } message: {
                 Text("有分享的照片无法读取，请重新分享。")
+            }
+    }
+}
+
+// MARK: - AI 整理相关的弹窗与 sheet（拆出 body，避免修饰符链过长导致类型检查超时）
+
+private extension View {
+    func formattingHandling(_ editor: iOSNoteEditorView) -> some View {
+        editor.applyFormattingHandling(to: self)
+    }
+}
+
+extension iOSNoteEditorView {
+    fileprivate func applyFormattingHandling<Content: View>(to content: Content) -> some View {
+        content
+            .sheet(item: $formattingPreview) { preview in
+                FormattingPreviewSheet(preview: preview) {
+                    applyFormattingPreview(preview)
+                } onCancel: {
+                    formattingPreview = nil
+                }
+            }
+            .sheet(isPresented: $showAISettings) {
+                NavigationStack {
+                    AISettingsView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("完成") { showAISettings = false }
+                            }
+                        }
+                }
+            }
+            .alert("尚未配置 AI 整理", isPresented: $showAISetupAlert) {
+                Button("去设置") { showAISettings = true }
+                Button("取消", role: .cancel) { }
+            } message: {
+                Text("请先填写服务商、模型和 API Key。")
+            }
+            .alert("整理失败", isPresented: Binding(
+                get: { formattingErrorMessage != nil },
+                set: { if !$0 { formattingErrorMessage = nil } }
+            )) {
+                Button("好的", role: .cancel) { formattingErrorMessage = nil }
+            } message: {
+                Text(formattingErrorMessage ?? "")
             }
     }
 }
