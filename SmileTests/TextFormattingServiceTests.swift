@@ -34,6 +34,24 @@ struct TextFormattingServiceTests {
         #expect(service("", style: .custom, prompt: "改成诗").0.systemPrompt.contains("改成诗"))
     }
 
+    @Test(arguments: FormattingStyle.allCases)
+    func everyStyleHasParagraphRules(style: FormattingStyle) {
+        let prompt = service("", style: style, prompt: "改成诗").0.systemPrompt
+        #expect(prompt.contains("合理分段"))
+        #expect(prompt.contains("空一行"))
+        #expect(prompt.contains("两个全角空格"))
+    }
+
+    @Test func normalizeParagraphsIndentsAndSeparates() {
+        #expect(TextFormattingService.normalizeParagraphs("第一段。\n第二段。") == "\u{3000}\u{3000}第一段。\n\n\u{3000}\u{3000}第二段。")
+        // 已有缩进（半角/全角/制表符）统一成两个全角空格，多余空行合并
+        #expect(TextFormattingService.normalizeParagraphs("  甲\n\n\n\u{3000}乙  \r\n\t丙") ==
+                "\u{3000}\u{3000}甲\n\n\u{3000}\u{3000}乙\n\n\u{3000}\u{3000}丙")
+        #expect(TextFormattingService.normalizeParagraphs("\u{3000}\u{3000}已规范") == "\u{3000}\u{3000}已规范")
+        #expect(TextFormattingService.normalizeParagraphs("") == "")
+        #expect(TextFormattingService.normalizeParagraphs(" \n\u{3000}\n") == "")
+    }
+
     @Test func userMessageIsJSONOfInput() throws {
         let text = TextFormattingService.userMessage(for: input)
         let decoded = try JSONDecoder().decode(FormattingInput.self, from: Data(text.utf8))
@@ -43,7 +61,7 @@ struct TextFormattingServiceTests {
     @Test func formatSendsPromptsAndParsesPlainJSON() async throws {
         let (svc, client) = service(#"{"title":"今天","segments":["我去了公园。",""]}"#)
         let result = try await svc.format(input)
-        #expect(result == FormattingResult(title: "今天", segments: ["我去了公园。", ""]))
+        #expect(result == FormattingResult(title: "今天", segments: ["\u{3000}\u{3000}我去了公园。", ""]))
         #expect(client.lastSystem == svc.systemPrompt)
         #expect(client.lastUser == TextFormattingService.userMessage(for: input))
     }

@@ -36,7 +36,21 @@ struct TextFormattingService {
         } catch let error as LLMError {
             throw FormattingError.llm(error)
         }
-        return try Self.parse(reply, expectedSegments: input.segments.count)
+        var result = try Self.parse(reply, expectedSegments: input.segments.count)
+        // 模型常漏掉段首缩进或段间空行，统一规整一次
+        result.segments = result.segments.map(Self.normalizeParagraphs)
+        return result
+    }
+
+    static let paragraphIndent = "\u{3000}\u{3000}"
+
+    /// 每个非空行视为一段：去掉首尾空白，段首加两个全角空格，段与段之间空一行
+    static func normalizeParagraphs(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .map { paragraphIndent + $0 }
+            .joined(separator: "\n\n")
     }
 
     var systemPrompt: String {
@@ -56,21 +70,25 @@ struct TextFormattingService {
         }
     }
 
-    private static let lightRules = "去掉语气词（如「嗯」「啊」「呃」「那个」「就是说」）、口头禅和无意义的重复；补全标点，必要时在段内合理换行；改正错别字。保留原意、所有细节和第一人称口吻，不增删事实，不添加评论或总结。"
+    private static let lightRules = "去掉语气词（如「嗯」「啊」「呃」「那个」「就是说」）、口头禅和无意义的重复；补全标点；改正错别字。保留原意、所有细节和第一人称口吻，不增删事实，不添加评论或总结。"
 
     private static let baseRules = """
     你是文字整理助手。用户会给你一条生活记录的标题和若干段正文（JSON），请按「整理要求」整理文字。
     规则：
     1. 输出语言与原文保持一致。
     2. 只输出一个 JSON 对象，不要输出任何解释、前后缀或 Markdown 代码块。
-    3. segments 的数量必须与输入完全相同，顺序一一对应；不得合并、拆分、增加或删除段落。
-    4. 输入中为空字符串的段，输出也必须是空字符串。
-    5. 标题只有一行。输入的标题为空时，根据正文拟一个不超过 20 个字的标题；标题和正文都没有实质内容时，标题保持为空字符串。
+    3. segments 中每一项是一个正文块（块与块之间可能夹着照片）。segments 的数量必须与输入完全相同，顺序一一对应；不得合并、拆分、增加或删除正文块。
+    4. 输入中为空字符串的正文块，输出也必须是空字符串。
+    5. 标题只有一行，不缩进。输入的标题为空时，根据正文拟一个不超过 20 个字的标题；标题和正文都没有实质内容时，标题保持为空字符串。
+    6. 分段排版（无论哪种整理要求都必须遵守，只在每个正文块内部进行）：
+       - 该分段就要分段：按意思合理分段，话题、时间、场景或情绪转换时另起一段；不要把所有内容挤在一段，也不要一句一段。
+       - 段与段之间空一行（在 JSON 字符串中用 "\\n\\n" 分隔）。
+       - 每段段首缩进两个全角空格「　　」。
     """
 
     private static let outputFormat = """
     输出格式：
-    {"title": "整理后的标题", "segments": ["整理后的第 1 段", "整理后的第 2 段"]}
+    {"title": "整理后的标题", "segments": ["　　第 1 个正文块的第一段。\\n\\n　　第 1 个正文块的第二段。", "　　第 2 个正文块。"]}
     """
 
     static func userMessage(for input: FormattingInput) -> String {
