@@ -1,8 +1,9 @@
 import UIKit
+import ImageIO
 import Observation
 
 /// 主 App 内协调「从相册分享进来的照片」：
-/// - 从 SharedInbox 取出最早的 batch 并解码为 `incomingImages`
+/// - 从 SharedInbox 取出最早、本进程内尚未处理过的 batch，在后台降采样解码为 `incomingImages`
 /// - 记录当前打开的编辑器数量，供 RootView 决定是新开编辑器还是交给已打开的编辑器弹窗
 @Observable
 @MainActor
@@ -12,7 +13,23 @@ final class ShareInboxCenter {
     private(set) var openEditorCount = 0
     /// 已解码、等待交给编辑器的一批照片
     private(set) var incomingImages: [UIImage]?
-    private(set) var lastDecodeFailures = 0
+    /// 当前 `incomingImages` 这批里解码失败的文件数；只在 `incomingImages != nil` 期间有意义，
+    /// 由 `takeIncoming`/`discardIncoming` 一起清空。
+    private(set) var incomingFailures = 0
+
+    /// 本进程内已经处理过（成功拉取或全部解码失败）的 batch id，
+    /// 避免 `remove` 失败时下次启动又把同一个 batch 当成新的重复导入。
+    private var handledBatchIDs: Set<UUID> = []
+    private var isPulling = false
+
+    enum PullResult: Equatable {
+        /// 没有可用的新 batch（或已有待处理图片 / 正在拉取中）
+        case nothing
+        /// 解码成功，`incomingImages` 已设置
+        case ready(count: Int)
+        /// batch 存在但一张都解码不出来；batch 已被删除
+        case allFailed(failures: Int)
+    }
 
     init(inbox: SharedInbox? = SharedInbox.production()) {
         self.inbox = inbox
@@ -21,31 +38,38 @@ final class ShareInboxCenter {
     func editorDidAppear() { openEditorCount += 1 }
     func editorDidDisappear() { openEditorCount = max(0, openEditorCount - 1) }
 
-    /// 没有待处理图片时，取最早的 batch 解码并删除它。
-    /// 返回是否得到了至少一张图片；全部解码失败时返回 false，失败数见 `lastDecodeFailures`。
+    /// 没有待处理图片、且当前没有正在进行的拉取时，取最早的、本进程内未处理过的 batch，
+    /// 到后台线程降采样解码，再回到主线程写入状态。
+    /// 并发重复调用：第二个调用在第一个调用让出主线程之前就会看到 `isPulling == true`，直接返回 `.nothing`。
     @discardableResult
-    func pullNextBatch() -> Bool {
-        guard incomingImages == nil, let inbox, let batch = inbox.pendingBatches().first else { return false }
-        var images: [UIImage] = []
-        var failures = 0
-        for url in inbox.fileURLs(in: batch) {
-            if let image = UIImage(contentsOfFile: url.path) {
-                images.append(image)
-            } else {
-                failures += 1
-            }
+    func pullNextBatch() async -> PullResult {
+        guard incomingImages == nil, !isPulling, let inbox else { return .nothing }
+        guard let batch = inbox.pendingBatches().first(where: { !handledBatchIDs.contains($0.id) }) else {
+            return .nothing
         }
+        isPulling = true
+        handledBatchIDs.insert(batch.id)
+        defer { isPulling = false }
+
+        let urls = inbox.fileURLs(in: batch)
+        let (images, failures) = await Task.detached {
+            Self.decodeBatch(urls: urls)
+        }.value
+
+        // 在照片被消费之前就删除 batch 是故意的：分享进来的照片是拷贝（原图仍在相册里），
+        // 先删除可以避免某个 batch 解码时 OOM 崩溃后，变成每次启动都会重新触发崩溃的「毒 batch」。
         inbox.remove(batch)
-        lastDecodeFailures = failures
-        guard !images.isEmpty else { return false }
+
+        guard !images.isEmpty else { return .allFailed(failures: failures) }
         incomingImages = images
-        return true
+        incomingFailures = failures
+        return .ready(count: images.count)
     }
 
     func takeIncoming() -> (images: [UIImage], failures: Int) {
-        let result = (images: incomingImages ?? [], failures: lastDecodeFailures)
+        let result = (images: incomingImages ?? [], failures: incomingFailures)
         incomingImages = nil
-        lastDecodeFailures = 0
+        incomingFailures = 0
         return result
     }
 
@@ -55,5 +79,34 @@ final class ShareInboxCenter {
 
     func purgeStaleTemporaries() {
         inbox?.purgeStaleTemporaries()
+    }
+
+    nonisolated private static func decodeBatch(urls: [URL]) -> (images: [UIImage], failures: Int) {
+        var images: [UIImage] = []
+        var failures = 0
+        for url in urls {
+            if let image = downsampledImage(at: url) {
+                images.append(image)
+            } else {
+                failures += 1
+            }
+        }
+        return (images, failures)
+    }
+
+    /// 用 ImageIO 按 EXIF 方向把像素摆正，并限制长边最多 `maxPixel`，避免大图直接解码占用过多内存。
+    /// `kCGImageSourceCreateThumbnailFromImageAlways` + `ThumbnailMaxPixelSize` 不会把小图放大。
+    nonisolated static func downsampledImage(at url: URL, maxPixel: Int = 4096) -> UIImage? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else {
+            return nil
+        }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
+        return UIImage(cgImage: cg)
     }
 }
