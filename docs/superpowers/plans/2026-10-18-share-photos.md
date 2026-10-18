@@ -167,6 +167,8 @@ Expected: 编译失败，`cannot find 'SharedInbox' in scope`。
 
 - [ ] **Step 3: 实现 SharedInbox**
 
+> 注：代码 review 后最终实现有调整（读不到创建时间时不清理、排序加 uuid 次序、扩展名统一在 `filename` 中规范化），以仓库中 `Smile/Core/SharedInbox/SharedInbox.swift` 为准。
+
 创建 `Smile/Core/SharedInbox/SharedInbox.swift`：
 
 ```swift
@@ -804,6 +806,7 @@ final class ShareViewController: UIViewController {
         excludes: [Info.plist, SmileShare.entitlements]
       - path: Smile/Core/SharedInbox/SharedInbox.swift
     settings:
+      groups: [iphoneOnly]
       base:
         CODE_SIGN_ENTITLEMENTS: SmileShare/SmileShare.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: com.chuzhanfeng.smile.share
