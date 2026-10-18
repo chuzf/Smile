@@ -18,7 +18,7 @@ final class ShareInboxCenter {
     private(set) var incomingFailures = 0
 
     /// 本进程内已经处理过（成功拉取或全部解码失败）的 batch id，
-    /// 避免 `remove` 失败时下次启动又把同一个 batch 当成新的重复导入。
+    /// 避免 `remove` 失败时本进程内反复回到前台又重复导入同一个 batch。
     private var handledBatchIDs: Set<UUID> = []
     private var isPulling = false
 
