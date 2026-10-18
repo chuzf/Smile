@@ -42,6 +42,7 @@
 		5AD04A57C319B2A30C25B8E3 /* SmileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F779ACC98F942E5D86E15E /* SmileApp.swift */; };
 		5FF1EB880DC24104A087BEDB /* iOSNoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9DC628A664D31EF6D5B28E2 /* iOSNoteEditorView.swift */; };
 		6115EE9DD9C4B21DF9EA76ED /* TagFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB007998789F54991CFC4435 /* TagFilterBar.swift */; };
+		63708CF22C3C6BC2F9CE1DF0 /* SharedInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8994831B078E53BFB5EE64F5 /* SharedInbox.swift */; };
 		645F7B7A0FB470026386AECD /* JarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71EA3ACAE8410104425843C7 /* JarView.swift */; };
 		66E5B52CCA3DA629FB1976AB /* TagPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C8F65472AF08ABA7DAB988 /* TagPickerSheet.swift */; };
 		6E1FA5B90AA16E31A6BE0B25 /* ModelContainerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */; };
@@ -71,6 +72,7 @@
 		CA69CED15EF28A40FBC0A766 /* ThumbnailGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230E006B3BDE1F0DF5A51EBE /* ThumbnailGenerator.swift */; };
 		CB9E761202DB0B9EE854D8EC /* customGroupJarCard.1.png in Resources */ = {isa = PBXBuildFile; fileRef = 2363E5314015B0A47BCB8E7C /* customGroupJarCard.1.png */; };
 		CD16756A4E0C0691BAA5E143 /* ExportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD392C71EA93BA09D38A03A1 /* ExportServiceTests.swift */; };
+		CFC72ACF3C1E33ACDE8E068C /* SharedInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22D6F0C222F61BBEE7B15AD /* SharedInboxTests.swift */; };
 		D037FE2724BE3DCA079C72D8 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85DD7DC515EA89B489558D0 /* TranscriptionService.swift */; };
 		D6AD382BBB9B18F654AD0984 /* ShareCardRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC5C44440FDC68ADF4A6EF6 /* ShareCardRendererTests.swift */; };
 		DF04B50E7FDF7B132634BA50 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */; };
@@ -110,7 +112,7 @@
 		32058CB836D50944FAAF43C8 /* emptyJarCard.1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = emptyJarCard.1.png; sourceTree = "<group>"; };
 		331CBCE6E4FC6CB1567AE6AE /* VoiceRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderView.swift; sourceTree = "<group>"; };
 		38BC12516C9E1305B40D3670 /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
-		3A24F11AD4ECE495B375D016 /* SmileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A24F11AD4ECE495B375D016 /* SmileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SmileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BE2BADD81EDC7D9799CEF66 /* EditTagSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTagSheet.swift; sourceTree = "<group>"; };
 		3F79656BE75E9333AF78F79E /* TimeFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFilterSheet.swift; sourceTree = "<group>"; };
 		42C5A5BB1F2DCE884451414A /* PhotoLibraryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryPickerView.swift; sourceTree = "<group>"; };
@@ -121,7 +123,7 @@
 		5480A3140359B9E195EF3CC8 /* JarCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarCardView.swift; sourceTree = "<group>"; };
 		55B82C1211D32BD2B9696089 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		56B5E03F31318ED588E9D82E /* DataModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModelTests.swift; sourceTree = "<group>"; };
-		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F2CCEDE0BC5605AEE770FC8 /* Smile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Smile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		603739FF5064ECB4016C0586 /* VoicePlayerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePlayerRow.swift; sourceTree = "<group>"; };
 		667A4D2B0F63DE42A1DEEDAF /* PhotoCropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCropView.swift; sourceTree = "<group>"; };
 		6E79A9117FFC741528407136 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 		747B9125FFC60158D36721A5 /* EntryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDetailView.swift; sourceTree = "<group>"; };
 		82F2C2B2EC7B9CDBAD08BAB2 /* Entry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Entry.swift; sourceTree = "<group>"; };
 		8536370776994B527AD1869B /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
+		8994831B078E53BFB5EE64F5 /* SharedInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedInbox.swift; sourceTree = "<group>"; };
 		8AC0638A2229742F46E3B576 /* ShareCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardRenderer.swift; sourceTree = "<group>"; };
 		8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8D6481AF95E4B15A05FCE18E /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
@@ -148,6 +151,7 @@
 		B60BE0D421C3D9DC5AE360BF /* DictationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationServiceTests.swift; sourceTree = "<group>"; };
 		B776FE2C097D81C9CC3D328B /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		BEF31C3E746EFCCAAB98528A /* MediaStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStoreTests.swift; sourceTree = "<group>"; };
+		C22D6F0C222F61BBEE7B15AD /* SharedInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedInboxTests.swift; sourceTree = "<group>"; };
 		C770621F8A274884F1E696E3 /* PhotoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPreviewView.swift; sourceTree = "<group>"; };
 		C85DD7DC515EA89B489558D0 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		CBE877647FBB33553DFF690F /* LockSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockSessionManager.swift; sourceTree = "<group>"; };
@@ -238,6 +242,7 @@
 				A2A2E4344F0974D404CE4166 /* Search */,
 				E90302097FA2701285253FC1 /* Security */,
 				CD7B80F71F52AD66445B698D /* ShareCard */,
+				79AA8C90FEB389ACF591D335 /* SharedInbox */,
 				059A225E7C315CE89B190779 /* Transcription */,
 			);
 			path = Core;
@@ -268,6 +273,7 @@
 				CCF19E010724A6A0A0167D07 /* PhotoCropTests.swift */,
 				73C8A08F3357C950854BFB8C /* SearchServiceTests.swift */,
 				2DC5C44440FDC68ADF4A6EF6 /* ShareCardRendererTests.swift */,
+				C22D6F0C222F61BBEE7B15AD /* SharedInboxTests.swift */,
 				D4D2CF6A020F0310D846BDF6 /* SmokeTests.swift */,
 				B235B1F1F195485F9889BA92 /* SnapshotTests.swift */,
 				DAA3358F210C0B4122E60A56 /* ThumbnailCacheTests.swift */,
@@ -296,6 +302,14 @@
 				11ED55795EC7FBBEF4253681 /* Tag.swift */,
 			);
 			path = DataModel;
+			sourceTree = "<group>";
+		};
+		79AA8C90FEB389ACF591D335 /* SharedInbox */ = {
+			isa = PBXGroup;
+			children = (
+				8994831B078E53BFB5EE64F5 /* SharedInbox.swift */,
+			);
+			path = SharedInbox;
 			sourceTree = "<group>";
 		};
 		84D7A52D8BB95EF9FED729A3 /* Import */ = {
@@ -608,6 +622,7 @@
 				DF04B50E7FDF7B132634BA50 /* SettingsView.swift in Sources */,
 				2F4F7E0FD27B0DBFF98CABDD /* ShareCardRenderer.swift in Sources */,
 				06ACD74C68A8292C3455AEA1 /* ShareSheet.swift in Sources */,
+				63708CF22C3C6BC2F9CE1DF0 /* SharedInbox.swift in Sources */,
 				5AD04A57C319B2A30C25B8E3 /* SmileApp.swift in Sources */,
 				3027A7058DF5078C44343309 /* Tag.swift in Sources */,
 				6115EE9DD9C4B21DF9EA76ED /* TagFilterBar.swift in Sources */,
@@ -639,6 +654,7 @@
 				77DA72BF4C9CA1AB4314BB44 /* PhotoCropTests.swift in Sources */,
 				194DB3035AD0B73FBE7B4E05 /* SearchServiceTests.swift in Sources */,
 				D6AD382BBB9B18F654AD0984 /* ShareCardRendererTests.swift in Sources */,
+				CFC72ACF3C1E33ACDE8E068C /* SharedInboxTests.swift in Sources */,
 				2D9423DC21AC89477F6508F6 /* SmokeTests.swift in Sources */,
 				71DCCF0E91C2A0C1C292C9A8 /* SnapshotTests.swift in Sources */,
 				AB60A20FEE02EA6B796AC23C /* ThumbnailCacheTests.swift in Sources */,
@@ -671,11 +687,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.SmileTests;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";
 			};
 			name = Debug;
@@ -686,22 +698,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = J3X5545WTD;
 				INFOPLIST_FILE = Smile/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = V1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -711,22 +715,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Smile/Smile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = J3X5545WTD;
 				INFOPLIST_FILE = Smile/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "微笑储蓄罐";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = V1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.smile;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -878,11 +874,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.chuzhanfeng.SmileTests;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smile.app/Smile";
 			};
 			name = Release;
