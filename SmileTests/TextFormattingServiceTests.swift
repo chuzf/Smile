@@ -42,6 +42,13 @@ struct TextFormattingServiceTests {
         #expect(prompt.contains("两个全角空格"))
     }
 
+    @Test(arguments: FormattingStyle.allCases)
+    func everyStyleMovesLongTitleIntoBody(style: FormattingStyle) {
+        let prompt = service("", style: style, prompt: "改成诗").0.systemPrompt
+        #expect(prompt.contains("标题里误放了正文"))
+        #expect(prompt.contains("放到第 1 个正文块"))
+    }
+
     @Test func normalizeParagraphsIndentsAndSeparates() {
         #expect(TextFormattingService.normalizeParagraphs("第一段。\n第二段。") == "\u{3000}\u{3000}第一段。\n\n\u{3000}\u{3000}第二段。")
         // 已有缩进（半角/全角/制表符）统一成两个全角空格，多余空行合并
