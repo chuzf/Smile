@@ -36,6 +36,7 @@ struct iOSNoteEditorView: View {
     @State private var showTagPicker = false
     @State private var showUnsavedAlert = false
     @State private var showInsertPhotoError = false
+    @State private var showShareReadError = false
     @State private var showSaveError = false
     @State private var dictationService = DictationService()
     @State private var dictationError: DictationService.DictationError?
@@ -87,7 +88,7 @@ struct iOSNoteEditorView: View {
                 shareCenter.editorDidAppear()
             }
             initialize()
-            presentShareChoiceIfNeeded()
+            presentSharePromptsIfNeeded()
             if editingEntryID == nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     if case .text(let id, _, _) = model.segments.first {
@@ -103,6 +104,11 @@ struct iOSNoteEditorView: View {
                 // so the user doesn't lose words they already spoke before dismissing.
                 model.finalizeDictation()
             }
+            if !isClosing {
+                // 下滑关闭不经过 close()/discardAndClose()：停止正在写入的照片，并清理没有记录引用的草稿照片
+                isClosing = true
+                discardUnsavedDraftMedia()
+            }
             model.reset()
             thumbnails.removeAll()
             if isRegisteredWithShareCenter {
@@ -110,30 +116,7 @@ struct iOSNoteEditorView: View {
                 shareCenter.editorDidDisappear()
             }
         }
-        .onChange(of: shareCenter.incomingImages != nil) { _, hasIncoming in
-            if hasIncoming { presentShareChoiceIfNeeded() }
-        }
-        .onChange(of: isPresentingOther) { _, busy in
-            // 其它弹窗/弹层关闭后再补弹收图询问；稍等让上一个呈现的退场动画结束
-            guard !busy else { return }
-            Task {
-                try? await Task.sleep(for: .milliseconds(350))
-                presentShareChoiceIfNeeded()
-            }
-        }
-        .onChange(of: allGroups.count) { _, _ in
-            // 冷启动时内置分组可能晚于编辑器出现才 seed 完成
-            if model.selectedGroupID == nil {
-                model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
-            }
-        }
-        .alert("收到 \(shareChoiceCount) 张照片", isPresented: $showShareChoice) {
-            Button("插入当前记录") { insertSharedPhotos() }
-            Button("新建记录") { Task { await startNewEntryFromShare() } }
-            Button("取消", role: .cancel) { shareCenter.discardIncoming() }
-        } message: {
-            Text("加入正在编辑的这条记录，还是新建一条记录？")
-        }
+        .shareHandling(self)
         .onChange(of: model.autoSaveSignal) { _, signal in
             guard signal > 0 else { return }
             Task { await performLightAutosave() }
@@ -637,14 +620,19 @@ struct iOSNoteEditorView: View {
     /// 是否有其它 sheet / 全屏 / alert 正在呈现；此时弹收图询问会被系统吞掉
     private var isPresentingOther: Bool {
         showPhotoPicker || showCamera || showVoiceRecorder || showTagPicker ||
-        showUnsavedAlert || showInsertPhotoError || showSaveError || dictationError != nil
+        showUnsavedAlert || showInsertPhotoError || showShareReadError || showSaveError || dictationError != nil
     }
 
-    private func presentShareChoiceIfNeeded() {
+    private func presentSharePromptsIfNeeded() {
         // 已关闭/正在关闭的编辑器（onDisappear 后 model 被 reset，看起来是空白的）不能接收照片
         guard isRegisteredWithShareCenter, !isClosing,
-              let incoming = shareCenter.incomingImages,
               !isPresentingOther, !showShareChoice, !isStartingNewEntryFromShare else { return }
+        if shareCenter.hasUnreportedReadFailure {
+            shareCenter.clearReadFailure()
+            showShareReadError = true
+            return
+        }
+        guard let incoming = shareCenter.incomingImages else { return }
         // 全新、空白、未改动、也没有照片正在编码的编辑器（包括 RootView 为分享新开的编辑器）：不用问，直接插入。
         // 第一批还在编码时（pendingPhotoInserts > 0）又来一批，走询问而不是合并
         if editingEntryID == nil && pendingPhotoInserts == 0
@@ -660,7 +648,7 @@ struct iOSNoteEditorView: View {
         let incoming = shareCenter.takeIncoming()
         Task {
             await insertPhotos(incoming.images)
-            if incoming.failures > 0 { showInsertPhotoError = true }
+            if incoming.failures > 0 && !isClosing { showShareReadError = true }
         }
     }
 
@@ -671,12 +659,18 @@ struct iOSNoteEditorView: View {
         defer { isStartingNewEntryFromShare = false }
         // 等收图询问框退场完，避免保存失败提示在它消失过程中被设置而被吞掉
         try? await Task.sleep(for: .milliseconds(350))
-        if canSave {
-            // 保存失败时不做别的：保存失败提示关闭后 isPresentingOther 变回 false，
+        // 正在编码的照片插入完再判断，否则 canSave 为 false 会被误当作「没有内容」
+        while pendingPhotoInserts > 0 && !isClosing {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        guard !isClosing else { return }
+        if !model.hasContent {
+            // 没有任何内容（没有可丢的东西）：直接关闭
+            discardAndClose()
+        } else {
+            // 保存失败（含未选分组）时不做别的：保存失败提示关闭后 isPresentingOther 变回 false，
             // 照片仍在 shareCenter 中，会自动重新弹出收图询问
             await save()
-        } else {
-            discardAndClose()
         }
     }
 
@@ -777,6 +771,52 @@ struct iOSNoteEditorView: View {
                 .background(current == align ? AppColors.warmOrange : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
+    }
+}
+
+// MARK: - 分享照片相关的监听与弹窗（拆出 body，避免修饰符链过长导致类型检查超时）
+
+private extension View {
+    func shareHandling(_ editor: iOSNoteEditorView) -> some View {
+        editor.applyShareHandling(to: self)
+    }
+}
+
+extension iOSNoteEditorView {
+    fileprivate func applyShareHandling<Content: View>(to content: Content) -> some View {
+        content
+            .onChange(of: shareCenter.incomingImages != nil) { _, hasIncoming in
+                if hasIncoming { presentSharePromptsIfNeeded() }
+            }
+            .onChange(of: shareCenter.hasUnreportedReadFailure) { _, hasFailure in
+                if hasFailure { presentSharePromptsIfNeeded() }
+            }
+            .onChange(of: isPresentingOther) { _, busy in
+                // 其它弹窗/弹层关闭后再补弹收图询问；稍等让上一个呈现的退场动画结束
+                guard !busy else { return }
+                Task {
+                    try? await Task.sleep(for: .milliseconds(350))
+                    presentSharePromptsIfNeeded()
+                }
+            }
+            .onChange(of: allGroups.count) { _, _ in
+                // 冷启动时内置分组可能晚于编辑器出现才 seed 完成
+                if model.selectedGroupID == nil {
+                    model.selectDefaultGroup(from: allGroups, initialGroupID: initialGroupID)
+                }
+            }
+            .alert("收到 \(shareChoiceCount) 张照片", isPresented: $showShareChoice) {
+                Button("插入当前记录") { insertSharedPhotos() }
+                Button("新建记录") { Task { await startNewEntryFromShare() } }
+                Button("取消", role: .cancel) { shareCenter.discardIncoming() }
+            } message: {
+                Text("加入正在编辑的这条记录，还是新建一条记录？")
+            }
+            .alert("照片读取失败", isPresented: $showShareReadError) {
+                Button("好的", role: .cancel) { }
+            } message: {
+                Text("有分享的照片无法读取，请重新分享。")
+            }
     }
 }
 

@@ -153,8 +153,12 @@ struct RootView: View {
                 return
             }
             let result = await shareCenter.pullNextBatch()
-            // 解码期间用户可能已打开编辑器：编辑器 onAppear 会看到 incomingImages 并弹窗
-            if showEntryEditor || shareCenter.openEditorCount > 0 { return }
+            // 解码期间用户可能已打开编辑器：编辑器会看到 incomingImages 弹窗询问；
+            // 整批读取失败时交给编辑器提示
+            if showEntryEditor || shareCenter.openEditorCount > 0 {
+                if case .allFailed = result { shareCenter.deferReadFailureNotice() }
+                return
+            }
             if shareCenter.incomingImages != nil {
                 // 新拉到的一批，或编辑器里选了「新建记录」留下的一批
                 openShareEditor()

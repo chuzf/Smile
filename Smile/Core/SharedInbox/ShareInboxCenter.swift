@@ -19,6 +19,9 @@ final class ShareInboxCenter {
 
     /// 本进程内已经处理过（成功拉取或全部解码失败）的 batch id，
     /// 避免 `remove` 失败时本进程内反复回到前台又重复导入同一个 batch。
+    /// 有编辑器打开时整批照片都读取失败，等编辑器弹出「照片读取失败」后清除
+    private(set) var hasUnreportedReadFailure = false
+
     private var handledBatchIDs: Set<UUID> = []
     private var isPulling = false
 
@@ -51,13 +54,27 @@ final class ShareInboxCenter {
         handledBatchIDs.insert(batch.id)
         defer { isPulling = false }
 
-        let urls = inbox.fileURLs(in: batch)
+        // 解码前先把 batch 移出收件箱：解码 9 张大图是最可能 OOM 的一步，若在这里被系统杀掉，
+        // batch 已不在收件箱中，不会变成每次启动都重新触发崩溃的「毒 batch」。
+        // 分享进来的照片是拷贝（原图仍在相册里），崩溃时丢掉这一批可以接受。
+        let claimedURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ShareProcessing", isDirectory: true)
+            .appendingPathComponent(batch.id.uuidString, isDirectory: true)
+        let urls: [URL]
+        do {
+            try FileManager.default.createDirectory(at: claimedURL.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: claimedURL)
+            try FileManager.default.moveItem(at: batch.url, to: claimedURL)
+            urls = inbox.fileURLs(in: SharedInbox.Batch(id: batch.id, url: claimedURL, createdAt: batch.createdAt))
+        } catch {
+            // 移动失败时退回原地解码，handledBatchIDs 保证本进程内不会重复处理
+            urls = inbox.fileURLs(in: batch)
+        }
         let (images, failures) = await Task.detached {
             Self.decodeBatch(urls: urls)
         }.value
-
-        // 在照片被消费之前就删除 batch 是故意的：分享进来的照片是拷贝（原图仍在相册里），
-        // 先删除可以避免某个 batch 解码时 OOM 崩溃后，变成每次启动都会重新触发崩溃的「毒 batch」。
+        try? FileManager.default.removeItem(at: claimedURL)
         inbox.remove(batch)
 
         guard !images.isEmpty else { return .allFailed(failures: failures) }
@@ -76,6 +93,10 @@ final class ShareInboxCenter {
     func discardIncoming() {
         _ = takeIncoming()
     }
+
+    /// 整批读取失败但有编辑器打开（RootView 的弹窗会被挡住）时调用，交给编辑器提示
+    func deferReadFailureNotice() { hasUnreportedReadFailure = true }
+    func clearReadFailure() { hasUnreportedReadFailure = false }
 
     func purgeStaleTemporaries() {
         inbox?.purgeStaleTemporaries()

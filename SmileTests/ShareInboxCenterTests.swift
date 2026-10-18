@@ -166,6 +166,28 @@ struct ShareInboxCenterTests {
         #expect(center.incomingImages == nil)
     }
 
+    @Test func pullLeavesNoProcessingCopyBehind() async throws {
+        let inbox = makeInbox()
+        let batch = try commitBatch(inbox, good: 1, bad: 1)
+        let center = ShareInboxCenter(inbox: inbox)
+
+        _ = await center.pullNextBatch()
+
+        let processing = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ShareProcessing").appendingPathComponent(batch.id.uuidString)
+        #expect(!FileManager.default.fileExists(atPath: processing.path))
+        #expect(!FileManager.default.fileExists(atPath: batch.url.path))
+    }
+
+    @Test func readFailureNoticeCanBeDeferredAndCleared() {
+        let center = ShareInboxCenter(inbox: nil)
+        #expect(center.hasUnreportedReadFailure == false)
+        center.deferReadFailureNotice()
+        #expect(center.hasUnreportedReadFailure == true)
+        center.clearReadFailure()
+        #expect(center.hasUnreportedReadFailure == false)
+    }
+
     @Test func editorCountTracksAppearAndNeverGoesNegative() {
         let center = ShareInboxCenter(inbox: nil)
         center.editorDidAppear()
