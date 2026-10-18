@@ -593,10 +593,14 @@ struct iOSNoteEditorView: View {
     @MainActor
     private func insertPhotos(_ sources: [PhotoSource], extraReadFailures: Int = 0) async {
         pendingPhotoInserts += 1
+        // 入队时（视图一定还在）取好 center 与插入位置：排队等待期间视图可能已消失、光标也可能移动
+        let center = shareCenter
+        let anchor = focusedSegmentID
         let previous = insertChain
         let task = Task { @MainActor in
             await previous?.value
-            await performInsertPhotos(sources, extraReadFailures: extraReadFailures)
+            await performInsertPhotos(sources, extraReadFailures: extraReadFailures,
+                                      center: center, anchor: anchor)
         }
         insertChain = task
         await task.value
@@ -606,13 +610,11 @@ struct iOSNoteEditorView: View {
     /// `.file` 每次只解码一张全分辨率原图，避免多张大图同时驻留内存。
     /// 读取/编码 `.file` 失败计为读取失败（「照片读取失败」）；落盘失败为「照片插入失败」，两者只提示一个。
     @MainActor
-    private func performInsertPhotos(_ sources: [PhotoSource], extraReadFailures: Int) async {
-        // 视图消失后不再读取 environment：先把 center 取出来
-        let center = shareCenter
+    private func performInsertPhotos(_ sources: [PhotoSource], extraReadFailures: Int,
+                                     center: ShareInboxCenter, anchor: UUID?) async {
         let fileURLs = sources.compactMap { source -> URL? in
             if case .file(let url) = source { return url } else { return nil }
         }
-        let anchor = focusedSegmentID
         var drafts: [DraftAttachment] = []
         let mediaStore = MediaStore.production()
         var hadSaveFailure = false

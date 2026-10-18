@@ -30,7 +30,7 @@ final class ShareInboxCenter {
     private var isPulling = false
     /// `incomingPhotoURLs` 所在的认领目录；`purgeStaleTemporaries` 不能删它
     private var incomingDirectory: URL?
-    /// 已经 `takeIncoming` 交给编辑器、尚未 `finishHandOff` 的认领目录（标准化路径）。
+    /// 已经 `takeIncoming` 交给编辑器、尚未 `finishHandOff` 的认领目录名（batch UUID；用名字而非路径比较，避免 /var 与 /private/var 等别名不一致）。
     /// 编辑器可能在插入途中被挂起很久，不能只靠修改时间判断是否遗留
     private var handedOffDirectories: Set<String> = []
 
@@ -110,7 +110,7 @@ final class ShareInboxCenter {
     func takeIncoming() -> (urls: [URL], failures: Int) {
         let result = (urls: incomingPhotoURLs ?? [], failures: incomingFailures)
         if let dir = incomingDirectory, !result.urls.isEmpty {
-            handedOffDirectories.insert(dir.standardizedFileURL.path)
+            handedOffDirectories.insert(dir.lastPathComponent)
         }
         incomingPhotoURLs = nil
         incomingFailures = 0
@@ -129,7 +129,7 @@ final class ShareInboxCenter {
     /// 交接结束：删除仍残留的文件（目录空了一并删除），并让 `purgeStaleTemporaries` 不再保护这些目录
     func finishHandOff(of urls: [URL]) {
         for url in urls { Self.deleteHandedOffFile(url) }
-        for dir in Set(urls.map { $0.deletingLastPathComponent().standardizedFileURL.path }) {
+        for dir in Set(urls.map { $0.deletingLastPathComponent().lastPathComponent }) {
             handedOffDirectories.remove(dir)
         }
     }
@@ -155,8 +155,8 @@ final class ShareInboxCenter {
         let fm = FileManager.default
         let dirs = (try? fm.contentsOfDirectory(at: processingRoot, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
         var protected = handedOffDirectories
-        if let held = incomingDirectory?.standardizedFileURL.path { protected.insert(held) }
-        for dir in dirs where !protected.contains(dir.standardizedFileURL.path) {
+        if let held = incomingDirectory?.lastPathComponent { protected.insert(held) }
+        for dir in dirs where !protected.contains(dir.lastPathComponent) {
             // 读不到时间时不删，避免误删正在使用的目录
             guard let modified = try? dir.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
             else { continue }
