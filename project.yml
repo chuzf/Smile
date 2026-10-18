@@ -54,6 +54,10 @@ targets:
         UILaunchScreen:
           UIColorName: AccentColor
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.chuzhanfeng.smile
+            CFBundleURLSchemes:
+              - smilejar
         CFBundleDocumentTypes:
           - CFBundleTypeName: "Smile备份"
             CFBundleTypeRole: Editor
