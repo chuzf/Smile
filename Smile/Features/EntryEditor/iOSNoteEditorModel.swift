@@ -256,6 +256,12 @@ enum EditorSegment: Identifiable {
         }
     }
 
+    /// 取消尚未触发的自动保存（放弃编辑时调用，避免关闭后再写库）
+    func cancelAutoSave() {
+        autoSaveTask?.cancel()
+        autoSaveTask = nil
+    }
+
     @MainActor
     func performAutoSave() async {
         isSaving = true

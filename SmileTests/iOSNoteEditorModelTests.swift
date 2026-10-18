@@ -15,6 +15,18 @@ struct iOSNoteEditorModelTests {
         #expect(model.isDirty == true)
     }
 
+    @Test("cancelAutoSave stops pending autosave without touching dirty flag")
+    func cancelAutoSave_keepsDirtyAndIsIdempotent() {
+        let model = iOSNoteEditorModel()
+        model.scheduleAutoSave()
+
+        model.cancelAutoSave()
+        model.cancelAutoSave()   // 重复调用安全
+
+        #expect(model.isDirty == true)
+        #expect(model.autoSaveSignal == 0)
+    }
+
     @Test("Reset clears all state")
     func reset_clearsAllState() {
         let model = iOSNoteEditorModel()

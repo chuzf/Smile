@@ -59,6 +59,10 @@ struct iOSNoteEditorView: View {
     @State private var isRegisteredWithShareCenter = false
     /// initialImages 只插入一次（onAppear 可能重复触发）
     @State private var didConsumeInitialImages = false
+    /// 已开始关闭（dismiss 已调用）；此后不再接收分享照片、不再自动保存、不再写入照片
+    @State private var isClosing = false
+    /// 正在进行中的 insertPhotos 调用数；编码期间 model 还没更新，编辑器看起来仍是空白
+    @State private var pendingPhotoInserts = 0
     @FocusState private var focusedSegmentID: UUID?
 
     private var allGroups: [Group] { builtinGroups + customGroups }
@@ -101,7 +105,7 @@ struct iOSNoteEditorView: View {
                 let failures = initialImageFailures
                 Task {
                     await insertPhotos(images)
-                    if failures > 0 { showInsertPhotoError = true }
+                    if failures > 0 && !isClosing { showInsertPhotoError = true }
                     onInitialImagesConsumed?()
                 }
             }
@@ -190,10 +194,7 @@ struct iOSNoteEditorView: View {
             }
         }
         .alert("未保存的修改", isPresented: $showUnsavedAlert) {
-            Button("放弃", role: .destructive) {
-                discardUnsavedDraftMedia()
-                dismiss()
-            }
+            Button("放弃", role: .destructive) { discardAndClose() }
             Button("保存") { Task { await save() } }
             Button("继续编辑", role: .cancel) { }
         } message: { Text("有未保存的修改，确定放弃吗？") }
@@ -484,9 +485,22 @@ struct iOSNoteEditorView: View {
         if model.isDirty {
             showUnsavedAlert = true
         } else {
-            discardUnsavedDraftMedia()
-            dismiss()
+            discardAndClose()
         }
+    }
+
+    /// 本视图所有关闭都走这里：先标记 isClosing，挡住之后到达的分享照片 / 自动保存 / 照片写入
+    private func close() {
+        isClosing = true
+        dismiss()
+    }
+
+    /// 放弃编辑并关闭：取消待触发的自动保存，清理未落库新记录的草稿照片
+    private func discardAndClose() {
+        isClosing = true
+        model.cancelAutoSave()
+        discardUnsavedDraftMedia()
+        dismiss()
     }
 
     private func handleComplete() { Task { await save() } }
@@ -573,7 +587,7 @@ struct iOSNoteEditorView: View {
         }
         onSaved?(group.id, entry.id)
         model.isDirty = false
-        dismiss()
+        close()
         return true
     }
 
@@ -603,7 +617,10 @@ struct iOSNoteEditorView: View {
         var drafts: [DraftAttachment] = []
         let mediaStore = MediaStore.production()
         var hadFailure = false
+        pendingPhotoInserts += 1
+        defer { pendingPhotoInserts -= 1 }
         for image in images {
+            guard !isClosing else { break }
             // JPEG 编码与缩略图生成较重，放到后台线程；落盘和状态修改留在主线程
             let encoded = await Task.detached(priority: .userInitiated) {
                 autoreleasepool { () -> (data: Data, thumbnail: UIImage?)? in
@@ -612,6 +629,7 @@ struct iOSNoteEditorView: View {
                     return (data, thumb)
                 }
             }.value
+            guard !isClosing else { break }
             guard let encoded else { hadFailure = true; continue }
             let filename = "photo-\(UUID().uuidString.prefix(8)).jpg"
             guard let relPath = try? mediaStore.save(data: encoded.data, entryID: entryDraftID, filename: filename) else { hadFailure = true; continue }
@@ -621,6 +639,11 @@ struct iOSNoteEditorView: View {
                 thumbnails[draft.id] = thumb
             }
             drafts.append(draft)
+        }
+        if isClosing {
+            // 编辑器已在关闭：本次写入但未进 model 的文件会成为孤儿，删掉
+            for draft in drafts { try? mediaStore.delete(relativePath: draft.relativePath) }
+            return
         }
         if hadFailure { showInsertPhotoError = true }
         guard !drafts.isEmpty else { return }
@@ -635,10 +658,13 @@ struct iOSNoteEditorView: View {
     }
 
     private func presentShareChoiceIfNeeded() {
-        guard let incoming = shareCenter.incomingImages,
+        // 已关闭/正在关闭的编辑器（onDisappear 后 model 被 reset，看起来是空白的）不能接收照片
+        guard isRegisteredWithShareCenter, !isClosing,
+              let incoming = shareCenter.incomingImages,
               !isPresentingOther, !showShareChoice else { return }
-        // 全新、空白、未改动的编辑器：不用问，直接插入
-        if editingEntryID == nil && !model.hasContent && !model.isDirty {
+        // 全新、空白、未改动、且不是从分享打开、也没有照片正在编码的编辑器：不用问，直接插入
+        if editingEntryID == nil && initialImages.isEmpty && pendingPhotoInserts == 0
+            && !model.hasContent && !model.isDirty {
             insertSharedPhotos()
             return
         }
@@ -657,13 +683,14 @@ struct iOSNoteEditorView: View {
     /// incomingImages 保留在 shareCenter 中，本编辑器关闭后由 RootView 用它新建记录
     @MainActor
     private func startNewEntryFromShare() async {
+        // 等收图询问框退场完，避免保存失败提示在它消失过程中被设置而被吞掉
+        try? await Task.sleep(for: .milliseconds(350))
         if canSave {
             // 保存失败时不做别的：保存失败提示关闭后 isPresentingOther 变回 false，
             // 照片仍在 shareCenter 中，会自动重新弹出收图询问
             await save()
         } else {
-            discardUnsavedDraftMedia()
-            dismiss()
+            discardAndClose()
         }
     }
 
@@ -696,7 +723,8 @@ struct iOSNoteEditorView: View {
     /// For new entries (editingEntryID == nil), checks if one was already created by a prior autosave.
     @MainActor
     private func performLightAutosave() async {
-        guard let groupID = model.selectedGroupID,
+        guard !isClosing,
+              let groupID = model.selectedGroupID,
               let group = allGroups.first(where: { $0.persistentModelID == groupID }),
               model.hasContent else { return }
 
