@@ -246,6 +246,8 @@ struct iOSNoteEditorView: View {
                 voiceAttachmentsList
             }
         }
+        // 正文是多行文字，回车只换行；下滑收起键盘，不然键盘一直占着下半屏
+        .scrollDismissesKeyboard(.interactively)
     }
 
     @ViewBuilder
@@ -260,7 +262,8 @@ struct iOSNoteEditorView: View {
                 alignment: alignment,
                 minHeight: 72,
                 focusedSegmentID: $focusedSegmentID,
-                onChange: { model.updateText($0, for: id) }
+                onChange: { model.updateText($0, for: id) },
+                onCursorChange: { model.insertionPoint = InsertionPoint(segmentID: id, offset: $0) }
             )
             .padding(.horizontal, 21)
             .padding(.vertical, 4)
@@ -764,8 +767,7 @@ struct iOSNoteEditorView: View {
            let img = UIImage(data: thumbData) {
             thumbnails[draft.id] = img
         }
-        let anchorID = focusedSegmentID
-        model.insertPhoto(draft, afterSegmentID: anchorID)
+        model.insertPhotos([draft], at: model.insertionPoint)
         model.isDirty = true
     }
 
@@ -782,14 +784,13 @@ struct iOSNoteEditorView: View {
     @MainActor
     private func insertPhotos(_ sources: [PhotoSource], extraReadFailures: Int = 0) async {
         pendingPhotoInserts += 1
-        // 入队时（视图一定还在）取好 center 与插入位置：排队等待期间视图可能已消失、光标也可能移动
+        // 入队时（视图一定还在）取好 center：排队等待期间视图可能已消失。
+        // 插入位置在真正插入时才取，前一批插入后插入点已移到它的照片之后，多批照片按先后顺序排列
         let center = shareCenter
-        let anchor = focusedSegmentID
         let previous = insertChain
         let task = Task { @MainActor in
             await previous?.value
-            await performInsertPhotos(sources, extraReadFailures: extraReadFailures,
-                                      center: center, anchor: anchor)
+            await performInsertPhotos(sources, extraReadFailures: extraReadFailures, center: center)
         }
         insertChain = task
         await task.value
@@ -800,7 +801,7 @@ struct iOSNoteEditorView: View {
     /// 读取/编码 `.file` 失败计为读取失败（「照片读取失败」）；落盘失败为「照片插入失败」，两者只提示一个。
     @MainActor
     private func performInsertPhotos(_ sources: [PhotoSource], extraReadFailures: Int,
-                                     center: ShareInboxCenter, anchor: UUID?) async {
+                                     center: ShareInboxCenter) async {
         let fileURLs = sources.compactMap { source -> URL? in
             if case .file(let url) = source { return url } else { return nil }
         }
@@ -863,7 +864,7 @@ struct iOSNoteEditorView: View {
         }
         guard !drafts.isEmpty else { return }
         sessionAddedDraftIDs.formUnion(drafts.map(\.id))
-        model.insertPhotos(drafts, afterSegmentID: anchor)
+        model.insertPhotos(drafts, at: model.insertionPoint)
         model.isDirty = true
     }
 

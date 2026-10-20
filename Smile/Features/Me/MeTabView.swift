@@ -22,6 +22,8 @@ struct MeTabView: View {
                 tagSection
                 settingsSection
             }
+            // 搜索后往下翻结果时收起键盘，不然键盘挡住半屏结果
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("我")
             .navigationDestination(item: $searchNavEntry) { entry in
                 EntryDetailView(entry: entry)

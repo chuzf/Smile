@@ -94,6 +94,7 @@ struct EditGroupSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("编辑分组")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -38,6 +38,12 @@ enum EditorSegment: Identifiable {
     }
 }
 
+/// 文字块里的一个光标位置，offset 按 UTF-16 计（与 UITextView 的 NSRange 一致）
+struct InsertionPoint: Equatable {
+    var segmentID: UUID
+    var offset: Int
+}
+
 // MARK: - iOSNoteEditorModel
 
 @Observable final class iOSNoteEditorModel {
@@ -54,6 +60,8 @@ enum EditorSegment: Identifiable {
     var lastAutoSaveTime: Date = Date.distantPast
     // Incremented each time performAutoSave fires so the view can react and persist.
     private(set) var autoSaveSignal: Int = 0
+    /// 最后一次光标所在位置，收起键盘后仍保留，相册、拍摄的照片插在这里。只在插入时读取，不触发界面刷新
+    @ObservationIgnored var insertionPoint: InsertionPoint?
 
     private var autoSaveTask: Task<Void, Never>?
 
@@ -106,33 +114,44 @@ enum EditorSegment: Identifiable {
 
     // MARK: Photo insertion / removal
 
-    func insertPhoto(_ draft: DraftAttachment, afterSegmentID: UUID?) {
-        guard let anchorID = afterSegmentID,
-              let anchorIdx = segments.firstIndex(where: { $0.id == anchorID }) else {
-            segments.append(.photo(draft))
-            segments.append(.text(id: UUID(), content: "", alignment: .leading))
-            return
-        }
-        segments.insert(.photo(draft), at: anchorIdx + 1)
-        segments.insert(.text(id: UUID(), content: "", alignment: .leading), at: anchorIdx + 2)
-    }
-
-    func insertPhotos(_ drafts: [DraftAttachment], afterSegmentID: UUID?) {
+    /// 在 `point` 处把文字块拆开插入照片；没有插入点或文字块已不存在时加在最后。
+    /// 插入后插入点移到最后一张照片之后，连续插入的照片按先后顺序排列
+    func insertPhotos(_ drafts: [DraftAttachment], at point: InsertionPoint?) {
         guard !drafts.isEmpty else { return }
-        if let anchorID = afterSegmentID,
-           let anchorIdx = segments.firstIndex(where: { $0.id == anchorID }) {
-            var offset = 1
-            for draft in drafts {
-                segments.insert(.photo(draft), at: anchorIdx + offset)
-                segments.insert(.text(id: UUID(), content: "", alignment: .leading), at: anchorIdx + offset + 1)
-                offset += 2
-            }
-        } else {
+        guard let point,
+              let idx = segments.firstIndex(where: { $0.id == point.segmentID }),
+              case .text(let id, let content, let alignment) = segments[idx] else {
             for draft in drafts {
                 segments.append(.photo(draft))
                 segments.append(.text(id: UUID(), content: "", alignment: .leading))
             }
+            insertionPoint = nil
+            return
         }
+        let text = content as NSString
+        var offset = min(max(point.offset, 0), text.length)
+        // 第一行是标题，不能拆：光标在标题里时插在标题之后
+        if idx == segments.firstIndex(where: { if case .text = $0 { return true } else { return false } }) {
+            let titleEnd = text.range(of: "\n").location
+            offset = max(offset, titleEnd == NSNotFound ? text.length : titleEnd)
+        }
+        var before = text.substring(to: offset)
+        var after = text.substring(from: offset)
+        // 光标在行首或行尾时去掉照片两侧的换行，否则照片上下会多出空行
+        if before.hasSuffix("\n") { before.removeLast() }
+        if after.hasPrefix("\n") { after.removeFirst() }
+
+        var inserted: [EditorSegment] = [.text(id: id, content: before, alignment: alignment)]
+        for (i, draft) in drafts.enumerated() {
+            inserted.append(.photo(draft))
+            if i < drafts.count - 1 {
+                inserted.append(.text(id: UUID(), content: "", alignment: .leading))
+            }
+        }
+        let afterID = UUID()
+        inserted.append(.text(id: afterID, content: after, alignment: alignment))
+        segments.replaceSubrange(idx...idx, with: inserted)
+        insertionPoint = InsertionPoint(segmentID: afterID, offset: 0)
     }
 
     func removePhoto(id: UUID) {
@@ -235,6 +254,7 @@ enum EditorSegment: Identifiable {
         lastAutoSaveTime = Date.distantPast
         dictationTargetSegmentID = nil
         dictationBaseText = ""
+        insertionPoint = nil
     }
 
     // MARK: Other
@@ -287,6 +307,7 @@ enum EditorSegment: Identifiable {
         autoSaveSignal = 0
         dictationTargetSegmentID = nil
         dictationBaseText = ""
+        insertionPoint = nil
     }
 
     // MARK: Private
@@ -364,13 +385,18 @@ enum EditorSegment: Identifiable {
     private func collapseAdjacentTextSegments() {
         var result: [EditorSegment] = []
         for seg in segments {
-            if case .text(_, let newContent, _) = seg,
+            if case .text(let newID, let newContent, _) = seg,
                let last = result.last, case .text(let lastID, let lastContent, let lastAlignment) = last {
                 // Deliberate: keep the earlier segment's alignment; mixing alignments on merge is not supported.
                 // 两段之间原来隔着照片，合并时另起一行；否则后段会接在前段末行，前段只有标题时正文会并进标题
                 let needsNewline = !lastContent.isEmpty && !newContent.isEmpty
                     && !lastContent.hasSuffix("\n") && !newContent.hasPrefix("\n")
-                let merged = lastContent + (needsNewline ? "\n" : "") + newContent
+                let prefix = lastContent + (needsNewline ? "\n" : "")
+                let merged = prefix + newContent
+                // 插入点所在的块被并进前一块时跟着平移，不然下次插照片会跑到最后
+                if let point = insertionPoint, point.segmentID == newID {
+                    insertionPoint = InsertionPoint(segmentID: lastID, offset: prefix.utf16.count + point.offset)
+                }
                 result[result.count - 1] = .text(id: lastID, content: merged, alignment: lastAlignment)
             } else {
                 result.append(seg)

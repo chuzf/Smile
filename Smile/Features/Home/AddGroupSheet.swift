@@ -45,6 +45,7 @@ struct AddGroupSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("新建分组")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

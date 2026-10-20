@@ -9,6 +9,11 @@ struct AISettingsView: View {
     @State private var keyInput = ""
     @State private var keyError: String?
     @State private var testState: TestState = .idle
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case baseURL, model, apiKey, customPrompt
+    }
 
     private enum TestState: Equatable {
         case idle, testing, success
@@ -30,12 +35,14 @@ struct AISettingsView: View {
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .focused($focusedField, equals: .baseURL)
                 if !config.baseURL.isEmpty && config.validatedBaseURL == nil {
                     Text("请填写以 https:// 开头的地址").font(.footnote).foregroundStyle(.red)
                 }
                 TextField("模型", text: $config.model)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .focused($focusedField, equals: .model)
                 if config.preset == .doubao {
                     Text("填写方舟控制台中的模型 ID 或接入点 ID").font(.footnote).foregroundStyle(.secondary)
                 }
@@ -45,6 +52,7 @@ struct AISettingsView: View {
                 SecureField(hasSavedKey ? "已保存（输入新值可覆盖）" : "粘贴 API Key", text: $keyInput)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .focused($focusedField, equals: .apiKey)
                     .onSubmit { saveKeyIfNeeded() }
                 if hasSavedKey {
                     Button("清除 Key", role: .destructive, action: clearKey)
@@ -61,11 +69,13 @@ struct AISettingsView: View {
                 if config.style == .custom {
                     TextEditor(text: $config.customPrompt)
                         .frame(minHeight: 120)
+                        .focused($focusedField, equals: .customPrompt)
                 }
             }
 
             Section {
                 Button {
+                    focusedField = nil
                     Task { await testConnection() }
                 } label: {
                     HStack {
@@ -81,6 +91,14 @@ struct AISettingsView: View {
         }
         .navigationTitle("AI 整理")
         .navigationBarTitleDisplayMode(.inline)
+        // 自定义提示词的 TextEditor 回车只会换行，Form 默认也不会因滑动或点空白收起键盘，需另给收起的办法
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完成") { focusedField = nil }
+            }
+        }
         .onAppear {
             guard !loaded else { return }
             loaded = true
@@ -90,6 +108,10 @@ struct AISettingsView: View {
         .onChange(of: config) { _, newValue in
             store.save(newValue)
             testState = .idle
+        }
+        .onChange(of: focusedField) { oldValue, _ in
+            // 不按回车直接离开 Key 输入框时也保存，否则要等退出页面才写入
+            if oldValue == .apiKey { saveKeyIfNeeded() }
         }
         .onDisappear { saveKeyIfNeeded() }
     }

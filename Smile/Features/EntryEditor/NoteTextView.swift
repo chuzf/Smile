@@ -10,6 +10,8 @@ struct NoteTextView: UIViewRepresentable {
     let minHeight: CGFloat
     @Binding var focusedSegmentID: UUID?
     let onChange: (String) -> Void
+    /// 用户移动光标或输入时回报光标位置（UTF-16 偏移）
+    var onCursorChange: (Int) -> Void = { _ in }
 
     static let titleFont = UIFont.systemFont(ofSize: 22, weight: .bold)
     static let bodyFont = UIFont.systemFont(ofSize: 16, weight: .regular)
@@ -35,10 +37,13 @@ struct NoteTextView: UIViewRepresentable {
         // 外部改动（语音输入、AI 整理替换等）；输入法组字期间不动文字，以免打断
         if view.text != text, view.markedTextRange == nil {
             let selection = view.selectedRange
+            // 外部改文字引起的光标变化不算用户移动光标，不回报
+            coordinator.isApplyingExternalText = true
             view.text = text
             let length = (text as NSString).length
             view.selectedRange = NSRange(location: min(selection.location, length), length: 0)
             coordinator.applyStyle(to: view)
+            coordinator.isApplyingExternalText = false
         } else if styleChanged {
             coordinator.applyStyle(to: view)
         }
@@ -62,6 +67,7 @@ struct NoteTextView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     final class Coordinator: NSObject, UITextViewDelegate {
+        var isApplyingExternalText = false
         var parent: NoteTextView
 
         init(_ parent: NoteTextView) { self.parent = parent }
@@ -110,6 +116,9 @@ struct NoteTextView: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ view: UITextView) {
             if view.markedTextRange == nil { updateTypingAttributes(of: view) }
+            if !isApplyingExternalText, view.isFirstResponder {
+                parent.onCursorChange(view.selectedRange.location)
+            }
         }
 
         func textViewDidBeginEditing(_ view: UITextView) {

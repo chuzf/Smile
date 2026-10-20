@@ -152,6 +152,8 @@ struct GroupDetailView: View {
                 }
                 .padding(.bottom, 30)
             }
+            // 搜索后往下翻结果时收起键盘，不然键盘挡住半屏结果
+            .scrollDismissesKeyboard(.immediately)
         }
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)

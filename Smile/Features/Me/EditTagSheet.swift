@@ -39,6 +39,7 @@ struct EditTagSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("编辑标签")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
