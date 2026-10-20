@@ -340,7 +340,7 @@ struct iOSNoteEditorView: View {
                 .opacity(recordingPulse ? 1.0 : 0.3)
                 .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true),
                            value: recordingPulse)
-            Text("● 正在录音 · 听写中")
+            Text("● 正在录音 · 口述中")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.red)
             Spacer()
@@ -354,80 +354,44 @@ struct iOSNoteEditorView: View {
         .onAppear { recordingPulse = true }
     }
 
-    @ViewBuilder
+    /// 图标在上、文字在下，六个按钮平分整行，窄屏也不会把文字挤到折行
     private var toolbarRow: some View {
-        HStack(spacing: 14) {
-            Button { showPhotoPicker = true } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "photo.on.rectangle")
-                    Text("相册")
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(AppColors.warmOrange)
+        HStack(spacing: 0) {
+            toolbarButton("相册", systemImage: "photo.on.rectangle") { showPhotoPicker = true }
+                .disabled(dictationService.isActive)
+            toolbarButton("拍摄", systemImage: "camera") { showCamera = true }
+                .disabled(dictationService.isActive)
+            if dictationService.isActive {
+                toolbarButton("停止", systemImage: "mic.fill", tint: .red) { handleDictationTap() }
+            } else {
+                toolbarButton("口述", systemImage: "mic") { handleDictationTap() }
             }
-            .disabled(dictationService.isActive)
-            Button { showCamera = true } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "camera")
-                    Text("拍摄")
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(AppColors.warmOrange)
-            }
-            .disabled(dictationService.isActive)
-            Button { handleDictationTap() } label: {
-                if dictationService.isActive {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 28, height: 28)
-                        Circle()
-                            .stroke(Color.red.opacity(0.3), lineWidth: 4)
-                            .frame(width: 36, height: 36)
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.white)
-                    }
-                } else {
-                    HStack(spacing: 4) {
-                        Image(systemName: "mic")
-                        Text("听写")
-                    }
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppColors.warmOrange)
-                }
-            }
-            Button { showVoiceRecorder = true } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "mic.badge.plus")
-                    Text("语音")
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(AppColors.warmOrange)
-            }
-            .disabled(dictationService.isActive)
-            Button { showTagPicker = true } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "number")
-                    Text("标签")
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(AppColors.warmOrange)
-            }
-            .disabled(dictationService.isActive)
-            Button { startFormatting() } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "wand.and.stars")
-                    Text("整理")
-                }
-                .font(.system(size: 13))
-                .foregroundStyle(AppColors.warmOrange)
-            }
-            .disabled(dictationService.isActive || isFormatting || pendingPhotoInserts > 0 || !model.canFormat)
-            Spacer()
+            toolbarButton("录音", systemImage: "mic.badge.plus") { showVoiceRecorder = true }
+                .disabled(dictationService.isActive)
+            toolbarButton("标签", systemImage: "number") { showTagPicker = true }
+                .disabled(dictationService.isActive)
+            toolbarButton("整理", systemImage: "wand.and.stars") { startFormatting() }
+                .disabled(dictationService.isActive || isFormatting || pendingPhotoInserts > 0 || !model.canFormat)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+    }
+
+    private func toolbarButton(_ title: String, systemImage: String, tint: Color = AppColors.warmOrange,
+                               action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 18))
+                    .frame(height: 22)
+                Text(title)
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
     }
 
     // MARK: - AI 整理
