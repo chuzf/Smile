@@ -89,6 +89,14 @@ struct AIConfig: Codable, Equatable {
 
     var trimmedModel: String { model.trimmingCharacters(in: .whitespacesAndNewlines) }
 
+    /// 内容会发往的主机名（小写）；同意发送按它记录，换了服务商地址要重新征得同意
+    var consentHost: String? { validatedBaseURL?.host()?.lowercased() }
+
+    /// 同意弹窗里给用户看的服务商名称
+    var providerDisplayName: String {
+        preset == .custom ? (consentHost ?? "自定义服务商") : preset.displayName
+    }
+
     func isComplete(apiKey: String?) -> Bool {
         guard validatedBaseURL != nil, !trimmedModel.isEmpty,
               let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty
@@ -141,4 +149,22 @@ struct AIConfigStore {
     }
 
     var isConfigured: Bool { load().isComplete(apiKey: loadAPIKey()) }
+
+    // MARK: 发送内容的同意
+
+    static let consentedHostsKey = "ai_consented_hosts"
+
+    /// 用户是否已同意把记录内容发送到这个主机
+    func hasConsent(for host: String) -> Bool {
+        let hosts = defaults.stringArray(forKey: Self.consentedHostsKey) ?? []
+        return hosts.contains(host.lowercased())
+    }
+
+    func recordConsent(for host: String) {
+        var hosts = defaults.stringArray(forKey: Self.consentedHostsKey) ?? []
+        let host = host.lowercased()
+        guard !hosts.contains(host) else { return }
+        hosts.append(host)
+        defaults.set(hosts, forKey: Self.consentedHostsKey)
+    }
 }

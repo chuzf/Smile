@@ -23,6 +23,8 @@ struct RootView: View {
     @State private var deferredShareCheck = false
     /// 每次 openShareEditor 递增，看门狗只复位自己那一次的呈现
     @State private var shareEditorPresentGen = 0
+    /// 别的 sheet / 全屏页挡着时，等它关闭后再弹分享编辑器或读取失败提示
+    @State private var sharePresentRetryTask: Task<Void, Never>?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -161,9 +163,11 @@ struct RootView: View {
             }
             if shareCenter.incomingPhotoURLs != nil {
                 // 新拉到的一批，或编辑器里选了「新建记录」留下的一批
-                openShareEditor()
+                presentWhenUnblocked {
+                    if shareCenter.incomingPhotoURLs != nil { openShareEditor() }
+                }
             } else if case .allFailed = result {
-                showShareReadError = true
+                presentWhenUnblocked { showShareReadError = true }
             }
         }
     }
@@ -177,12 +181,53 @@ struct RootView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1))
             guard gen == shareEditorPresentGen else { return }
-            // 呈现失败（已有别的 sheet/alert 在呈现）：复位，否则 + 号与后续分享都会失效。
-            // 照片仍在 shareCenter 中，下次回到前台或编辑器数量变化时会重试
+            // 呈现失败：复位，否则 + 号与后续分享都会失效。照片仍在 shareCenter 中。
+            // 是被弹层挡住的（检查之后才出现），等它关闭后再试；原因不明时不立即重试，
+            // 避免死循环，留给回到前台或编辑器数量变化时重试
             if showEntryEditor && shareCenter.openEditorCount == 0 {
                 showEntryEditor = false
+                if Self.isOtherPresentationActive() {
+                    presentWhenUnblocked {
+                        if shareCenter.incomingPhotoURLs != nil { openShareEditor() }
+                    }
+                }
             }
         }
+    }
+
+    /// 根视图上已有别的 sheet / 全屏页 / alert 时，再呈现会被系统拒绝，而且关掉挡着的弹层不会触发任何重试。
+    /// 这里在没有遮挡时立即执行，否则每 0.5 秒检查一次，遮挡消失并等退场动画结束后再执行。
+    /// 期间若照片已被别处取走、或已有编辑器打开（比如用户点了 +），就不再执行。
+    private func presentWhenUnblocked(_ present: @escaping () -> Void) {
+        sharePresentRetryTask?.cancel()
+        guard Self.isOtherPresentationActive() else {
+            sharePresentRetryTask = nil
+            present()
+            return
+        }
+        sharePresentRetryTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled, !showEntryEditor, shareCenter.openEditorCount == 0 else { return }
+                guard !Self.isOtherPresentationActive() else { continue }
+                // 等挡着的弹层退场动画结束
+                try? await Task.sleep(for: .milliseconds(350))
+                guard !Task.isCancelled, !showEntryEditor, shareCenter.openEditorCount == 0 else { return }
+                guard !Self.isOtherPresentationActive() else { continue }
+                sharePresentRetryTask = nil
+                present()
+                return
+            }
+        }
+    }
+
+    /// 前台窗口的根控制器上是否正有别的呈现（sheet、全屏页、alert）
+    private static func isOtherPresentationActive() -> Bool {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .filter(\.isKeyWindow)
+            .contains { $0.rootViewController?.presentedViewController != nil }
     }
 
     private func handleEditorDismiss() {

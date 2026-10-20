@@ -49,6 +49,18 @@ struct TextFormattingServiceTests {
         #expect(prompt.contains("放到第 1 个正文块"))
     }
 
+    @Test func normalizeTitleMakesSingleTrimmedLine() {
+        #expect(TextFormattingService.normalizeTitle("\u{3000}\u{3000}周末\n去爬山 ") == "周末 去爬山")
+        #expect(TextFormattingService.normalizeTitle("周末\r\n\n爬山") == "周末 爬山")
+        #expect(TextFormattingService.normalizeTitle(" \u{3000}\n") == "")
+    }
+
+    @Test func formatNormalizesTitleForPreview() async throws {
+        let (svc, _) = service(#"{"title":"　　周末\n去爬山","segments":["a",""]}"#)
+        let result = try await svc.format(input)
+        #expect(result.title == "周末 去爬山")
+    }
+
     @Test func normalizeParagraphsIndentsAndSeparates() {
         #expect(TextFormattingService.normalizeParagraphs("第一段。\n第二段。") == "\u{3000}\u{3000}第一段。\n\n\u{3000}\u{3000}第二段。")
         // 已有缩进（半角/全角/制表符）统一成两个全角空格，多余空行合并

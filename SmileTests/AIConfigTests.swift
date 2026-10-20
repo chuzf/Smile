@@ -30,6 +30,26 @@ struct AIConfigTests {
         #expect(c.style == .light)
     }
 
+    @Test func consentIsRecordedPerHost() {
+        let (store, _) = makeStore()
+        #expect(!store.hasConsent(for: "api.moonshot.cn"))
+        store.recordConsent(for: "API.Moonshot.cn")
+        store.recordConsent(for: "api.moonshot.cn")   // 重复记录不出错
+        #expect(store.hasConsent(for: "api.moonshot.cn"))
+        #expect(!store.hasConsent(for: "api.anthropic.com"))
+    }
+
+    @Test func consentHostAndProviderName() {
+        #expect(AIConfig.default.consentHost == "api.moonshot.cn")
+        #expect(AIConfig.default.providerDisplayName == "Kimi")
+        var custom = AIConfig.default.applyingPreset(.custom)
+        custom.baseURL = "https://GW.example.com/v1"
+        #expect(custom.consentHost == "gw.example.com")
+        #expect(custom.providerDisplayName == "gw.example.com")
+        custom.baseURL = "http://insecure.example.com"
+        #expect(custom.consentHost == nil)
+    }
+
     @Test func loadReturnsDefaultWhenNothingSaved() {
         let (store, _) = makeStore()
         #expect(store.load() == .default)

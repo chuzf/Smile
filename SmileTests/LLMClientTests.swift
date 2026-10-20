@@ -150,8 +150,17 @@ struct LLMClientTests {
         #expect(body["max_tokens"] as? Int == 16000)
         #expect(body["system"] as? String == "S")
         #expect(body["temperature"] == nil)
+        #expect(body["output_config"] as? [String: String] == ["effort": "low"])
         let messages = try #require(body["messages"] as? [[String: String]])
         #expect(messages == [["role": "user", "content": "U"]])
+    }
+
+    @Test func anthropicOmitsEffortForModelsWithoutIt() async throws {
+        respond(200, #"{"content":[{"type":"text","text":"OK"}]}"#)
+        let client = AnthropicClient(baseURL: URL(string: "https://api.anthropic.com")!, model: "claude-haiku-4-5",
+                                     apiKey: "sk-ant", session: StubURLProtocol.session())
+        _ = try await client.complete(system: "S", user: "U")
+        #expect(try bodyJSON()["output_config"] == nil)
     }
 
     @Test func openAIFullEndpointIsNotDuplicated() async throws {
@@ -183,9 +192,22 @@ struct LLMClientTests {
         await #expect(throws: LLMError.timeout) { try await openAI().complete(system: "S", user: "U") }
     }
 
-    @Test func cancelledRequestThrowsCancellationError() async {
+    @Test func cancelledTaskThrowsCancellationError() async {
         StubURLProtocol.handler = { _ in throw URLError(.cancelled) }
-        await #expect(throws: CancellationError.self) { try await anthropic().complete(system: "S", user: "U") }
+        let client = anthropic()
+        let task = Task { try await client.complete(system: "S", user: "U") }
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+    }
+
+    @Test func systemCancelledWithoutTaskCancellationIsNetworkError() async {
+        // 任务没被取消、URLSession 自己返回 -999：要提示，不能当作用户取消
+        StubURLProtocol.handler = { _ in throw URLError(.cancelled) }
+        await #expect {
+            try await anthropic().complete(system: "S", user: "U")
+        } throws: { error in
+            if case LLMError.network = error { return true } else { return false }
+        }
     }
 
     @Test func anthropicRefusalThrowsEmptyResponse() async {

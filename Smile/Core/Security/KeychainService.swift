@@ -15,12 +15,19 @@ struct KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
         ]
-        SecItemDelete(query as CFDictionary)
-
-        var add = query
-        add[kSecValueData as String] = data
         // ThisDeviceOnly prevents API keys syncing via iCloud Keychain or encrypted backups.
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        // 先就地更新，不存在时再添加；不再先删后加，写入失败时旧值仍在
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecSuccess { return }
+        guard updateStatus == errSecItemNotFound else {
+            throw KeychainError.osStatus(updateStatus)
+        }
+
+        let add = query.merging(attributes) { _, new in new }
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess else {
             throw KeychainError.osStatus(status)

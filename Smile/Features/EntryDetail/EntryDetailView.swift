@@ -67,12 +67,13 @@ struct EntryDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(entry.title.isEmpty ? "(无标题)" : entry.title)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Color(uiColor: ArticleStyle.bodyColor))
-                    .lineSpacing(6)
-                    .multilineTextAlignment(.center)
-                    .textSelection(.enabled)
+                // 占位文字不能被选择复制
+                if entry.title.isEmpty {
+                    titleText("(无标题)")
+                } else {
+                    titleText(entry.title)
+                        .textSelection(.enabled)
+                }
                 if entry.titleSource == .ai {
                     Image(systemName: "sparkles")
                         .font(.system(size: 12))
@@ -88,6 +89,14 @@ struct EntryDetailView: View {
             }
             .font(.system(size: 14))
         }
+    }
+
+    private func titleText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 22, weight: .bold))
+            .foregroundStyle(Color(uiColor: ArticleStyle.bodyColor))
+            .lineSpacing(6)
+            .multilineTextAlignment(.center)
     }
 
     /// 正文段之间、正文与图片之间的间距
@@ -110,6 +119,9 @@ struct EntryDetailView: View {
                             DetailPhotoView(url: url, cornerRadius: style.metrics.photoCornerRadius) {
                                 openViewer(at: url, in: segs)
                             }
+                            // ForEach 按下标标识：照片增删后同一下标会换成别的照片，按 url 新建视图，
+                            // 否则会先显示旧图，原位置解码失败过的话新照片一直不显示
+                            .id(url)
                         }
                     }
                 }

@@ -39,7 +39,17 @@ struct TextFormattingService {
         var result = try Self.parse(reply, expectedSegments: input.segments.count)
         // 模型常漏掉段首缩进或段间空行，统一规整一次
         result.segments = result.segments.map(Self.normalizeParagraphs)
+        // 预览和写回都用规整后的标题，用户在预览里看到的就是最终写入的
+        result.title = Self.normalizeTitle(result.title)
         return result
+    }
+
+    /// 标题只能一行：每行去掉首尾空白（含全角缩进），去掉空行，用空格连成一行
+    static func normalizeTitle(_ title: String) -> String {
+        title.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     static let paragraphIndent = "\u{3000}\u{3000}"

@@ -367,7 +367,11 @@ enum EditorSegment: Identifiable {
             if case .text(_, let newContent, _) = seg,
                let last = result.last, case .text(let lastID, let lastContent, let lastAlignment) = last {
                 // Deliberate: keep the earlier segment's alignment; mixing alignments on merge is not supported.
-                result[result.count - 1] = .text(id: lastID, content: lastContent + newContent, alignment: lastAlignment)
+                // 两段之间原来隔着照片，合并时另起一行；否则后段会接在前段末行，前段只有标题时正文会并进标题
+                let needsNewline = !lastContent.isEmpty && !newContent.isEmpty
+                    && !lastContent.hasSuffix("\n") && !newContent.hasPrefix("\n")
+                let merged = lastContent + (needsNewline ? "\n" : "") + newContent
+                result[result.count - 1] = .text(id: lastID, content: merged, alignment: lastAlignment)
             } else {
                 result.append(seg)
             }

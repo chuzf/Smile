@@ -63,11 +63,23 @@ struct iOSNoteEditorView: View {
     @State private var pendingFormattingError: String?
     @State private var showAISetupAlert = false
     @State private var showAISettings = false
+    /// 首次向某个服务商发送内容前征得同意；非 nil 时显示同意弹窗
+    @State private var aiConsentRequest: AIConsentRequest?
     @State private var focusedSegmentID: UUID?
     /// 自动保存是否已写过库；放弃时据此撤销
     @State private var hasAutosaved = false
     /// 编辑已有记录时，打开那一刻的内容；放弃时用它撤销自动保存写进去的改动
     @State private var originalEntryState: OriginalEntryState?
+    /// 本次编辑会话里新写入 MediaStore 的附件（照片、录音）。只有它们可以在移除或放弃时直接删文件；
+    /// 打开时就在正文里的照片即使没有附件行（自动保存后 App 被杀）也仍被记录引用，不能删
+    @State private var sessionAddedDraftIDs: Set<UUID> = []
+    /// 移除的、打开时就存在的附件文件；保存成功后才删，放弃时保留
+    @State private var removedExistingPaths: [String] = []
+
+    fileprivate struct AIConsentRequest {
+        let host: String
+        let providerName: String
+    }
 
     private struct OriginalEntryState {
         let title: String
@@ -91,12 +103,15 @@ struct iOSNoteEditorView: View {
                 )
                 Divider()
                 GroupSelector(
-                    selectedGroupID: $model.selectedGroupID,
+                    selectedGroupID: groupBinding,
                     builtinGroups: builtinGroups,
                     customGroups: customGroups
                 )
                 Divider()
                 editorScrollView
+                if pendingPhotoInserts > 0 {
+                    photoInsertStatusBar
+                }
                 if dictationService.isActive {
                     dictationStatusBar
                 }
@@ -144,8 +159,8 @@ struct iOSNoteEditorView: View {
         }
         .shareHandling(self)
         .formattingHandling(self)
-        // 有未保存的修改时不能直接下滑关闭，和返回按钮一样询问保存还是放弃
-        .interactiveDismissDisabled(model.isDirty)
+        // 有未保存的修改（含正在写入的照片）时不能直接下滑关闭，和返回按钮一样询问保存还是放弃
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .onSheetDismissAttempt { handleBack() }
         .onChange(of: model.autoSaveSignal) { _, signal in
             guard signal > 0 else { return }
@@ -165,9 +180,14 @@ struct iOSNoteEditorView: View {
             }
         }
         .sheet(isPresented: $showVoiceRecorder) {
-            VoiceRecorderView(entryDraftID: entryDraftID) { draft in model.voiceAttachments.append(draft) }
+            VoiceRecorderView(entryDraftID: entryDraftID) { draft in
+                sessionAddedDraftIDs.insert(draft.id)
+                model.voiceAttachments.append(draft)
+                // 不等转写完成：转写期间关闭也要询问
+                model.isDirty = true
+            }
         }
-        .sheet(isPresented: $showTagPicker) { TagPickerSheet(selected: $model.selectedTags) }
+        .sheet(isPresented: $showTagPicker) { TagPickerSheet(selected: tagsBinding) }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoLibraryPickerView { images in
                 showPhotoPicker = false
@@ -296,6 +316,20 @@ struct iOSNoteEditorView: View {
         }
     }
 
+    /// 照片后台编码期间编辑器里还看不到它们，提示正在添加，避免用户以为没收到而退出
+    private var photoInsertStatusBar: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text("正在添加照片…")
+                .font(.system(size: 13))
+                .foregroundStyle(AppColors.textSecondary)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
     @ViewBuilder
     private var dictationStatusBar: some View {
         HStack(spacing: 8) {
@@ -418,12 +452,18 @@ struct iOSNoteEditorView: View {
         }
     }
 
-    private func startFormatting() {
+    fileprivate func startFormatting() {
         guard !isFormatting else { return }
         let store = AIConfigStore()
         let config = store.load()
-        guard let apiKey = store.loadAPIKey(), config.isComplete(apiKey: apiKey) else {
+        guard let apiKey = store.loadAPIKey(), config.isComplete(apiKey: apiKey),
+              let host = config.consentHost else {
             showAISetupAlert = true
+            return
+        }
+        // 内容会发给第三方服务商：第一次发往这个地址前先说明并征得同意（App Store 审核指南 5.1.2）
+        guard store.hasConsent(for: host) else {
+            aiConsentRequest = AIConsentRequest(host: host, providerName: config.providerDisplayName)
             return
         }
         let client: LLMClient
@@ -529,6 +569,34 @@ struct iOSNoteEditorView: View {
         return f.string(from: model.createdAt)
     }
 
+    /// 返回 / 下滑关闭是否要询问：有未保存的修改，或还有照片正在后台写入
+    private var hasUnsavedChanges: Bool {
+        model.isDirty || pendingPhotoInserts > 0
+    }
+
+    /// 用户切换分组算作修改；初始化时的默认分组选择直接写 model，不经过这里
+    private var groupBinding: Binding<PersistentIdentifier?> {
+        Binding(
+            get: { model.selectedGroupID },
+            set: { newValue in
+                guard newValue != model.selectedGroupID else { return }
+                model.selectedGroupID = newValue
+                model.isDirty = true
+            }
+        )
+    }
+
+    private var tagsBinding: Binding<Set<PersistentIdentifier>> {
+        Binding(
+            get: { model.selectedTags },
+            set: { newValue in
+                guard newValue != model.selectedTags else { return }
+                model.selectedTags = newValue
+                model.isDirty = true
+            }
+        )
+    }
+
     private var canSave: Bool {
         // 照片还在后台编码时不能保存，否则保存出的记录会缺这些照片
         model.selectedGroupID != nil && model.hasContent && pendingPhotoInserts == 0
@@ -571,7 +639,7 @@ struct iOSNoteEditorView: View {
     }
 
     private func handleBack() {
-        if model.isDirty {
+        if hasUnsavedChanges {
             showUnsavedAlert = true
         } else {
             discardAndClose()
@@ -705,9 +773,10 @@ struct iOSNoteEditorView: View {
             showSaveError = true
             return false
         }
-        // 记录已不再引用，删掉编辑时移除的附件文件
+        // 记录已不再引用，删掉编辑时移除的附件文件（含没有附件行、只在正文里引用的照片）
         let mediaStore = MediaStore.production()
-        for path in removedPaths { try? mediaStore.delete(relativePath: path) }
+        for path in Set(removedPaths + removedExistingPaths) { try? mediaStore.delete(relativePath: path) }
+        removedExistingPaths.removeAll()
         onSaved?(group.id, entry.id)
         model.isDirty = false
         hasAutosaved = false
@@ -726,6 +795,7 @@ struct iOSNoteEditorView: View {
         }
         var draft = DraftAttachment(kind: .photo, relativePath: relPath)
         draft.persistedID = nil
+        sessionAddedDraftIDs.insert(draft.id)
         if let thumbData = ThumbnailGenerator.makePhotoThumbnail(from: data),
            let img = UIImage(data: thumbData) {
             thumbnails[draft.id] = img
@@ -828,6 +898,7 @@ struct iOSNoteEditorView: View {
             showShareReadError = true
         }
         guard !drafts.isEmpty else { return }
+        sessionAddedDraftIDs.formUnion(drafts.map(\.id))
         model.insertPhotos(drafts, afterSegmentID: anchor)
         model.isDirty = true
     }
@@ -851,7 +922,8 @@ struct iOSNoteEditorView: View {
     private var isPresentingOther: Bool {
         showPhotoPicker || showCamera || showVoiceRecorder || showTagPicker ||
         showUnsavedAlert || showInsertPhotoError || showShareReadError || showSaveError || dictationError != nil ||
-        isFormatting || formattingPreview != nil || formattingErrorMessage != nil || pendingFormattingError != nil || showAISetupAlert || showAISettings
+        isFormatting || formattingPreview != nil || formattingErrorMessage != nil || pendingFormattingError != nil || showAISetupAlert || showAISettings ||
+        aiConsentRequest != nil
     }
 
     private func presentSharePromptsIfNeeded() {
@@ -905,11 +977,12 @@ struct iOSNoteEditorView: View {
     }
 
     /// 放弃一条从未落库的新记录时，删除它已经写到 MediaStore 的草稿照片。
-    /// 编辑已有记录时只删本次新加、还没落库的附件文件。
+    /// 编辑已有记录时只删本次会话新写入的附件文件；不能按 persistedID == nil 判断：
+    /// 自动保存只写正文、不建附件行，App 被杀后重开时这些照片没有 persistedID，但正文仍引用着它们
     private func discardUnsavedDraftMedia() {
         guard editingEntryID == nil else {
             let mediaStore = MediaStore.production()
-            for draft in model.allAttachments where draft.persistedID == nil {
+            for draft in model.allAttachments where sessionAddedDraftIDs.contains(draft.id) {
                 try? mediaStore.delete(relativePath: draft.relativePath)
             }
             return
@@ -935,11 +1008,14 @@ struct iOSNoteEditorView: View {
         model.isDirty = true
     }
 
-    /// 本次新加、还没落库的附件，移除时直接删文件；已落库的附件还被记录引用，
+    /// 本次会话新写入的附件，移除时直接删文件；打开时就存在的附件还被记录引用，
     /// 留到保存成功后再删（见 save()），放弃编辑时记录里的照片仍完好
     private func deleteFileIfUnsaved(_ draft: DraftAttachment) {
-        guard draft.persistedID == nil else { return }
-        try? MediaStore.production().delete(relativePath: draft.relativePath)
+        if sessionAddedDraftIDs.remove(draft.id) != nil {
+            try? MediaStore.production().delete(relativePath: draft.relativePath)
+        } else {
+            removedExistingPaths.append(draft.relativePath)
+        }
     }
 
     /// Autosave path: persists text+body to an existing entry without dismissing.
@@ -1103,6 +1179,20 @@ extension iOSNoteEditorView {
                 Button("取消", role: .cancel) { }
             } message: {
                 Text("请先填写服务商、模型和 API Key。")
+            }
+            .alert("发送到 \(aiConsentRequest?.providerName ?? "")？", isPresented: Binding(
+                get: { aiConsentRequest != nil },
+                set: { if !$0 { aiConsentRequest = nil } }
+            )) {
+                Button("同意并整理") {
+                    guard let request = aiConsentRequest else { return }
+                    AIConfigStore().recordConsent(for: request.host)
+                    aiConsentRequest = nil
+                    startFormatting()
+                }
+                Button("取消", role: .cancel) { aiConsentRequest = nil }
+            } message: {
+                Text("整理时，这条记录的标题和正文文字会发送到 \(aiConsentRequest?.host ?? "")，由该服务商按其隐私政策处理。不发送照片、视频和语音。同意后，发往这个地址不再询问。")
             }
             .alert("整理失败", isPresented: Binding(
                 get: { formattingErrorMessage != nil },

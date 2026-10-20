@@ -65,7 +65,9 @@ enum LLMHTTP {
         do {
             (data, response) = try await session.data(for: request)
         } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
+            // 只有任务真被取消才算用户取消；系统层的 -999（鉴权质询、代理等）按网络错误提示，不能静默失败
+            if Task.isCancelled { throw CancellationError() }
+            throw LLMError.network(error.localizedDescription)
         } catch let error as URLError where error.code == .timedOut {
             throw LLMError.timeout
         } catch is CancellationError {

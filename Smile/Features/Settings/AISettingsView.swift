@@ -157,19 +157,24 @@ struct AISettingsView: View {
             return
         }
         testState = .testing
+        // 等待期间用户改了配置时 onChange 已把状态复位，旧请求的结果不再对应当前配置，丢弃
+        let testedConfig = config
+        let result: TestState
         do {
-            let client = try LLMClientFactory.make(config: config, apiKey: key)
+            let client = try LLMClientFactory.make(config: testedConfig, apiKey: key)
             _ = try await client.complete(system: "只回复 OK", user: "ping")
-            testState = .success
+            result = .success
         } catch let error as LLMError {
             // 测试连接时附上响应体，方便排查模型名、参数等 400 错误；响应体里不含 Key
             if case .http(_, let body) = error, !body.isEmpty {
-                testState = .failure(error.userMessage + "\n" + body)
+                result = .failure(error.userMessage + "\n" + body)
             } else {
-                testState = .failure(error.userMessage)
+                result = .failure(error.userMessage)
             }
         } catch {
-            testState = .failure(LLMError.network(error.localizedDescription).userMessage)
+            result = .failure(LLMError.network(error.localizedDescription).userMessage)
         }
+        guard config == testedConfig, testState == .testing else { return }
+        testState = result
     }
 }

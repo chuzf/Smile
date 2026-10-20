@@ -21,11 +21,31 @@ struct AnthropicClient: LLMClient {
         let maxTokens: Int
         let system: String
         let messages: [Message]
+        let outputConfig: OutputConfig?
 
         enum CodingKeys: String, CodingKey {
             case model, system, messages
             case maxTokens = "max_tokens"
+            case outputConfig = "output_config"
         }
+    }
+
+    private struct OutputConfig: Encodable {
+        let effort: String
+    }
+
+    /// 支持 effort 参数的模型（Haiku 4.5、Sonnet 4.5 及更早的模型会对它返回 400）。
+    /// 按包含匹配，兼容网关加前缀的模型名，比如 "anthropic/claude-opus-5"
+    private static let effortModels = [
+        "claude-opus-5", "claude-opus-4-5", "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
+        "claude-sonnet-5", "claude-sonnet-4-6", "claude-fable-5", "claude-mythos-5",
+    ]
+
+    /// 整理文字不需要深度推理。Opus 5 等模型默认开启思考，思考 token 也计入 max_tokens，
+    /// 默认 effort 下长文容易被截断；low 减少思考量，也更快更省。不认识的模型不传，避免 400
+    private var outputConfig: OutputConfig? {
+        let name = model.lowercased()
+        return Self.effortModels.contains(where: name.contains) ? OutputConfig(effort: "low") : nil
     }
 
     private struct ResponseBody: Decodable {
@@ -61,7 +81,8 @@ struct AnthropicClient: LLMClient {
     func complete(system: String, user: String) async throws -> String {
         guard let url = endpoint else { throw LLMError.invalidURL }
         let body = RequestBody(model: model, maxTokens: Self.maxTokens, system: system,
-                               messages: [Message(role: "user", content: user)])
+                               messages: [Message(role: "user", content: user)],
+                               outputConfig: outputConfig)
         let request = try LLMHTTP.makeRequest(
             url: url,
             headers: headers,

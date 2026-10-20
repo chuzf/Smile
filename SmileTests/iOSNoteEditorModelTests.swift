@@ -38,6 +38,40 @@ struct iOSNoteEditorModelTests {
         #expect(model.autoSaveSignal == 1)
     }
 
+    @Test("Removing a photo between texts merges them on separate lines")
+    func removePhoto_mergesTextWithNewline() {
+        let model = iOSNoteEditorModel()
+        let titleID = UUID(), bodyID = UUID()
+        let draft = DraftAttachment(kind: .photo, relativePath: "x/photo.jpg")
+        model.segments = [
+            .text(id: titleID, content: "周末", alignment: .leading),
+            .photo(draft),
+            .text(id: bodyID, content: "山顶的风很大。", alignment: .leading),
+        ]
+
+        model.removePhoto(id: draft.id)
+
+        #expect(model.segments.count == 1)
+        #expect(model.textContent(for: titleID) == "周末\n山顶的风很大。")
+        #expect(model.extractTitle() == "周末")
+    }
+
+    @Test("Removing a photo next to an empty text segment adds no blank line")
+    func removePhoto_emptyNeighbourAddsNothing() {
+        let model = iOSNoteEditorModel()
+        let firstID = UUID()
+        let draft = DraftAttachment(kind: .photo, relativePath: "x/photo.jpg")
+        model.segments = [
+            .text(id: firstID, content: "周末\n正文", alignment: .leading),
+            .photo(draft),
+            .text(id: UUID(), content: "", alignment: .leading),
+        ]
+
+        model.removePhoto(id: draft.id)
+
+        #expect(model.textContent(for: firstID) == "周末\n正文")
+    }
+
     @Test("Reset clears all state")
     func reset_clearsAllState() {
         let model = iOSNoteEditorModel()

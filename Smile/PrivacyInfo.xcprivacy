@@ -11,8 +11,10 @@
 	<array/>
 
 	<!--
-		本 App 所有数据均存储在用户设备本地（SwiftData + Documents 目录）。
-		开发者不收集、不传输任何用户数据到远程服务器，因此无需声明数据收集类型。
+		本 App 所有数据均存储在用户设备本地（SwiftData + Documents 目录），开发者没有服务器，不收集用户数据。
+		例外：用户主动使用「AI 整理」时，App 会把该条记录的标题和正文文字直接发送到用户自己配置的
+		AI 服务商（用户自备 API Key），不经过开发者。首次发往某个服务商地址前会弹窗说明并征得同意。
+		这类由用户自选第三方处理的数据是否需要在此声明，待上架前确认，目前未声明。
 	-->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
@@ -43,6 +45,23 @@
 			<array>
 				<string>C617.1</string>
 				<string>3B52.1</string>
+			</array>
+		</dict>
+
+		<!--
+			UserDefaults API（NSPrivacyAccessedAPICategoryUserDefaults）
+			使用场景：
+			  - 详情页排版风格（@AppStorage）
+			  - AI 整理的服务商配置（不含 API Key，Key 只存钥匙串）及用户已同意发送的服务商地址
+			理由：
+			  CA92.1 —— 只读写本 App 自己的配置，不与其它 App 共享。
+		-->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
 			</array>
 		</dict>
 

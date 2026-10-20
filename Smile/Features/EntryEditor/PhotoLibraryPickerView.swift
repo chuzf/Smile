@@ -15,6 +15,9 @@ struct PhotoLibraryPickerView: View {
     private let maxSelection = 9
     private static let monthFormatter: DateFormatter = {
         let f = DateFormatter()
+        // 固定公历：系统日历是佛历或和历时，yyyy 会变成 2569 或年号年
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "zh_CN")
         f.dateFormat = "yyyy年M月"
         return f
     }()
@@ -277,6 +280,9 @@ private struct PhotoScrubber: View {
     @State private var dragFraction: CGFloat? = nil
     @State private var currentRow: Int? = nil
     @State private var hideTask: Task<Void, Never>? = nil
+    /// 手势被系统取消（来电、下拉通知中心）时不会调用 onEnded；GestureState 无论结束还是取消都会复位，
+    /// 靠它复位时清理拖动状态
+    @GestureState private var isDragging = false
 
     private let handleSize = CGSize(width: 50, height: 56)
     private let edgeInset: CGFloat = 8
@@ -317,6 +323,7 @@ private struct PhotoScrubber: View {
                     .gesture(
                         // 用全局坐标的位移量：手柄自身在移动，局部坐标会产生反馈
                         DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .updating($isDragging) { _, dragging, _ in dragging = true }
                             .onChanged { value in
                                 if dragStartFraction == nil {
                                     dragStartFraction = scrollFraction
@@ -334,12 +341,7 @@ private struct PhotoScrubber: View {
                                     onJumpToRow(row)
                                 }
                             }
-                            .onEnded { _ in
-                                dragStartFraction = nil
-                                dragFraction = nil
-                                currentRow = nil
-                                scheduleHide()
-                            }
+                            .onEnded { _ in endDrag() }
                     )
             }
             .padding(.trailing, 4)
@@ -355,7 +357,19 @@ private struct PhotoScrubber: View {
             }
             if dragStartFraction == nil { scheduleHide() }
         }
+        .onChange(of: isDragging) { _, dragging in
+            if !dragging { endDrag() }
+        }
         .onDisappear { hideTask?.cancel() }
+    }
+
+    /// 拖动结束或被取消：清掉拖动状态，手柄恢复跟随滚动并按时隐藏
+    private func endDrag() {
+        guard dragStartFraction != nil else { return }
+        dragStartFraction = nil
+        dragFraction = nil
+        currentRow = nil
+        scheduleHide()
     }
 
     private func scheduleHide() {
