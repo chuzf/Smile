@@ -3,14 +3,16 @@ import SwiftUI
 struct AISettingsView: View {
     private let store = AIConfigStore()
 
+    /// 本页的副本；设置页可能同时存在两个（「我的」里推入的、编辑页弹出的），
+    /// 每次出现、回到前台、别处保存后都从存储重新读取，免得旧副本保存时覆盖别处的修改
     @State private var settings = AISettings.default
-    @State private var loaded = false
     /// 已保存 Key 的服务商，列表里据此标「未填 Key」
     @State private var providersWithKey: Set<UUID> = []
     @State private var editingProviderID: UUID?
     @State private var pendingDeletion: AIProvider?
     @State private var deleteError: String?
     @FocusState private var promptFocused: Bool
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Form {
@@ -58,14 +60,18 @@ struct AISettingsView: View {
         .navigationDestination(item: $editingProviderID) { id in
             AIProviderEditView(settings: $settings, providerID: id, store: store, onKeyChange: refreshKeys)
         }
-        .onAppear {
-            if !loaded {
-                loaded = true
-                settings = store.load()
-            }
+        .onAppear(perform: reload)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { reload() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AIConfigStore.didChangeNotification)) { _ in
+            reload()
+        }
+        // 重新读取后这里会把读到的值再存一次，内容相同时 save 不写入
+        .onChange(of: settings) { _, newValue in
+            store.save(newValue)
             refreshKeys()
         }
-        .onChange(of: settings) { _, newValue in store.save(newValue) }
         .confirmationDialog("删除「\(pendingDeletion?.providerDisplayName ?? "")」？",
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),
@@ -135,7 +141,14 @@ struct AISettingsView: View {
         }
     }
 
+    private func reload() {
+        let latest = store.load()
+        if latest != settings { settings = latest }
+        refreshKeys()
+    }
+
+    /// 按每一条当前的地址判断：换了地址后旧 Key 不算
     private func refreshKeys() {
-        providersWithKey = Set(settings.providers.map(\.id).filter { store.loadAPIKey(for: $0) != nil })
+        providersWithKey = Set(settings.providers.filter { store.loadAPIKey(for: $0) != nil }.map(\.id))
     }
 }

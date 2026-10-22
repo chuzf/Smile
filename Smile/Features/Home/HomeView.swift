@@ -131,9 +131,11 @@ struct HomeView: View {
     private func jarCard(_ group: Group) -> some View {
         let locked = group.isLocked && !lockSession.isGroupUnlocked(group.id)
         let temporarilyUnlocked = group.isLocked && lockSession.isGroupUnlocked(group.id)
+        let recent = mostRecent(in: group)
         JarCardView(
             group: group,
-            recentEntry: mostRecent(in: group),
+            recentEntry: recent,
+            isRecentEntryLocked: recent.map { $0.isLocked && !lockSession.isEntryUnlocked($0.id) } ?? false,
             isLocked: locked,
             isTemporarilyUnlocked: temporarilyUnlocked
         ) {

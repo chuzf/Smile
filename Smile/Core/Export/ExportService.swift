@@ -29,6 +29,8 @@ enum ExportService {
         let staging = FileManager.default.temporaryDirectory
             .appendingPathComponent("smilejar-export-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        // 中途出错也要清掉：staging 里是明文 JSON 和全部媒体（含加锁内容）
+        defer { try? FileManager.default.removeItem(at: staging) }
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -59,6 +61,8 @@ enum ExportService {
         }
 
         let df = DateFormatter()
+        df.calendar = Calendar(identifier: .gregorian)
+        df.locale = Locale(identifier: "en_US_POSIX")
         df.dateFormat = "yyyy-MM-dd"
         let dateStr = df.string(from: .now)
 
@@ -67,8 +71,12 @@ enum ExportService {
         if FileManager.default.fileExists(atPath: zipURL.path) {
             try FileManager.default.removeItem(at: zipURL)
         }
-        try zipDirectory(staging, to: zipURL)
-        try? FileManager.default.removeItem(at: staging)
+        do {
+            try zipDirectory(staging, to: zipURL)
+        } catch {
+            try? FileManager.default.removeItem(at: zipURL)
+            throw error
+        }
 
         // 密码按输入原样使用，不做 trim——导入时也是原样，两边必须一致
         guard let pwd = password, !pwd.isEmpty else { return zipURL }

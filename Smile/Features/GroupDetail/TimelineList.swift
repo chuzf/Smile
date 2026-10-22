@@ -84,11 +84,9 @@ struct EntryListRow: View {
                 Text(dayLabel)
                     .font(.system(size: 11))
                     .foregroundStyle(AppColors.textSecondary)
-                Text("已锁定")
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppColors.warmOrange)
             }
-            Text(entry.title.isEmpty ? "(无标题)" : entry.title)
+            // 未解锁时不显示标题：AI 生成的标题往往就是内容摘要
+            Text("已锁定条目")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppColors.textPrimary)
                 .multilineTextAlignment(.leading)

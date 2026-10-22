@@ -312,6 +312,40 @@ struct ImportServiceTests {
         #expect(leftovers == [entryID.uuidString])
     }
 
+    @Test func fillMissingMediaCopiesOnlyMissingFiles() throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+        let entryID = UUID()
+        let storeRoot = tempRoot.appendingPathComponent("store-\(UUID())")
+        let store = MediaStore(rootURL: storeRoot)
+        let dstDir = store.directoryURL(for: entryID)
+        try FileManager.default.createDirectory(at: dstDir, withIntermediateDirectories: true)
+        try Data("local".utf8).write(to: dstDir.appendingPathComponent("a.jpg"))
+
+        let mediaDir = tempRoot.appendingPathComponent("media-\(UUID())")
+        let srcDir = mediaDir.appendingPathComponent(entryID.uuidString)
+        try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
+        try Data("backup".utf8).write(to: srcDir.appendingPathComponent("a.jpg"))
+        try Data("b".utf8).write(to: srcDir.appendingPathComponent("b.m4a"))
+        defer {
+            try? FileManager.default.removeItem(at: storeRoot)
+            try? FileManager.default.removeItem(at: mediaDir)
+        }
+
+        try ImportService.fillMissingMedia(entryID: entryID, from: mediaDir, mediaStore: store)
+
+        #expect(try Data(contentsOf: dstDir.appendingPathComponent("a.jpg")) == Data("local".utf8))
+        #expect(try Data(contentsOf: dstDir.appendingPathComponent("b.m4a")) == Data("b".utf8))
+    }
+
+    @Test func attachmentPathMustBelongToEntry() {
+        let id = UUID()
+        #expect(ImportService.isValidAttachmentPath("\(id.uuidString)/photo.jpg", entryID: id))
+        #expect(!ImportService.isValidAttachmentPath("\(UUID().uuidString)/photo.jpg", entryID: id))
+        #expect(!ImportService.isValidAttachmentPath("\(id.uuidString)/..", entryID: id))
+        #expect(!ImportService.isValidAttachmentPath("../\(id.uuidString)/x", entryID: id))
+        #expect(!ImportService.isValidAttachmentPath("", entryID: id))
+    }
+
     // MARK: - Integration
 
     @MainActor

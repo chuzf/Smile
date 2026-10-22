@@ -12,6 +12,8 @@ struct NoteTextView: UIViewRepresentable {
     let onChange: (String) -> Void
     /// 用户移动光标或输入时回报光标位置（UTF-16 偏移）
     var onCursorChange: (Int) -> Void = { _ in }
+    /// 为 false 时不能输入（口述进行中，识别结果会整段改写文字）
+    var isEditable: Bool = true
 
     static let titleFont = UIFont.systemFont(ofSize: 22, weight: .bold)
     static let bodyFont = UIFont.systemFont(ofSize: 16, weight: .regular)
@@ -25,6 +27,7 @@ struct NoteTextView: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.text = text
+        view.isEditable = isEditable
         context.coordinator.applyStyle(to: view)
         return view
     }
@@ -46,6 +49,13 @@ struct NoteTextView: UIViewRepresentable {
             coordinator.isApplyingExternalText = false
         } else if styleChanged {
             coordinator.applyStyle(to: view)
+        }
+
+        // 关闭编辑会让正在输入的文字块失去焦点并回调 textViewDidEndEditing（改 SwiftUI 状态），放到下一轮
+        if view.isEditable != isEditable {
+            DispatchQueue.main.async {
+                view.isEditable = coordinator.parent.isEditable
+            }
         }
 
         // 焦点同步放到下一轮，避免在视图更新过程中改动 SwiftUI 状态

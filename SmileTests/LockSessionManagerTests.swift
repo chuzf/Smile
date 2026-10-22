@@ -92,4 +92,20 @@ struct LockSessionManagerTests {
         mgr.sceneDidBecomeActive()
         #expect(events == [true, false])
     }
+
+    @Test("解锁计时到期后页面仍开着：离开前台照样盖遮罩并要求验证")
+    func displayedLockedContentStillShields() {
+        let mgr = LockSessionManager(authenticator: { _ in true })
+        let token = UUID()
+        mgr.beginDisplayingLockedContent(token)   // 没有任何解锁 ID，模拟计时已到期
+        mgr.sceneWillResignActive()
+        #expect(mgr.isShielded)
+        mgr.sceneDidEnterBackground()
+        #expect(mgr.needsReauth)
+
+        mgr.endDisplayingLockedContent(token)
+        mgr.abandonShield()
+        mgr.sceneWillResignActive()
+        #expect(mgr.isShielded == false)
+    }
 }

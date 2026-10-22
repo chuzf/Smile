@@ -3,6 +3,8 @@ import SwiftUI
 struct JarCardView: View {
     let group: Group
     let recentEntry: Entry?
+    /// 最近一条是加锁条目且未解锁：预览行不显示它的标题
+    var isRecentEntryLocked: Bool = false
     let isLocked: Bool
     var isTemporarilyUnlocked: Bool = false
     let onTap: () -> Void
@@ -90,6 +92,7 @@ struct JarCardView: View {
     }
 
     private var previewLine: String {
+        if isRecentEntryLocked { return "已锁定条目" }
         if let r = recentEntry { return r.title.isEmpty ? "(无标题)" : r.title }
         return "还没有储蓄,点 ＋ 记下今天的微笑吧"
     }

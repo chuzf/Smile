@@ -48,4 +48,30 @@ struct SearchServiceTests {
         #expect(r.count == 1)
         #expect(r.first?.group?.name == "A")
     }
+
+    @Test func bodyJSONFieldNamesDoNotMatch() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let body = iOSNoteEditorModel.encodeBodySegments([
+            BodySegment(kind: .text, content: "去公园散步"),
+            BodySegment(kind: .photo, path: "E/photo-1.jpg"),
+        ])
+        let e = Entry(title: "周末", bodyText: body)
+        ctx.insert(e); try ctx.save()
+
+        #expect(try SearchService.search(in: ctx, query: "photo", group: nil).isEmpty)
+        #expect(try SearchService.search(in: ctx, query: "jpg", group: nil).isEmpty)
+        #expect(try SearchService.search(in: ctx, query: "公园", group: nil).count == 1)
+    }
+
+    @Test func unsearchableEntriesAreExcluded() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let secret = Entry(title: "x", bodyText: "秘密内容")
+        secret.isLocked = true
+        ctx.insert(secret); try ctx.save()
+
+        let r = try SearchService.search(in: ctx, query: "秘密", group: nil, isSearchable: { !$0.isLocked })
+        #expect(r.isEmpty)
+    }
 }

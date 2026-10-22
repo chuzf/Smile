@@ -10,7 +10,10 @@ struct AIProviderEditView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// 为当前接口主机保存过 Key
     @State private var hasSavedKey = false
+    /// 钥匙串里的 Key 是为原来的地址保存的；换了预设或地址后不再发出，需重新填写
+    @State private var keyForOtherHost = false
     @State private var keyInput = ""
     @State private var keyError: String?
     @State private var testState: TestState = .idle
@@ -98,7 +101,10 @@ struct AIProviderEditView: View {
                     .autocorrectionDisabled()
                     .focused($focusedField, equals: .apiKey)
                     .onSubmit { saveKeyIfNeeded() }
-                if hasSavedKey {
+                if keyForOtherHost {
+                    Text("接口地址已更改，原 Key 不会发往新地址，请重新填写").font(.footnote).foregroundStyle(.orange)
+                }
+                if hasSavedKey || keyForOtherHost {
                     Button("清除 Key", role: .destructive, action: clearKey)
                 }
                 if let keyError {
@@ -136,11 +142,20 @@ struct AIProviderEditView: View {
                 Button("完成") { focusedField = nil }
             }
         }
-        .onAppear { hasSavedKey = store.loadAPIKey(for: providerID) != nil }
+        // settings 是列表页的副本，列表页收到别处保存的通知时已重新读取，这里保存的不是旧副本
+        .onAppear(perform: refreshKeyState)
+        .onReceive(NotificationCenter.default.publisher(for: AIConfigStore.didChangeNotification)) { _ in
+            refreshKeyState()
+        }
         .onChange(of: provider) {
             // 列表页的 onChange 不在屏幕上时不一定触发，这里也保存一次
             if exists { store.save(settings) }
             testState = .idle
+            refreshKeyState()
+        }
+        .onChange(of: keyInput) { _, newValue in
+            // 开始输入新 Key 时，进行中或已有的测试结果不再对应当前 Key
+            if !newValue.isEmpty { testState = .idle }
         }
         .onChange(of: focusedField) { oldValue, _ in
             // 不按回车直接离开 Key 输入框时也保存，否则要等退出页面才写入
@@ -186,23 +201,35 @@ struct AIProviderEditView: View {
         // 服务商已删除时不再写 Key，否则会留下没人用的钥匙串记录
         guard !trimmed.isEmpty, exists else { return true }
         do {
-            try store.saveAPIKey(trimmed, for: providerID)
+            try store.saveAPIKey(trimmed, for: provider)
             keyInput = ""
-            hasSavedKey = true
+            testState = .idle
+            refreshKeyState()
             keyError = nil
             onKeyChange()
             return true
+        } catch AIConfigError.invalidBaseURL {
+            // Key 要绑定接口主机，地址无效时没法保存
+            keyError = "请先填写以 https:// 开头的接口地址，再保存 Key"
+            return false
         } catch {
             keyError = "API Key 保存失败，请重试"
             return false
         }
     }
 
+    private func refreshKeyState() {
+        hasSavedKey = store.loadAPIKey(for: provider) != nil
+        keyForOtherHost = store.hasKeyForOtherHost(provider)
+    }
+
     private func clearKey() {
         do {
-            try store.saveAPIKey("", for: providerID)
+            try store.saveAPIKey("", for: provider)
             keyInput = ""
-            hasSavedKey = false
+            // 测试进行中清除 Key，结果不能再显示成功
+            testState = .idle
+            refreshKeyState()
             keyError = nil
             onKeyChange()
         } catch {
@@ -214,7 +241,7 @@ struct AIProviderEditView: View {
         focusedField = nil
         // 先存好刚输入的 Key，同测试连接；写入失败时 Key 区已显示错误，不弹出
         guard saveKeyIfNeeded() else { return }
-        modelPicker = ModelPickerRequest(provider: provider, apiKey: store.loadAPIKey(for: providerID))
+        modelPicker = ModelPickerRequest(provider: provider, apiKey: store.loadAPIKey(for: provider))
     }
 
     private func deleteProvider() {
@@ -233,7 +260,7 @@ struct AIProviderEditView: View {
         // Key 没写进去时不能拿旧 Key 去测
         guard saveKeyIfNeeded() else { return }
         let tested = provider
-        guard let key = store.loadAPIKey(for: providerID), tested.isComplete(apiKey: key) else {
+        guard let key = store.loadAPIKey(for: tested), tested.isComplete(apiKey: key) else {
             testState = .failure(LLMError.notConfigured.userMessage)
             return
         }
@@ -249,8 +276,8 @@ struct AIProviderEditView: View {
         } catch {
             result = .failure(LLMError.network(error.localizedDescription).userMessage)
         }
-        // 等待期间用户改了配置时 onChange 已把状态复位，旧请求的结果不再对应当前配置，丢弃
-        guard provider == tested, testState == .testing else { return }
+        // 等待期间用户改了配置或 Key 时状态已复位，旧请求的结果不再对应当前配置，丢弃
+        guard provider == tested, store.loadAPIKey(for: provider) == key, testState == .testing else { return }
         testState = result
     }
 }

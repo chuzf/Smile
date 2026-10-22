@@ -8,6 +8,7 @@ struct MeTabView: View {
     @Query(sort: [SortDescriptor(\Tag.name)]) private var allTags: [Tag]
 
     @State private var globalSearch = ""
+    @State private var searchResults: [Entry] = []
     @State private var searchNavEntry: Entry?
     @State private var editingGroup: Group? = nil
     @State private var deleteBlockedGroup: Group? = nil
@@ -27,6 +28,15 @@ struct MeTabView: View {
             .navigationTitle("我")
             .navigationDestination(item: $searchNavEntry) { entry in
                 EntryDetailView(entry: entry)
+            }
+            .task(id: SearchKey(query: globalSearch, unlocked: lockSession.unlockedGroupIDs.union(lockSession.unlockedEntryIDs))) {
+                // 不在 body 里搜：每次刷新都全量取一遍；输入停顿后再搜
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                searchResults = (try? SearchService.search(
+                    in: context, query: globalSearch, group: nil,
+                    isSearchable: isAccessible
+                )) ?? []
             }
             .onChange(of: lockSession.relockEpoch) { _, _ in
                 // 全部重新上锁后，退出从搜索打开的加锁条目
@@ -79,7 +89,7 @@ struct MeTabView: View {
         }
         if !globalSearch.trimmingCharacters(in: .whitespaces).isEmpty {
             Section("搜索结果") {
-                let results = (try? SearchService.search(in: context, query: globalSearch, group: nil)) ?? []
+                let results = searchResults
                 if results.isEmpty {
                     Text("没找到匹配的记录").foregroundStyle(AppColors.textSecondary)
                 } else {
@@ -201,6 +211,17 @@ struct MeTabView: View {
                 Label("App 设置", systemImage: "gearshape")
             }
         }
+    }
+
+    private func isAccessible(_ e: Entry) -> Bool {
+        let entryLocked = e.isLocked && !lockSession.isEntryUnlocked(e.id)
+        let groupLocked = (e.group?.isLocked ?? false) && !lockSession.isGroupUnlocked(e.group?.id ?? UUID())
+        return !entryLocked && !groupLocked
+    }
+
+    private struct SearchKey: Equatable {
+        let query: String
+        let unlocked: Set<UUID>
     }
 
     private func handleSearchResultTap(_ entry: Entry) {

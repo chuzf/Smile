@@ -11,6 +11,7 @@ struct EntryDetailView: View {
     @State private var sharedImage: UIImage?
     @State private var showShareSheet = false
     @State private var viewerItem: PhotoViewerItem?
+    @State private var pendingDelete = false
 
     @AppStorage(ArticleStyle.storageKey) private var styleRaw = ArticleStyle.default.rawValue
 
@@ -61,6 +62,11 @@ struct EntryDetailView: View {
             if let img = sharedImage {
                 ShareSheet(image: img)
             }
+        }
+        .displaysLockedContent(entry.isLocked || (entry.group?.isLocked ?? false))
+        .onDisappear {
+            // 等页面完全退出后再删：退场动画期间 body 仍会读取 entry，提前删除可能崩溃
+            if pendingDelete { performDelete() }
         }
     }
 
@@ -219,13 +225,22 @@ struct EntryDetailView: View {
     }
 
     private func deleteEntry() {
-        let entryID = entry.id
+        pendingDelete = true
         dismiss()
-        Task { @MainActor in
-            try? MediaStore.production().deleteEntryDirectory(entryID: entryID)
-            context.delete(entry)
-            try? context.save()
+    }
+
+    private func performDelete() {
+        pendingDelete = false
+        let entryID = entry.id
+        context.delete(entry)
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            return
         }
+        // 记录删除成功后再删文件，保存失败时照片和语音不会先丢
+        try? MediaStore.production().deleteEntryDirectory(entryID: entryID)
     }
 }
 

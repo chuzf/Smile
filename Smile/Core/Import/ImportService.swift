@@ -38,6 +38,8 @@ enum ImportService {
 
     private static let supportedVersion = 1
 
+    enum MediaAction { case copy, replace, fillMissing }
+
     @MainActor
     static func importBackup(
         from zipURL: URL,
@@ -76,22 +78,24 @@ enum ImportService {
         let mediaDir = staging.appendingPathComponent("media")
         var newCount = 0, updatedCount = 0, skippedCount = 0
         // Track which entries need media copied AFTER a successful DB save.
-        var mediaToCopy: [(UUID, Bool)] = []   // (entryID, isNew)
+        var mediaToCopy: [(UUID, MediaAction)] = []
 
         for dto in entryDTOs {
             if let existing = existingByID[dto.id] {
                 if dto.updatedAt > existing.updatedAt {
                     updateEntry(existing, from: dto,
                                 groupMap: groupMap, tagMap: tagMap, context: context)
-                    mediaToCopy.append((dto.id, false))
+                    mediaToCopy.append((dto.id, .replace))
                     updatedCount += 1
                 } else {
+                    // 记录已是最新，但上次导入可能有文件没复制成功：只补缺失的文件
+                    mediaToCopy.append((dto.id, .fillMissing))
                     skippedCount += 1
                 }
             } else {
                 insertEntry(from: dto, groupMap: groupMap,
                             tagMap: tagMap, context: context)
-                mediaToCopy.append((dto.id, true))
+                mediaToCopy.append((dto.id, .copy))
                 newCount += 1
             }
         }
@@ -107,12 +111,15 @@ enum ImportService {
 
         // Copy media only after a successful DB save.
         var mediaFailures = 0
-        for (entryID, isNew) in mediaToCopy {
+        for (entryID, action) in mediaToCopy {
             do {
-                if isNew {
+                switch action {
+                case .copy:
                     try copyMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
-                } else {
+                case .replace:
                     try replaceMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+                case .fillMissing:
+                    try fillMissingMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
                 }
             } catch {
                 mediaFailures += 1
@@ -259,7 +266,7 @@ enum ImportService {
         context.insert(entry)
         entry.tags = dto.tagNames.compactMap { tagMap[$0] }
 
-        for attDTO in dto.attachments {
+        for attDTO in dto.attachments where isValidAttachmentPath(attDTO.relativePath, entryID: dto.id) {
             let att = MediaAttachment(
                 kind: MediaKind(rawValue: attDTO.kind) ?? .photo,
                 relativePath: attDTO.relativePath,
@@ -292,7 +299,7 @@ enum ImportService {
         let oldAtts = entry.attachments
         for att in oldAtts { context.delete(att) }
 
-        for attDTO in dto.attachments {
+        for attDTO in dto.attachments where isValidAttachmentPath(attDTO.relativePath, entryID: dto.id) {
             let att = MediaAttachment(
                 kind: MediaKind(rawValue: attDTO.kind) ?? .photo,
                 relativePath: attDTO.relativePath,
@@ -303,6 +310,28 @@ enum ImportService {
                 entry: entry
             )
             context.insert(att)
+        }
+    }
+
+    /// 附件只能指向本条目自己的目录，否则删除 A 的附件可能删掉 B 的文件
+    static func isValidAttachmentPath(_ path: String, entryID: UUID) -> Bool {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        return parts.count == 2
+            && parts[0] == entryID.uuidString
+            && !parts[1].isEmpty && parts[1] != "." && parts[1] != ".."
+    }
+
+    /// 只复制本地缺失的文件，已有的不动
+    static func fillMissingMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) throws {
+        let fm = FileManager.default
+        let src = mediaDir.appendingPathComponent(entryID.uuidString)
+        guard let names = try? fm.contentsOfDirectory(atPath: src.path), !names.isEmpty else { return }
+        let dst = mediaStore.directoryURL(for: entryID)
+        let missing = names.filter { !fm.fileExists(atPath: dst.appendingPathComponent($0).path) }
+        guard !missing.isEmpty else { return }
+        try fm.createDirectory(at: dst, withIntermediateDirectories: true)
+        for name in missing {
+            try fm.copyItem(at: src.appendingPathComponent(name), to: dst.appendingPathComponent(name))
         }
     }
 

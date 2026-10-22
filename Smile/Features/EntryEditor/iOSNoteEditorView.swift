@@ -75,6 +75,8 @@ struct iOSNoteEditorView: View {
     @State private var sessionAddedDraftIDs: Set<UUID> = []
     /// 移除的、打开时就存在的附件文件；保存成功后才删，放弃时保留
     @State private var removedExistingPaths: [String] = []
+    /// 已按 editingEntryID 载入过内容；之后再次 onAppear（如相机全屏关闭后）不能重新载入，否则覆盖正在编辑的草稿
+    @State private var hasInitialized = false
 
     fileprivate struct AIConsentRequest {
         let host: String
@@ -127,35 +129,25 @@ struct iOSNoteEditorView: View {
                 isRegisteredWithShareCenter = true
                 shareCenter.editorDidAppear()
             }
-            initialize()
-            presentSharePromptsIfNeeded()
-            if editingEntryID == nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                    if case .text(let id, _, _) = model.segments.first {
-                        focusedSegmentID = id
+            if !hasInitialized {
+                hasInitialized = true
+                initialize()
+                if editingEntryID == nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        if case .text(let id, _, _) = model.segments.first {
+                            focusedSegmentID = id
+                        }
                     }
                 }
             }
+            presentSharePromptsIfNeeded()
         }
         .onDisappear {
-            formattingTask?.cancel()
-            if dictationService.isActive {
-                dictationService.stop()
-                // finalizeDictation keeps any partial text already written — intentional,
-                // so the user doesn't lose words they already spoke before dismissing.
-                model.finalizeDictation()
-            }
-            if !isClosing {
-                // 下滑关闭（仅在没有未保存修改时允许）不经过 close()/discardAndClose()：停止正在写入的照片，并清理没有记录引用的草稿照片
-                isClosing = true
-                discardUnsavedDraftMedia()
-            }
-            model.reset()
-            thumbnails.removeAll()
-            if isRegisteredWithShareCenter {
-                isRegisteredWithShareCenter = false
-                shareCenter.editorDidDisappear()
-            }
+            // 相机是全屏呈现，盖住编辑器时也会触发 onDisappear，但编辑器并没有关闭：不能清空草稿、删照片。
+            // 相机期间编辑器被一起关掉的极端情况下不补做清理——无法可靠判断编辑器是否还在屏幕上，
+            // 误判会清空正在编辑的草稿；代价最多是留下几个没被引用的草稿照片文件
+            if showCamera { return }
+            performCloseCleanup(shareCenter: shareCenter, context: context)
         }
         .shareHandling(self)
         .formattingHandling(self)
@@ -263,7 +255,9 @@ struct iOSNoteEditorView: View {
                 minHeight: 72,
                 focusedSegmentID: $focusedSegmentID,
                 onChange: { model.updateText($0, for: id) },
-                onCursorChange: { model.insertionPoint = InsertionPoint(segmentID: id, offset: $0) }
+                onCursorChange: { model.insertionPoint = InsertionPoint(segmentID: id, offset: $0) },
+                // 口述期间每次识别结果都会整段改写目标文字块（基准文字 + 识别结果），此时不允许手动输入，否则输入会被覆盖
+                isEditable: !(dictationService.isActive || dictationService.isStarting)
             )
             .padding(.horizontal, 21)
             .padding(.vertical, 4)
@@ -606,6 +600,30 @@ struct iOSNoteEditorView: View {
         }
     }
 
+    /// 编辑器真正关闭时的清理。shareCenter / context 由调用方传入：补做清理时编辑器可能已不在界面上，不能再读环境值
+    private func performCloseCleanup(shareCenter: ShareInboxCenter, context: ModelContext) {
+        formattingTask?.cancel()
+        // 还在等待权限的口述也要取消，否则权限回来后会在没人能停止的情况下打开麦克风
+        if dictationService.isActive || dictationService.isStarting {
+            dictationService.stop()
+            // finalizeDictation keeps any partial text already written — intentional,
+            // so the user doesn't lose words they already spoke before dismissing.
+            model.finalizeDictation()
+        }
+        if !isClosing {
+            // 下滑关闭（仅在没有未保存修改时允许）不经过 close()/discardAndClose()：停止正在写入的照片，并清理没有记录引用的草稿照片
+            isClosing = true
+            discardUnsavedDraftMedia(context: context)
+        }
+        model.reset()
+        thumbnails.removeAll()
+        hasInitialized = false
+        if isRegisteredWithShareCenter {
+            isRegisteredWithShareCenter = false
+            shareCenter.editorDidDisappear()
+        }
+    }
+
     private func handleBack() {
         if hasUnsavedChanges {
             showUnsavedAlert = true
@@ -945,7 +963,8 @@ struct iOSNoteEditorView: View {
     /// 放弃一条从未落库的新记录时，删除它已经写到 MediaStore 的草稿照片。
     /// 编辑已有记录时只删本次会话新写入的附件文件；不能按 persistedID == nil 判断：
     /// 自动保存只写正文、不建附件行，App 被杀后重开时这些照片没有 persistedID，但正文仍引用着它们
-    private func discardUnsavedDraftMedia() {
+    private func discardUnsavedDraftMedia(context: ModelContext? = nil) {
+        let context = context ?? self.context
         guard editingEntryID == nil else {
             let mediaStore = MediaStore.production()
             for draft in model.allAttachments where sessionAddedDraftIDs.contains(draft.id) {

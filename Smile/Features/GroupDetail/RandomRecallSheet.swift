@@ -56,6 +56,7 @@ struct RandomRecallSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .displaysLockedContent(entry.isLocked || (entry.group?.isLocked ?? false))
     }
 
     // MARK: - Body rendering

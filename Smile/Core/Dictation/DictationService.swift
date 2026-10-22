@@ -42,7 +42,31 @@ import Speech
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var recognizer: SFSpeechRecognizer?
-    private var isStarting = false
+    /// start() 正在等待权限等异步步骤，麦克风尚未打开
+    private(set) var isStarting = false
+    /// start() 还在等待期间调用了 stop()：start 在每个 await 之后检查，放弃打开麦克风
+    private var isStartCancelled = false
+    /// tap 是否已安装；引擎启动失败时引擎没在运行，但 tap 仍在，必须单独记录才能移除
+    private var isTapInstalled = false
+    private var currentSession: UUID?
+
+    private let requestMicPermission: @MainActor () async -> Bool
+    private let requestSpeechAuthorization: @MainActor () async -> SFSpeechRecognizerAuthorizationStatus
+
+    /// 权限请求可注入，便于测试启动过程中被取消的情况
+    init(
+        requestMicPermission: @escaping @MainActor () async -> Bool = {
+            await AVAudioApplication.requestRecordPermission()
+        },
+        requestSpeechAuthorization: @escaping @MainActor () async -> SFSpeechRecognizerAuthorizationStatus = {
+            await withCheckedContinuation { cont in
+                SFSpeechRecognizer.requestAuthorization { cont.resume(returning: $0) }
+            }
+        }
+    ) {
+        self.requestMicPermission = requestMicPermission
+        self.requestSpeechAuthorization = requestSpeechAuthorization
+    }
 
     func start(
         onPartial: @escaping @MainActor (String) -> Void,
@@ -50,17 +74,21 @@ import Speech
     ) async throws {
         guard !isActive, !isStarting else { return }
         isStarting = true
-        defer { isStarting = false }
+        isStartCancelled = false
+        defer {
+            isStarting = false
+            isStartCancelled = false
+        }
         error = nil
 
         // 1. 麦克风权限
-        let micGranted = await AVAudioApplication.requestRecordPermission()
+        let micGranted = await requestMicPermission()
+        try checkStartCancelled()
         guard micGranted else { throw DictationError.microphoneDenied }
 
         // 2. 语音识别权限
-        let speechStatus: SFSpeechRecognizerAuthorizationStatus = await withCheckedContinuation { cont in
-            SFSpeechRecognizer.requestAuthorization { cont.resume(returning: $0) }
-        }
+        let speechStatus = await requestSpeechAuthorization()
+        try checkStartCancelled()
         guard speechStatus == .authorized else { throw DictationError.speechRecognitionDenied }
 
         // 3. 识别器
@@ -85,18 +113,19 @@ import Speech
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
             capturedRequest.append(buffer)
         }
+        isTapInstalled = true
 
         // 7. 识别任务
+        // 每轮口述一个标识：旧任务被 cancel 后迟到的回调不能清理或改动新一轮的状态
+        let sessionID = UUID()
+        currentSession = sessionID
         recognitionTask = rec.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.currentSession == sessionID else { return }
                 if let error {
                     // If isActive is already false, stop() was called before this callback
                     // fired — this error is the expected cancellation from our own cleanup.
-                    guard self.isActive else {
-                        self.cleanupAudio()
-                        return
-                    }
+                    guard self.isActive else { return }
                     self.cleanupAudio()
                     self.isActive = false
                     self.error = .recognitionFailed(error)
@@ -125,10 +154,16 @@ import Speech
         isActive = true
     }
 
+    /// 停止口述。start() 还在等待权限时调用也有效：标记取消，start 醒来后不会打开麦克风
     func stop() {
+        if isStarting { isStartCancelled = true }
         guard isActive else { return }
         cleanupAudio()
         isActive = false
+    }
+
+    private func checkStartCancelled() throws {
+        if isStartCancelled { throw CancellationError() }
     }
 
     private func cleanupAudio() {
@@ -138,9 +173,14 @@ import Speech
         recognitionRequest?.endAudio()
         recognitionRequest = nil
         recognizer = nil
+        currentSession = nil
         if audioEngine.isRunning {
             audioEngine.stop()
+        }
+        // 引擎启动失败时 isRunning 为 false 但 tap 仍在；不移除的话下次 installTap 会断言崩溃
+        if isTapInstalled {
             audioEngine.inputNode.removeTap(onBus: 0)
+            isTapInstalled = false
         }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }

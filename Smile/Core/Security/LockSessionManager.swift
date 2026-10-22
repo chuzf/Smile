@@ -33,6 +33,15 @@ final class LockSessionManager {
 
     var hasUnlockedContent: Bool { !unlockedGroupIDs.isEmpty || !unlockedEntryIDs.isEmpty }
 
+    /// 正在展示加锁内容的页面（解锁计时到期后页面仍可能开着，所以不能只看解锁集合）
+    private(set) var lockedContentDisplays: Set<UUID> = []
+
+    /// 离开前台时是否需要遮罩
+    var needsPrivacyProtection: Bool { hasUnlockedContent || !lockedContentDisplays.isEmpty }
+
+    func beginDisplayingLockedContent(_ token: UUID) { lockedContentDisplays.insert(token) }
+    func endDisplayingLockedContent(_ token: UUID) { lockedContentDisplays.remove(token) }
+
     // MARK: - Query
 
     func isGroupUnlocked(_ id: UUID) -> Bool { unlockedGroupIDs.contains(id) }
@@ -73,13 +82,13 @@ final class LockSessionManager {
     /// 进入 inactive（上滑多任务、下拉控制中心）：有解锁内容就先盖上
     func sceneWillResignActive() {
         // 自己弹出的 Face ID 也会让 App 进入 inactive，这时不盖
-        guard !authInProgress, hasUnlockedContent else { return }
+        guard !authInProgress, needsPrivacyProtection else { return }
         setShielded(true)
     }
 
     /// 进入后台：记下已解锁的内容，回来时验证通过再原样恢复（不直接关页面，编辑中的草稿不丢）
     func sceneDidEnterBackground() {
-        guard hasUnlockedContent else { return }
+        guard needsPrivacyProtection else { return }
         stashedGroupIDs.formUnion(unlockedGroupIDs)
         stashedEntryIDs.formUnion(unlockedEntryIDs)
         needsReauth = true

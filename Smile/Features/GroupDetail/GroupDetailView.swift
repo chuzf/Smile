@@ -34,7 +34,8 @@ struct GroupDetailView: View {
     @State private var dateFrom: Date?
     @State private var dateTo: Date?
     @State private var showTimeFilter = false
-    @State private var plainTextCache: [UUID: String] = [:]
+    /// 引用类型：在 body 求值期间读写缓存不会触发「修改 state」
+    @State private var plainTextCache = PlainTextCache()
 
     private var isGroupUnlocked: Bool {
         lockSession.isGroupUnlocked(group.id)
@@ -45,14 +46,17 @@ struct GroupDetailView: View {
     }
 
     private func cachedPlainText(for entry: Entry) -> String {
-        if let cached = plainTextCache[entry.id] { return cached }
-        let text = iOSNoteEditorModel.plainText(from: entry.bodyText)
-        plainTextCache[entry.id] = text
-        return text
+        plainTextCache.text(for: entry)
     }
 
     private var filteredEntries: [Entry] {
         var list = entries
+        let isFiltering = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !selectedTagIDs.isEmpty
+        if isFiltering {
+            // 未解锁的加锁条目不参与搜索和标签筛选，免得靠「筛得出来」反推内容
+            list = list.filter { !$0.isLocked || lockSession.isEntryUnlocked($0.id) }
+        }
         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let q = searchText
             list = list.filter { entry in
@@ -196,10 +200,15 @@ struct GroupDetailView: View {
                 selectedEntry = nil
             }
             let currentIDs = Set(newEntries.map { $0.id })
-            plainTextCache = plainTextCache.filter { currentIDs.contains($0.key) }
+            plainTextCache.prune(keeping: currentIDs)
         }
         .onChange(of: group.isLocked) { _, _ in
             showUnlockBanner = true
+        }
+        .displaysLockedContent(group.isLocked)
+        .onChange(of: allTags) { _, tags in
+            // 标签被删后去掉残留的筛选，否则看不到也取消不了
+            selectedTagIDs.formIntersection(tags.map(\.persistentModelID))
         }
         .onChange(of: lockSession.relockEpoch) { _, _ in
             // 全部重新上锁后，退出正在查看的加锁条目
@@ -254,5 +263,21 @@ private struct UnlockBanner: View {
                 .stroke(AppColors.warmOrange.opacity(0.3), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private final class PlainTextCache {
+    private var storage: [UUID: (updatedAt: Date, text: String)] = [:]
+
+    func text(for entry: Entry) -> String {
+        // 带上 updatedAt：条目被编辑后缓存自动失效
+        if let hit = storage[entry.id], hit.updatedAt == entry.updatedAt { return hit.text }
+        let text = iOSNoteEditorModel.plainText(from: entry.bodyText)
+        storage[entry.id] = (entry.updatedAt, text)
+        return text
+    }
+
+    func prune(keeping ids: Set<UUID>) {
+        storage = storage.filter { ids.contains($0.key) }
     }
 }

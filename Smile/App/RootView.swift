@@ -15,6 +15,8 @@ struct RootView: View {
     @State private var pendingEncryptedURL: URL?
     @State private var showInboxPasswordAlert = false
     @State private var inboxPassword = ""
+    /// 密码错误时在密码框里提示，文件保留可重试
+    @State private var inboxPasswordHint: String?
     @State private var importing = false
     @State private var importResult: ImportService.ImportResult?
     @State private var importError: String?
@@ -86,18 +88,28 @@ struct RootView: View {
             }
             let ext = url.pathExtension.lowercased()
             guard ext == "zip" || ext == "smilejar" else { return }
-            inboxImportURL = url
+            // 「在原处打开」时 url 就是用户的原文件（可能是唯一的备份），只在自己的副本上操作
+            if let copy = Self.makeImportCopy(of: url) {
+                if let old = inboxImportURL { Self.discardImportCopy(old) }
+                inboxImportURL = copy
+            } else {
+                importError = "无法读取该备份文件"
+            }
         }
         .alert("发现备份文件", isPresented: Binding(
             get: { inboxImportURL != nil && !importing },
             set: { if !$0 { inboxImportURL = nil } }
         )) {
-            Button("取消", role: .cancel) { inboxImportURL = nil }
+            Button("取消", role: .cancel) {
+                if let url = inboxImportURL { Self.discardImportCopy(url) }
+                inboxImportURL = nil
+            }
             Button("导入") {
                 guard let url = inboxImportURL else { return }
                 inboxImportURL = nil
                 if ExportService.isEncryptedBackup(url) {
                     pendingEncryptedURL = url
+                    inboxPasswordHint = nil
                     showInboxPasswordAlert = true
                 } else {
                     Task { await doInboxImport(from: url, password: nil) }
@@ -112,18 +124,24 @@ struct RootView: View {
                 guard let url = pendingEncryptedURL else { return }
                 let pwd = inboxPassword
                 inboxPassword = ""
+                guard !pwd.isEmpty else {
+                    inboxPasswordHint = "请输入密码"
+                    reshowInboxPasswordAlert()
+                    return
+                }
                 pendingEncryptedURL = nil
                 Task { await doInboxImport(from: url, password: pwd) }
             }
             Button("取消", role: .cancel) {
                 inboxPassword = ""
+                inboxPasswordHint = nil
                 if let url = pendingEncryptedURL {
-                    try? FileManager.default.removeItem(at: url)
+                    Self.discardImportCopy(url)
                     pendingEncryptedURL = nil
                 }
             }
         } message: {
-            Text("此备份文件已加密，请输入创建备份时设置的密码")
+            Text(inboxPasswordHint ?? "此备份文件已加密，请输入创建备份时设置的密码")
         }
         .alert("导入完成", isPresented: Binding(
             get: { importResult != nil },
@@ -244,9 +262,11 @@ struct RootView: View {
     @MainActor
     private func doInboxImport(from url: URL, password: String?) async {
         importing = true
+        var keepFileForRetry = false
         defer {
             importing = false
-            try? FileManager.default.removeItem(at: url)
+            // url 是 onOpenURL 时复制出的副本；密码错误时留着让用户重输
+            if !keepFileForRetry { Self.discardImportCopy(url) }
         }
 
         var importURL = url
@@ -256,6 +276,12 @@ struct RootView: View {
             do {
                 decryptedURL = try ExportService.decryptBackup(url: url, password: pwd)
                 importURL = decryptedURL!
+            } catch ExportService.CryptoError.wrongPassword {
+                keepFileForRetry = true
+                pendingEncryptedURL = url
+                inboxPasswordHint = "密码错误，请重新输入"
+                reshowInboxPasswordAlert()
+                return
             } catch {
                 importError = error.localizedDescription
                 return
@@ -272,5 +298,45 @@ struct RootView: View {
         } catch {
             importError = error.localizedDescription
         }
+    }
+
+    /// 上一个 alert 的关闭动画结束后再弹，否则 SwiftUI 会忽略这次弹出
+    private func reshowInboxPasswordAlert() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            showInboxPasswordAlert = true
+        }
+    }
+
+    static func discardImportCopy(_ url: URL) {
+        let dir = url.deletingLastPathComponent()
+        guard dir.lastPathComponent.hasPrefix("incoming-backup-") else { return }
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    /// 把外部传入的备份复制到临时目录。原文件属于用户，绝不删除；
+    /// 只有系统投递到本 App Documents/Inbox 的副本（AirDrop、邮件等）复制后顺手清掉
+    static func makeImportCopy(of url: URL) -> URL? {
+        let fm = FileManager.default
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        let dir = fm.temporaryDirectory.appendingPathComponent("incoming-backup-\(UUID().uuidString)")
+        let copy = dir.appendingPathComponent(url.lastPathComponent)
+        do {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try fm.copyItem(at: url, to: copy)
+        } catch {
+            try? fm.removeItem(at: dir)
+            return nil
+        }
+
+        let inbox = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Inbox").standardizedFileURL.resolvingSymlinksInPath()
+        let source = url.standardizedFileURL.resolvingSymlinksInPath()
+        if source.deletingLastPathComponent().path == inbox.path {
+            try? fm.removeItem(at: url)
+        }
+        return copy
     }
 }

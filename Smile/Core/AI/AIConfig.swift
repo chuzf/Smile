@@ -18,6 +18,12 @@ enum AIPreset: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// 不认识的预设（如新版本才有的）按自定义解码，免得整份设置解码失败、回落成默认值再被保存覆盖
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = AIPreset(rawValue: raw) ?? .custom
+    }
+
     var displayName: String {
         switch self {
         case .kimi: return "Kimi"
@@ -160,63 +166,102 @@ struct AISettings: Codable, Equatable {
 }
 
 /// 设置存 UserDefaults，API Key 只存 Keychain（每个服务商一条）
+/// Key 绑定保存它时的接口主机：换了预设或地址后旧 Key 不再读出，避免把这家的 Key 发给另一家
 struct AIConfigStore {
     static let settingsKey = "ai_settings"
     static let legacyConfigKey = "ai_config"
     static let legacyAPIKeyAccount = "ai_api_key"
     /// 豆包预设改名为火山方舟后，已保存的旧名称只改一次，之后用户再起名叫「豆包」不受影响
     static let doubaoRenamedKey = "ai_doubao_renamed"
+    /// 服务商 ID → 保存 Key 时的接口主机；单独存放，不跟设置一起被别的页面的旧副本覆盖
+    static let apiKeyHostsKey = "ai_api_key_hosts"
+    /// 已为加入主机绑定之前保存的 Key 补记主机（按当时的地址），只补一次
+    static let apiKeyHostsBackfilledKey = "ai_api_key_hosts_backfilled"
+    /// 旧版 Key 要移到哪个服务商下；复制成功或确认没有旧 Key 后清掉
+    static let legacyKeyTargetKey = "ai_legacy_key_target"
+    static let legacyKeyResolvedKey = "ai_legacy_key_resolved"
+    /// 设置或 Key 有变化时发出，同时存在的多个设置页据此重新读取
+    static let didChangeNotification = Notification.Name("AIConfigStore.didChange")
 
     static func apiKeyAccount(for id: UUID) -> String { "ai_api_key.\(id.uuidString)" }
 
     let defaults: UserDefaults
-    let keychain: KeychainService
+    let keychain: any KeychainStoring
 
-    init(defaults: UserDefaults = .standard, keychain: KeychainService = KeychainService()) {
+    init(defaults: UserDefaults = .standard, keychain: any KeychainStoring = KeychainService()) {
         self.defaults = defaults
         self.keychain = keychain
     }
 
     func load() -> AISettings {
+        let settings: AISettings
         if let data = defaults.data(forKey: Self.settingsKey),
-           var settings = try? JSONDecoder().decode(AISettings.self, from: data) {
+           var saved = try? JSONDecoder().decode(AISettings.self, from: data) {
             if !defaults.bool(forKey: Self.doubaoRenamedKey) {
-                for i in settings.providers.indices
-                where settings.providers[i].preset == .doubao && settings.providers[i].name == "豆包" {
-                    settings.providers[i].name = AIPreset.doubao.displayName
+                for i in saved.providers.indices
+                where saved.providers[i].preset == .doubao && saved.providers[i].name == "豆包" {
+                    saved.providers[i].name = AIPreset.doubao.displayName
                 }
-                save(settings)
+                // 先记下再保存：保存会发通知，设置页收到后重新读取时不再重复改名
                 defaults.set(true, forKey: Self.doubaoRenamedKey)
+                save(saved)
             }
-            return settings
+            settings = saved
+        } else {
+            settings = migrateLegacy() ?? .default
         }
-        return migrateLegacy() ?? .default
+        // 首次启动、迁移后的列表里已是新名称，也记下，之后用户起名叫「豆包」不会被改
+        defaults.set(true, forKey: Self.doubaoRenamedKey)
+        backfillKeyHostsIfNeeded(settings)
+        resolveLegacyKeyIfNeeded(settings)
+        return settings
     }
 
+    /// 内容没变时不写也不发通知，设置页重新读取后触发的保存不会来回循环
     func save(_ settings: AISettings) {
+        // 按解码后的值比较：编码结果的键顺序不保证每次相同
+        if let existing = defaults.data(forKey: Self.settingsKey),
+           (try? JSONDecoder().decode(AISettings.self, from: existing)) == settings { return }
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: Self.settingsKey)
+        notifyChange()
     }
 
+    /// 只返回为这个服务商当前接口主机保存的 Key；换了预设或地址后返回 nil，需重新填写
+    func loadAPIKey(for provider: AIProvider) -> String? {
+        guard let host = provider.consentHost, keyHost(for: provider.id) == host else { return nil }
+        return storedAPIKey(for: provider.id)
+    }
+
+    /// 按已保存设置里这一条的当前地址校验，同 `loadAPIKey(for: AIProvider)`
     func loadAPIKey(for id: UUID) -> String? {
-        guard let key = keychain.get(Self.apiKeyAccount(for: id))?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !key.isEmpty else { return nil }
-        return key
+        guard let provider = load().providers.first(where: { $0.id == id }) else { return nil }
+        return loadAPIKey(for: provider)
     }
 
-    /// 传入空字符串表示清除
-    func saveAPIKey(_ key: String, for id: UUID) throws {
+    /// 钥匙串里有 Key，但是为别的接口地址保存的，不会再发出
+    func hasKeyForOtherHost(_ provider: AIProvider) -> Bool {
+        storedAPIKey(for: provider.id) != nil && loadAPIKey(for: provider) == nil
+    }
+
+    /// 传入空字符串表示清除；保存时记下当前接口主机，地址无效时不保存
+    func saveAPIKey(_ key: String, for provider: AIProvider) throws {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            try keychain.delete(Self.apiKeyAccount(for: id))
+            try keychain.delete(Self.apiKeyAccount(for: provider.id))
+            setKeyHost(nil, for: provider.id)
         } else {
-            try keychain.set(Self.apiKeyAccount(for: id), value: trimmed)
+            guard let host = provider.consentHost else { throw AIConfigError.invalidBaseURL }
+            try keychain.set(Self.apiKeyAccount(for: provider.id), value: trimmed)
+            setKeyHost(host, for: provider.id)
         }
+        notifyChange()
     }
 
     /// 先删 Key 再从列表移除并保存；删 Key 失败时抛错，列表不变
     func removeProvider(id: UUID, from settings: AISettings) throws -> AISettings {
         try keychain.delete(Self.apiKeyAccount(for: id))
+        setKeyHost(nil, for: id)
         let updated = settings.removingProvider(id: id)
         save(updated)
         return updated
@@ -224,7 +269,38 @@ struct AIConfigStore {
 
     var isConfigured: Bool {
         let settings = load()
-        return settings.isComplete(apiKey: settings.activeProviderID.flatMap { loadAPIKey(for: $0) })
+        return settings.isComplete(apiKey: settings.activeProvider.flatMap { loadAPIKey(for: $0) })
+    }
+
+    private func storedAPIKey(for id: UUID) -> String? {
+        guard let key = keychain.get(Self.apiKeyAccount(for: id))?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !key.isEmpty else { return nil }
+        return key
+    }
+
+    private func keyHost(for id: UUID) -> String? {
+        (defaults.dictionary(forKey: Self.apiKeyHostsKey) as? [String: String])?[id.uuidString]
+    }
+
+    private func setKeyHost(_ host: String?, for id: UUID) {
+        var hosts = defaults.dictionary(forKey: Self.apiKeyHostsKey) as? [String: String] ?? [:]
+        hosts[id.uuidString] = host
+        defaults.set(hosts, forKey: Self.apiKeyHostsKey)
+    }
+
+    /// 加入主机绑定之前保存的 Key 没记主机，按各服务商现在的地址补记一次
+    private func backfillKeyHostsIfNeeded(_ settings: AISettings) {
+        guard !defaults.bool(forKey: Self.apiKeyHostsBackfilledKey) else { return }
+        var hosts = defaults.dictionary(forKey: Self.apiKeyHostsKey) as? [String: String] ?? [:]
+        for provider in settings.providers where hosts[provider.id.uuidString] == nil {
+            hosts[provider.id.uuidString] = provider.consentHost
+        }
+        defaults.set(hosts, forKey: Self.apiKeyHostsKey)
+        defaults.set(true, forKey: Self.apiKeyHostsBackfilledKey)
+    }
+
+    private func notifyChange() {
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: defaults)
     }
 
     // MARK: 旧版迁移
@@ -239,7 +315,7 @@ struct AIConfigStore {
         var customPrompt: String
     }
 
-    /// 把旧配置合并进默认列表并启用，旧 Key 移到这一条下；Key 写入失败时不保存，下次读取再试
+    /// 把旧配置合并进默认列表并启用、保存；旧 Key 由 `resolveLegacyKeyIfNeeded` 移到这一条下
     private func migrateLegacy() -> AISettings? {
         guard let data = defaults.data(forKey: Self.legacyConfigKey),
               let legacy = try? JSONDecoder().decode(LegacyConfig.self, from: data) else { return nil }
@@ -259,14 +335,40 @@ struct AIConfigStore {
         let id = settings.providers[index].id
         settings.activeProviderID = id
 
-        if let key = keychain.get(Self.legacyAPIKeyAccount) {
-            do { try keychain.set(Self.apiKeyAccount(for: id), value: key) } catch { return settings }
-        }
+        defaults.set(id.uuidString, forKey: Self.legacyKeyTargetKey)
+        defaults.removeObject(forKey: Self.legacyKeyResolvedKey)
         save(settings)
-        // 新数据已保存，旧数据删不掉也不会再被读取
-        try? keychain.delete(Self.legacyAPIKeyAccount)
         defaults.removeObject(forKey: Self.legacyConfigKey)
         return settings
+    }
+
+    /// 旧 Key 只在确认不存在或已复制到新位置后才删；读写失败（如设备锁定）时保留，下次读取再试。
+    /// 新格式设置已存在时也会重试，早先复制失败但设置已被保存的用户也能找回旧 Key
+    private func resolveLegacyKeyIfNeeded(_ settings: AISettings) {
+        guard !defaults.bool(forKey: Self.legacyKeyResolvedKey) else { return }
+        let legacyKey: String?
+        do { legacyKey = try keychain.read(Self.legacyAPIKeyAccount) } catch { return }
+        var copied = false
+        if let legacyKey {
+            // 没记目标的是早先迁移时复制失败的，那时迁移的一条被设为启用
+            let targetID = defaults.string(forKey: Self.legacyKeyTargetKey).flatMap(UUID.init(uuidString:))
+                ?? settings.activeProviderID
+            if let target = settings.providers.first(where: { $0.id == targetID }) {
+                do {
+                    // 用户已给这一条填过新 Key 时不覆盖
+                    if try keychain.read(Self.apiKeyAccount(for: target.id)) == nil {
+                        try keychain.set(Self.apiKeyAccount(for: target.id), value: legacyKey)
+                        setKeyHost(target.consentHost, for: target.id)
+                        copied = true
+                    }
+                } catch { return }
+            }
+            do { try keychain.delete(Self.legacyAPIKeyAccount) } catch { return }
+        }
+        defaults.removeObject(forKey: Self.legacyKeyTargetKey)
+        defaults.set(true, forKey: Self.legacyKeyResolvedKey)
+        // 标记完再通知：设置页收到后重新读取时不再重复处理
+        if copied { notifyChange() }
     }
 
     // MARK: 发送内容的同意
@@ -286,4 +388,9 @@ struct AIConfigStore {
         hosts.append(host)
         defaults.set(hosts, forKey: Self.consentedHostsKey)
     }
+}
+
+enum AIConfigError: Error {
+    /// 接口地址不是有效的 https 地址，Key 无处绑定
+    case invalidBaseURL
 }

@@ -18,8 +18,16 @@ struct KeychainServiceTests {
         #expect(service.get("k") == nil)
     }
 
-    @Test func getMissingReturnsNil() {
+    @Test func getMissingReturnsNil() throws {
         #expect(service.get("never_set") == nil)
+        // 不存在不算错误，read 返回 nil 而不是抛出
+        #expect(try service.read("never_set") == nil)
+    }
+
+    @Test func readReturnsStoredValue() throws {
+        try service.set("r", value: "v")
+        #expect(try service.read("r") == "v")
+        try service.delete("r")
     }
 
     @Test func overwriteSamekey() throws {

@@ -84,7 +84,11 @@ struct SettingsView: View {
         // MARK: Share sheet（导出完成后分享文件）
         .sheet(item: Binding<ExportFileWrapper?>(
             get: { exportURL.map { ExportFileWrapper(url: $0) } },
-            set: { _ in exportURL = nil }
+            set: { _ in
+                // 分享完就删：备份含加锁内容，不能一直留在临时目录
+                if let url = exportURL { try? FileManager.default.removeItem(at: url) }
+                exportURL = nil
+            }
         )) { w in
             ShareSheetForURL(url: w.url)
         }

@@ -1,7 +1,22 @@
 import Foundation
 import Security
 
-struct KeychainService {
+/// 钥匙串读写；单独成协议，测试里可换成能模拟读写失败的实现
+protocol KeychainStoring {
+    func set(_ key: String, value: String) throws
+    /// 不存在时返回 nil；其他钥匙串错误（如设备锁定时的 errSecInteractionNotAllowed）抛出，不当成「没有」
+    func read(_ key: String) throws -> String?
+    func delete(_ key: String) throws
+}
+
+extension KeychainStoring {
+    /// 不区分「不存在」和读取出错，都返回 nil；需要区分时用 `read`
+    func get(_ key: String) -> String? {
+        (try? read(key)) ?? nil
+    }
+}
+
+struct KeychainService: KeychainStoring {
     let service: String
 
     init(service: String = "com.smilejar.keychain") {
@@ -34,7 +49,7 @@ struct KeychainService {
         }
     }
 
-    func get(_ key: String) -> String? {
+    func read(_ key: String) throws -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -44,11 +59,10 @@ struct KeychainService {
         ]
         var item: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess,
-              let data = item as? Data,
-              let s = String(data: data, encoding: .utf8)
-        else { return nil }
-        return s
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess else { throw KeychainError.osStatus(status) }
+        guard let data = item as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     func delete(_ key: String) throws {
