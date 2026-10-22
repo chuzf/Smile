@@ -218,18 +218,16 @@ struct LLMClientTests {
     // MARK: Factory
 
     @Test func factoryPicksClientByProtocol() throws {
-        var c = AIConfig.default
-        #expect(try LLMClientFactory.make(config: c, apiKey: "sk") is OpenAICompatibleClient)
-        c = c.applyingPreset(.anthropic)
-        #expect(try LLMClientFactory.make(config: c, apiKey: "sk") is AnthropicClient)
+        #expect(try LLMClientFactory.make(provider: .make(preset: .kimi), apiKey: "sk") is OpenAICompatibleClient)
+        #expect(try LLMClientFactory.make(provider: .make(preset: .anthropic), apiKey: "sk") is AnthropicClient)
     }
 
     @Test func factoryRejectsIncompleteConfig() {
-        var c = AIConfig.default
-        c.baseURL = "http://insecure.example.com"
-        #expect(throws: LLMError.invalidURL) { try LLMClientFactory.make(config: c, apiKey: "sk") }
-        #expect(throws: LLMError.notConfigured) { try LLMClientFactory.make(config: .default, apiKey: " ") }
-        var noModel = AIConfig.default; noModel.model = ""
-        #expect(throws: LLMError.notConfigured) { try LLMClientFactory.make(config: noModel, apiKey: "sk") }
+        var p = AIProvider.make(preset: .kimi)
+        p.baseURL = "http://insecure.example.com"
+        #expect(throws: LLMError.invalidURL) { try LLMClientFactory.make(provider: p, apiKey: "sk") }
+        #expect(throws: LLMError.notConfigured) { try LLMClientFactory.make(provider: .make(preset: .kimi), apiKey: " ") }
+        var noModel = AIProvider.make(preset: .kimi); noModel.model = ""
+        #expect(throws: LLMError.notConfigured) { try LLMClientFactory.make(provider: noModel, apiKey: "sk") }
     }
 }

@@ -1,15 +1,15 @@
 import Foundation
 
 enum LLMClientFactory {
-    static func make(config: AIConfig, apiKey: String, session: URLSession = .shared) throws -> LLMClient {
-        guard let base = config.validatedBaseURL else { throw LLMError.invalidURL }
+    static func make(provider: AIProvider, apiKey: String, session: URLSession = .shared) throws -> LLMClient {
+        guard let base = provider.validatedBaseURL else { throw LLMError.invalidURL }
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty, !config.trimmedModel.isEmpty else { throw LLMError.notConfigured }
-        switch config.apiProtocol {
+        guard !key.isEmpty, !provider.trimmedModel.isEmpty else { throw LLMError.notConfigured }
+        switch provider.apiProtocol {
         case .openAI:
-            return OpenAICompatibleClient(baseURL: base, model: config.trimmedModel, apiKey: key, session: session)
+            return OpenAICompatibleClient(baseURL: base, model: provider.trimmedModel, apiKey: key, session: session)
         case .anthropic:
-            return AnthropicClient(baseURL: base, model: config.trimmedModel, apiKey: key, session: session)
+            return AnthropicClient(baseURL: base, model: provider.trimmedModel, apiKey: key, session: session)
         }
     }
 }

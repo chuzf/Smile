@@ -422,25 +422,26 @@ struct iOSNoteEditorView: View {
     fileprivate func startFormatting() {
         guard !isFormatting else { return }
         let store = AIConfigStore()
-        let config = store.load()
-        guard let apiKey = store.loadAPIKey(), config.isComplete(apiKey: apiKey),
-              let host = config.consentHost else {
+        let settings = store.load()
+        guard let provider = settings.activeProvider,
+              let apiKey = store.loadAPIKey(for: provider.id), settings.isComplete(apiKey: apiKey),
+              let host = provider.consentHost else {
             showAISetupAlert = true
             return
         }
         // 内容会发给第三方服务商：第一次发往这个地址前先说明并征得同意（App Store 审核指南 5.1.2）
         guard store.hasConsent(for: host) else {
-            aiConsentRequest = AIConsentRequest(host: host, providerName: config.providerDisplayName)
+            aiConsentRequest = AIConsentRequest(host: host, providerName: provider.providerDisplayName)
             return
         }
         let client: LLMClient
         do {
-            client = try LLMClientFactory.make(config: config, apiKey: apiKey)
+            client = try LLMClientFactory.make(provider: provider, apiKey: apiKey)
         } catch {
             formattingErrorMessage = (error as? LLMError ?? .notConfigured).userMessage
             return
         }
-        let service = TextFormattingService(client: client, style: config.style, customPrompt: config.customPrompt)
+        let service = TextFormattingService(client: client, style: settings.style, customPrompt: settings.customPrompt)
         focusedSegmentID = nil
         isFormatting = true
         formattingTask = Task { @MainActor in

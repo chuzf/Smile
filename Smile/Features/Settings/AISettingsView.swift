@@ -3,90 +3,46 @@ import SwiftUI
 struct AISettingsView: View {
     private let store = AIConfigStore()
 
-    @State private var config = AIConfig.default
+    @State private var settings = AISettings.default
     @State private var loaded = false
-    @State private var hasSavedKey = false
-    @State private var keyInput = ""
-    @State private var keyError: String?
-    @State private var testState: TestState = .idle
-    @FocusState private var focusedField: Field?
-
-    private enum Field {
-        case baseURL, model, apiKey, customPrompt
-    }
-
-    private enum TestState: Equatable {
-        case idle, testing, success
-        case failure(String)
-    }
+    /// 已保存 Key 的服务商，列表里据此标「未填 Key」
+    @State private var providersWithKey: Set<UUID> = []
+    @State private var editingProviderID: UUID?
+    @State private var pendingDeletion: AIProvider?
+    @State private var deleteError: String?
+    @FocusState private var promptFocused: Bool
 
     var body: some View {
         Form {
             Section("服务商") {
-                Picker("服务商", selection: presetBinding) {
-                    ForEach(AIPreset.allCases) { Text($0.displayName).tag($0) }
+                ForEach(settings.providers) { provider in
+                    providerRow(provider)
                 }
-                if config.preset == .custom {
-                    Picker("接口协议", selection: $config.apiProtocol) {
-                        ForEach(AIProtocol.allCases) { Text($0.displayName).tag($0) }
+                .onDelete { offsets in
+                    pendingDeletion = offsets.first.map { settings.providers[$0] }
+                }
+                Menu {
+                    ForEach(AIPreset.allCases) { preset in
+                        Button(preset.displayName) { addProvider(preset) }
                     }
-                }
-                TextField("接口地址", text: $config.baseURL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($focusedField, equals: .baseURL)
-                if !config.baseURL.isEmpty && config.validatedBaseURL == nil {
-                    Text("请填写以 https:// 开头的地址").font(.footnote).foregroundStyle(.red)
-                }
-                TextField("模型", text: $config.model)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($focusedField, equals: .model)
-                if config.preset == .doubao {
-                    Text("填写方舟控制台中的模型 ID 或接入点 ID").font(.footnote).foregroundStyle(.secondary)
-                }
-            }
-
-            Section("API Key") {
-                SecureField(hasSavedKey ? "已保存（输入新值可覆盖）" : "粘贴 API Key", text: $keyInput)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($focusedField, equals: .apiKey)
-                    .onSubmit { saveKeyIfNeeded() }
-                if hasSavedKey {
-                    Button("清除 Key", role: .destructive, action: clearKey)
-                }
-                if let keyError {
-                    Text(keyError).font(.footnote).foregroundStyle(.red)
-                }
-            }
-
-            Section("整理风格") {
-                Picker("风格", selection: $config.style) {
-                    ForEach(FormattingStyle.allCases) { Text($0.displayName).tag($0) }
-                }
-                if config.style == .custom {
-                    TextEditor(text: $config.customPrompt)
-                        .frame(minHeight: 120)
-                        .focused($focusedField, equals: .customPrompt)
+                } label: {
+                    Label("添加服务商", systemImage: "plus")
                 }
             }
 
             Section {
-                Button {
-                    focusedField = nil
-                    Task { await testConnection() }
-                } label: {
-                    HStack {
-                        Text("测试连接")
-                        Spacer()
-                        testStatusView
-                    }
+                Picker("风格", selection: $settings.style) {
+                    ForEach(FormattingStyle.allCases) { Text($0.displayName).tag($0) }
                 }
-                .disabled(testState == .testing)
+                if settings.style == .custom {
+                    TextEditor(text: $settings.customPrompt)
+                        .frame(minHeight: 120)
+                        .focused($promptFocused)
+                }
+            } header: {
+                Text("整理风格")
             } footer: {
-                Text("整理时会把标题和正文文字发送给你配置的服务商，不发送照片、视频和语音。API Key 仅保存在本机钥匙串。")
+                Text("整理时会把标题和正文文字发送给启用中的服务商，不发送照片、视频和语音。API Key 仅保存在本机钥匙串。")
             }
         }
         .navigationTitle("AI 整理")
@@ -96,107 +52,90 @@ struct AISettingsView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("完成") { focusedField = nil }
+                Button("完成") { promptFocused = false }
             }
+        }
+        .navigationDestination(item: $editingProviderID) { id in
+            AIProviderEditView(settings: $settings, providerID: id, store: store, onKeyChange: refreshKeys)
         }
         .onAppear {
-            guard !loaded else { return }
-            loaded = true
-            config = store.load()
-            hasSavedKey = store.loadAPIKey() != nil
-        }
-        .onChange(of: config) { _, newValue in
-            store.save(newValue)
-            testState = .idle
-        }
-        .onChange(of: focusedField) { oldValue, _ in
-            // 不按回车直接离开 Key 输入框时也保存，否则要等退出页面才写入
-            if oldValue == .apiKey { saveKeyIfNeeded() }
-        }
-        .onDisappear { saveKeyIfNeeded() }
-    }
-
-    private var presetBinding: Binding<AIPreset> {
-        Binding(
-            get: { config.preset },
-            set: { config = config.applyingPreset($0) }
-        )
-    }
-
-    @ViewBuilder
-    private var testStatusView: some View {
-        switch testState {
-        case .idle:
-            EmptyView()
-        case .testing:
-            ProgressView()
-        case .success:
-            Label("连接成功", systemImage: "checkmark.circle.fill")
-                .font(.footnote)
-                .foregroundStyle(.green)
-        case .failure(let message):
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(.red)
-                .multilineTextAlignment(.trailing)
-        }
-    }
-
-    /// 返回 false 表示输入了新 Key 但写入 Keychain 失败
-    @discardableResult
-    private func saveKeyIfNeeded() -> Bool {
-        let trimmed = keyInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return true }
-        do {
-            try store.saveAPIKey(trimmed)
-            keyInput = ""
-            hasSavedKey = true
-            keyError = nil
-            return true
-        } catch {
-            keyError = "API Key 保存失败，请重试"
-            return false
-        }
-    }
-
-    private func clearKey() {
-        do {
-            try store.saveAPIKey("")
-            keyInput = ""
-            hasSavedKey = false
-            keyError = nil
-        } catch {
-            keyError = "清除失败，请重试"
-        }
-    }
-
-    @MainActor
-    private func testConnection() async {
-        // Key 没写进去时不能拿旧 Key 去测
-        guard saveKeyIfNeeded() else { return }
-        guard let key = store.loadAPIKey(), config.isComplete(apiKey: key) else {
-            testState = .failure(LLMError.notConfigured.userMessage)
-            return
-        }
-        testState = .testing
-        // 等待期间用户改了配置时 onChange 已把状态复位，旧请求的结果不再对应当前配置，丢弃
-        let testedConfig = config
-        let result: TestState
-        do {
-            let client = try LLMClientFactory.make(config: testedConfig, apiKey: key)
-            _ = try await client.complete(system: "只回复 OK", user: "ping")
-            result = .success
-        } catch let error as LLMError {
-            // 测试连接时附上响应体，方便排查模型名、参数等 400 错误；响应体里不含 Key
-            if case .http(_, let body) = error, !body.isEmpty {
-                result = .failure(error.userMessage + "\n" + body)
-            } else {
-                result = .failure(error.userMessage)
+            if !loaded {
+                loaded = true
+                settings = store.load()
             }
-        } catch {
-            result = .failure(LLMError.network(error.localizedDescription).userMessage)
+            refreshKeys()
         }
-        guard config == testedConfig, testState == .testing else { return }
-        testState = result
+        .onChange(of: settings) { _, newValue in store.save(newValue) }
+        .confirmationDialog("删除「\(pendingDeletion?.providerDisplayName ?? "")」？",
+                            isPresented: Binding(get: { pendingDeletion != nil },
+                                                 set: { if !$0 { pendingDeletion = nil } }),
+                            titleVisibility: .visible,
+                            presenting: pendingDeletion) { provider in
+            Button("删除", role: .destructive) { delete(provider) }
+        } message: { _ in
+            Text("这个服务商的 API Key 也会一并删除。")
+        }
+        .alert("删除失败，请重试", isPresented: Binding(get: { deleteError != nil },
+                                                    set: { if !$0 { deleteError = nil } })) {
+            Button("好", role: .cancel) { }
+        }
+    }
+
+    private func providerRow(_ provider: AIProvider) -> some View {
+        HStack {
+            Button {
+                settings.activeProviderID = provider.id
+            } label: {
+                HStack {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                        .opacity(provider.id == settings.activeProviderID ? 1 : 0)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(provider.providerDisplayName)
+                            .foregroundStyle(.primary)
+                        Text(provider.trimmedModel.isEmpty ? "未填模型" : provider.trimmedModel)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if !providersWithKey.contains(provider.id) {
+                        Text("未填 Key")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(provider.id == settings.activeProviderID ? .isSelected : [])
+
+            Button {
+                editingProviderID = provider.id
+            } label: {
+                Image(systemName: "info.circle")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("编辑\(provider.providerDisplayName)")
+        }
+    }
+
+    private func addProvider(_ preset: AIPreset) {
+        let provider = AIProvider.make(preset: preset)
+        settings.providers.append(provider)
+        if settings.activeProvider == nil { settings.activeProviderID = provider.id }
+        editingProviderID = provider.id
+    }
+
+    private func delete(_ provider: AIProvider) {
+        do {
+            settings = try store.removeProvider(id: provider.id, from: settings)
+            refreshKeys()
+        } catch {
+            deleteError = "删除失败，请重试"
+        }
+    }
+
+    private func refreshKeys() {
+        providersWithKey = Set(settings.providers.map(\.id).filter { store.loadAPIKey(for: $0) != nil })
     }
 }
