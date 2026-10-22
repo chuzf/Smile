@@ -70,16 +70,17 @@ enum ExportService {
         try zipDirectory(staging, to: zipURL)
         try? FileManager.default.removeItem(at: staging)
 
-        let pwd = password?.trimmingCharacters(in: .whitespaces) ?? ""
-        guard !pwd.isEmpty else { return zipURL }
+        // 密码按输入原样使用，不做 trim——导入时也是原样，两边必须一致
+        guard let pwd = password, !pwd.isEmpty else { return zipURL }
 
         let smilejarURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("smilejar-backup-\(dateStr).smilejar")
         if FileManager.default.fileExists(atPath: smilejarURL.path) {
             try FileManager.default.removeItem(at: smilejarURL)
         }
+        // 无论加密成功与否，明文 zip 都不能留在临时目录
+        defer { try? FileManager.default.removeItem(at: zipURL) }
         try encryptFile(at: zipURL, password: pwd, to: smilejarURL)
-        try? FileManager.default.removeItem(at: zipURL)
         return smilejarURL
     }
 
@@ -93,6 +94,17 @@ enum ExportService {
     }
 
     static func decryptBackup(url: URL, password: String) throws -> URL {
+        do {
+            return try decryptBackup(url: url, exactPassword: password)
+        } catch CryptoError.wrongPassword {
+            // 旧版导出时把密码首尾空格去掉了，这类备份用去掉空格后的密码再试一次
+            let trimmed = password.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, trimmed != password else { throw CryptoError.wrongPassword }
+            return try decryptBackup(url: url, exactPassword: trimmed)
+        }
+    }
+
+    private static func decryptBackup(url: URL, exactPassword password: String) throws -> URL {
         let data = try Data(contentsOf: url)
         let headerSize = encryptedFileMagic.count + 16
         // Minimum: header + AES-GCM nonce(12) + tag(16)

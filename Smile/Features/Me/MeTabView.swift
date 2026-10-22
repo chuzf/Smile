@@ -28,6 +28,12 @@ struct MeTabView: View {
             .navigationDestination(item: $searchNavEntry) { entry in
                 EntryDetailView(entry: entry)
             }
+            .onChange(of: lockSession.relockEpoch) { _, _ in
+                // 全部重新上锁后，退出从搜索打开的加锁条目
+                if let e = searchNavEntry, e.isLocked || (e.group?.isLocked ?? false) {
+                    searchNavEntry = nil
+                }
+            }
             .sheet(item: $editingGroup) { group in
                 EditGroupSheet(group: group)
             }

@@ -106,6 +106,13 @@ struct HomeView: View {
                     activeNav = nav
                 }
             }
+            .onChange(of: lockSession.relockEpoch) { _, _ in
+                // 全部重新上锁后，退出正在查看的加锁储蓄罐
+                guard let nav = activeNav,
+                      (builtinGroups + customGroups).first(where: { $0.id == nav.id })?.isLocked == true
+                else { return }
+                activeNav = nil
+            }
             .sheet(isPresented: $showAddGroup) {
                 AddGroupSheet()
             }

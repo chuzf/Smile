@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 import AVFoundation
 
 struct VoiceRecorderView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var context
     let entryDraftID: UUID
     let onFinished: (DraftAttachment) -> Void
 
@@ -141,22 +143,42 @@ struct VoiceRecorderView: View {
             durationSeconds: elapsed
         )
         let draftID = draft.id
+        let container = context.container
 
         // 后台启动转写,不阻塞 UI
         Task.detached(priority: .utility) {
             let svc = TranscriptionService()
-            let transcript = try? await svc.transcribe(audioURL: mediaStore.absoluteURL(relativePath: relPath))
+            // 失败或没识别出文字时保持 nil，不写空串
+            guard let transcript = try? await svc.transcribe(audioURL: mediaStore.absoluteURL(relativePath: relPath)),
+                  !transcript.isEmpty else { return }
             await MainActor.run {
+                // 编辑器还开着：更新草稿，随保存一起写入
                 NotificationCenter.default.post(
                     name: .voiceTranscribed,
                     object: nil,
-                    userInfo: ["draftID": draftID, "transcript": transcript ?? ""]
+                    userInfo: ["draftID": draftID, "transcript": transcript]
                 )
+                // 编辑器可能已保存并关闭，没人接收通知：直接补写到已保存的附件上
+                Self.persistTranscript(transcript, relativePath: relPath, in: container.mainContext)
             }
         }
 
         onFinished(draft)
         dismiss()
+    }
+
+    @MainActor
+    static func persistTranscript(_ transcript: String, relativePath: String, in context: ModelContext) {
+        let descriptor = FetchDescriptor<MediaAttachment>(
+            predicate: #Predicate { $0.relativePath == relativePath }
+        )
+        guard let attachments = try? context.fetch(descriptor) else { return }
+        var changed = false
+        for att in attachments where att.transcript?.isEmpty ?? true {
+            att.transcript = transcript
+            changed = true
+        }
+        if changed { try? context.save() }
     }
 }
 

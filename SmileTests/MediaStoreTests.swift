@@ -41,4 +41,29 @@ struct MediaStoreTests {
 
         #expect((try? store.loadData(relativePath: path)) == nil)
     }
+
+    @Test func deleteRejectsPathsOutsideEntryFiles() throws {
+        let parent = tempRoot()
+        let root = parent.appendingPathComponent("Media")
+        let store = MediaStore(rootURL: root)
+        let entryID = UUID()
+        let path = try store.save(data: Data("keep".utf8), entryID: entryID, filename: "a.txt")
+        let sibling = parent.appendingPathComponent("MediaX")
+        try FileManager.default.createDirectory(at: sibling, withIntermediateDirectories: true)
+
+        for bad in ["", ".", "..", "../MediaX", "\(entryID.uuidString)/../.."] {
+            #expect(throws: MediaStore.MediaStoreError.self) {
+                try store.delete(relativePath: bad)
+            }
+        }
+        #expect((try? store.loadData(relativePath: path)) == Data("keep".utf8))
+        #expect(FileManager.default.fileExists(atPath: sibling.path))
+    }
+
+    @Test func resolvedURLAcceptsNormalPaths() {
+        let store = MediaStore(rootURL: tempRoot())
+        let entryID = UUID()
+        #expect(store.resolvedURL(relativePath: "\(entryID.uuidString)/a.jpg") != nil)
+        #expect(store.resolvedURL(relativePath: "../x") == nil)
+    }
 }

@@ -10,6 +10,16 @@ enum ImportService {
         let updatedEntries: Int
         let skippedEntries: Int
         let newTags: Int
+        /// 记录已写入，但照片/语音等文件没能复制过来的条目数
+        var mediaFailures: Int = 0
+
+        var summary: String {
+            var text = "新增 \(newEntries) 条记录（更新 \(updatedEntries) 条）、\(newGroups) 个分组、\(newTags) 个标签，跳过 \(skippedEntries) 条已有记录"
+            if mediaFailures > 0 {
+                text += "。有 \(mediaFailures) 条记录的照片或语音没能复制（可能是存储空间不足），可清理空间后重新导入"
+            }
+            return text
+        }
     }
 
     enum ImportError: LocalizedError, Equatable {
@@ -87,14 +97,25 @@ enum ImportService {
         }
 
         // Save DB first — if this throws, no media files are copied, preventing orphans.
-        try context.save()
+        do {
+            try context.save()
+        } catch {
+            // 撤掉本次插入/修改的对象，免得之后的自动保存把半成品写进库
+            context.rollback()
+            throw error
+        }
 
         // Copy media only after a successful DB save.
+        var mediaFailures = 0
         for (entryID, isNew) in mediaToCopy {
-            if isNew {
-                copyMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
-            } else {
-                replaceMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+            do {
+                if isNew {
+                    try copyMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+                } else {
+                    try replaceMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+                }
+            } catch {
+                mediaFailures += 1
             }
         }
 
@@ -103,7 +124,8 @@ enum ImportService {
             newEntries: newCount,
             updatedEntries: updatedCount,
             skippedEntries: skippedCount,
-            newTags: newTagCount
+            newTags: newTagCount,
+            mediaFailures: mediaFailures
         )
     }
 
@@ -284,25 +306,39 @@ enum ImportService {
         }
     }
 
-    static func copyMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {
+    static func copyMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) throws {
         let src = mediaDir.appendingPathComponent(entryID.uuidString)
         guard FileManager.default.fileExists(atPath: src.path) else { return }
-        let dst = mediaStore.directoryURL(for: entryID)
-        // Remove stale destination (e.g. residue from a previous failed import) before copying.
-        try? FileManager.default.removeItem(at: dst)
-        try? FileManager.default.createDirectory(at: mediaStore.rootURL, withIntermediateDirectories: true)
-        try? FileManager.default.copyItem(at: src, to: dst)
+        // 目标处可能有上次导入失败的残留，一并替换
+        try installMedia(from: src, to: mediaStore.directoryURL(for: entryID), mediaStore: mediaStore)
     }
 
-    static func replaceMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) {
+    static func replaceMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) throws {
         let dst = mediaStore.directoryURL(for: entryID)
-        if FileManager.default.fileExists(atPath: dst.path) {
-            try? FileManager.default.removeItem(at: dst)
-        }
         let src = mediaDir.appendingPathComponent(entryID.uuidString)
-        if FileManager.default.fileExists(atPath: src.path) {
-            try? FileManager.default.createDirectory(at: mediaStore.rootURL, withIntermediateDirectories: true)
-            try? FileManager.default.copyItem(at: src, to: dst)
+        guard FileManager.default.fileExists(atPath: src.path) else {
+            // 备份里这条记录没有媒体，旧文件已无记录引用
+            try? FileManager.default.removeItem(at: dst)
+            return
+        }
+        try installMedia(from: src, to: dst, mediaStore: mediaStore)
+    }
+
+    /// 先完整复制到媒体根目录下的临时位置，成功后再替换目标；复制失败时旧文件保持不动
+    private static func installMedia(from src: URL, to dst: URL, mediaStore: MediaStore) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(at: mediaStore.rootURL, withIntermediateDirectories: true)
+        let staged = mediaStore.rootURL.appendingPathComponent(".import-\(UUID().uuidString)")
+        do {
+            try fm.copyItem(at: src, to: staged)
+            if fm.fileExists(atPath: dst.path) {
+                _ = try fm.replaceItemAt(dst, withItemAt: staged)
+            } else {
+                try fm.moveItem(at: staged, to: dst)
+            }
+        } catch {
+            try? fm.removeItem(at: staged)
+            throw error
         }
     }
 }

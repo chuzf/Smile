@@ -27,13 +27,27 @@ struct MediaStore {
         return "\(entryID.uuidString)/\(filename)"
     }
 
-    func absoluteURL(relativePath: String) -> URL {
-        let url = rootURL.appendingPathComponent(relativePath).standardized
-        // Reject path traversal attempts (e.g. "../") that escape the media root.
-        guard url.path.hasPrefix(rootURL.standardized.path) else {
-            return rootURL
+    enum MediaStoreError: Error {
+        case invalidPath(String)
+    }
+
+    /// 相对路径对应的文件 URL；路径为空、含 ".."（可能越出媒体根目录）或指向根目录本身时返回 nil。
+    /// 逐段自行检查，不依赖 URL.standardized——它在不同系统版本上对 ".." 的处理不一致
+    func resolvedURL(relativePath: String) -> URL? {
+        var url = rootURL
+        var depth = 0
+        for part in relativePath.split(separator: "/", omittingEmptySubsequences: true) {
+            if part == "." { continue }
+            if part == ".." { return nil }
+            url.appendPathComponent(String(part))
+            depth += 1
         }
-        return url
+        return depth > 0 ? url : nil
+    }
+
+    /// 仅用于读取：非法路径返回根目录（目录读不出数据，调用方按读取失败处理）。删除必须走 delete(relativePath:)
+    func absoluteURL(relativePath: String) -> URL {
+        resolvedURL(relativePath: relativePath) ?? rootURL
     }
 
     func loadData(relativePath: String) throws -> Data {
@@ -41,7 +55,9 @@ struct MediaStore {
     }
 
     func delete(relativePath: String) throws {
-        let url = absoluteURL(relativePath: relativePath)
+        guard let url = resolvedURL(relativePath: relativePath) else {
+            throw MediaStoreError.invalidPath(relativePath)
+        }
         if FileManager.default.fileExists(atPath: url.path) {
             try FileManager.default.removeItem(at: url)
         }

@@ -53,6 +53,7 @@
 		5717DA52DAAF720BB02FED8A /* AIProviderEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D2B0C80692074C8C18980E /* AIProviderEditView.swift */; };
 		5AD04A57C319B2A30C25B8E3 /* SmileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F779ACC98F942E5D86E15E /* SmileApp.swift */; };
 		5FF1EB880DC24104A087BEDB /* iOSNoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9DC628A664D31EF6D5B28E2 /* iOSNoteEditorView.swift */; };
+		6047A821C35EF7D4EBCA525A /* PrivacyShield.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B177A1307B06587BC52A8A /* PrivacyShield.swift */; };
 		6115EE9DD9C4B21DF9EA76ED /* TagFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB007998789F54991CFC4435 /* TagFilterBar.swift */; };
 		63708CF22C3C6BC2F9CE1DF0 /* SharedInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8994831B078E53BFB5EE64F5 /* SharedInbox.swift */; };
 		645F7B7A0FB470026386AECD /* JarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71EA3ACAE8410104425843C7 /* JarView.swift */; };
@@ -213,6 +214,7 @@
 		98DC59A13F187296C9813B2B /* ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainerFactory.swift; sourceTree = "<group>"; };
 		99417C94FB2C7618B5387899 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
 		9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
+		A7B177A1307B06587BC52A8A /* PrivacyShield.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyShield.swift; sourceTree = "<group>"; };
 		AB93BFEE45132D5D75176E51 /* iOSNoteEditorModel+Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOSNoteEditorModel+Formatting.swift"; sourceTree = "<group>"; };
 		AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
 		B08BC04BB74A76C3E9BE5A25 /* iOSNoteEditorComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteEditorComponents.swift; sourceTree = "<group>"; };
@@ -476,6 +478,7 @@
 		A46154849093314875A06A49 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				A7B177A1307B06587BC52A8A /* PrivacyShield.swift */,
 				55B82C1211D32BD2B9696089 /* RootView.swift */,
 			);
 			path = App;
@@ -808,6 +811,7 @@
 				3C69FBB86C63F3FD55D0FC9D /* PhotoLibraryPickerView.swift in Sources */,
 				929A07B791259D451F4CD615 /* PhotoPreviewView.swift in Sources */,
 				278ABB8989B04548C6D8E997 /* PhotoViewer.swift in Sources */,
+				6047A821C35EF7D4EBCA525A /* PrivacyShield.swift in Sources */,
 				81FB507614C283012121F4E8 /* RandomRecallSheet.swift in Sources */,
 				F59653CFE3B014776D95E0F6 /* RootView.swift in Sources */,
 				F159ED17491E9257BDC78BC5 /* SearchService.swift in Sources */,

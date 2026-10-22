@@ -201,6 +201,11 @@ struct GroupDetailView: View {
         .onChange(of: group.isLocked) { _, _ in
             showUnlockBanner = true
         }
+        .onChange(of: lockSession.relockEpoch) { _, _ in
+            // 全部重新上锁后，退出正在查看的加锁条目
+            if selectedEntry?.isLocked == true { selectedEntry = nil }
+            if randomEntry?.isLocked == true { randomEntry = nil }
+        }
     }
 
     private func handleEntryTap(_ entry: Entry) {

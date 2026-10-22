@@ -155,4 +155,21 @@ struct DataModelTests {
         try ctx.save()
         #expect(e.isLocked == true)
     }
+
+    @Test("编辑器关闭后转写结果补写到已保存的语音附件")
+    @MainActor func transcriptPersistsToSavedAttachment() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        let voice = MediaAttachment(kind: .voice, relativePath: "E/voice-1.m4a")
+        let other = MediaAttachment(kind: .voice, relativePath: "E/voice-2.m4a", transcript: "已有")
+        ctx.insert(voice)
+        ctx.insert(other)
+        try ctx.save()
+
+        VoiceRecorderView.persistTranscript("今天很开心", relativePath: "E/voice-1.m4a", in: ctx)
+        VoiceRecorderView.persistTranscript("不该覆盖", relativePath: "E/voice-2.m4a", in: ctx)
+
+        #expect(voice.transcript == "今天很开心")
+        #expect(other.transcript == "已有")
+    }
 }

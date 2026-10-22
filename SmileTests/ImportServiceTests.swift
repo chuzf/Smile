@@ -244,7 +244,7 @@ struct ImportServiceTests {
         let storeRoot = tempRoot.appendingPathComponent("store-\(UUID())")
         let store = MediaStore(rootURL: storeRoot)
 
-        ImportService.copyMedia(entryID: entryID, from: mediaDir, mediaStore: store)
+        try ImportService.copyMedia(entryID: entryID, from: mediaDir, mediaStore: store)
 
         let dstFile = store.absoluteURL(relativePath: "\(entryID.uuidString)/photo.jpg")
         #expect(FileManager.default.fileExists(atPath: dstFile.path))
@@ -270,7 +270,7 @@ struct ImportServiceTests {
         try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
         try Data("new".utf8).write(to: srcDir.appendingPathComponent("new.jpg"))
 
-        ImportService.replaceMedia(entryID: entryID, from: mediaDir, mediaStore: store)
+        try ImportService.replaceMedia(entryID: entryID, from: mediaDir, mediaStore: store)
 
         let oldFile = store.absoluteURL(relativePath: "\(entryID.uuidString)/old.jpg")
         let newFile = store.absoluteURL(relativePath: "\(entryID.uuidString)/new.jpg")
@@ -279,6 +279,37 @@ struct ImportServiceTests {
 
         try? FileManager.default.removeItem(at: storeRoot)
         try? FileManager.default.removeItem(at: mediaDir)
+    }
+
+    @Test func replaceMediaKeepsOldFilesWhenCopyFails() throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+        let entryID = UUID()
+
+        let storeRoot = tempRoot.appendingPathComponent("store-\(UUID())")
+        let store = MediaStore(rootURL: storeRoot)
+        let existingDir = store.directoryURL(for: entryID)
+        try FileManager.default.createDirectory(at: existingDir, withIntermediateDirectories: true)
+        try Data("old".utf8).write(to: existingDir.appendingPathComponent("old.jpg"))
+
+        // 源是一个读不了的目录，复制必然失败
+        let mediaDir = tempRoot.appendingPathComponent("media-\(UUID())")
+        let srcDir = mediaDir.appendingPathComponent(entryID.uuidString)
+        try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
+        try Data("new".utf8).write(to: srcDir.appendingPathComponent("new.jpg"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: srcDir.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: srcDir.path)
+            try? FileManager.default.removeItem(at: storeRoot)
+            try? FileManager.default.removeItem(at: mediaDir)
+        }
+
+        #expect(throws: (any Error).self) {
+            try ImportService.replaceMedia(entryID: entryID, from: mediaDir, mediaStore: store)
+        }
+        let oldFile = store.absoluteURL(relativePath: "\(entryID.uuidString)/old.jpg")
+        #expect(FileManager.default.fileExists(atPath: oldFile.path))
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: storeRoot.path)
+        #expect(leftovers == [entryID.uuidString])
     }
 
     // MARK: - Integration

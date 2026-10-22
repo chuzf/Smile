@@ -132,7 +132,7 @@ struct RootView: View {
             Button("确定", role: .cancel) {}
         } message: {
             if let r = importResult {
-                Text("新增 \(r.newEntries) 条记录（更新 \(r.updatedEntries) 条）、\(r.newGroups) 个分组、\(r.newTags) 个标签，跳过 \(r.skippedEntries) 条已有记录")
+                Text(r.summary)
             }
         }
         .alert("导入失败", isPresented: Binding(

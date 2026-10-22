@@ -23,4 +23,24 @@ struct ExportServiceTests {
 
         try? FileManager.default.removeItem(at: zipURL)
     }
+
+    @MainActor
+    @Test func passwordWithSpacesRoundTripsExactly() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        ModelContainerFactory.seedIfNeeded(context: ctx)
+        let store = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("MediaTest_\(UUID().uuidString)"))
+
+        for pwd in ["abc ", "   "] {
+            let url = try ExportService.exportAll(context: ctx, mediaStore: store, password: pwd)
+            defer { try? FileManager.default.removeItem(at: url) }
+            #expect(ExportService.isEncryptedBackup(url))
+            let zip = try ExportService.decryptBackup(url: url, password: pwd)
+            try? FileManager.default.removeItem(at: zip)
+            #expect(throws: ExportService.CryptoError.self) {
+                try ExportService.decryptBackup(url: url, password: "wrong")
+            }
+        }
+    }
 }
