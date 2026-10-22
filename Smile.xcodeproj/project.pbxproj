@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00E147D8126C3F4D59F1A6F5 /* ModelPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022771C823C24FA6A319C649 /* ModelPickerSheet.swift */; };
 		033D1C62433D5D7A58F2A20C /* ImportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3238C38829DADE0A922D2 /* ImportServiceTests.swift */; };
 		0439A784BAC9047FB87337C7 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 523B71810E54A8DD4D433D8C /* ImageLoader.swift */; };
 		06ACD74C68A8292C3455AEA1 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA2F9F042E936C3D1EF36AC /* ShareSheet.swift */; };
@@ -148,6 +149,7 @@
 
 /* Begin PBXFileReference section */
 		005963F7E630CBE9FF6342D0 /* DraftAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftAttachment.swift; sourceTree = "<group>"; };
+		022771C823C24FA6A319C649 /* ModelPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerSheet.swift; sourceTree = "<group>"; };
 		04C8F65472AF08ABA7DAB988 /* TagPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPickerSheet.swift; sourceTree = "<group>"; };
 		0D0E6ECCE5E82FA4B0537FF6 /* DictationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationService.swift; sourceTree = "<group>"; };
 		101F701AF44F49836646D635 /* articleTextBlock-style.wechat.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "articleTextBlock-style.wechat.png"; sourceTree = "<group>"; };
@@ -437,6 +439,7 @@
 			children = (
 				C8D2B0C80692074C8C18980E /* AIProviderEditView.swift */,
 				AF5B96BE10CC6798FE5FB0DD /* AISettingsView.swift */,
+				022771C823C24FA6A319C649 /* ModelPickerSheet.swift */,
 				8BCDB44451850DCA44AD5CF9 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -797,6 +800,7 @@
 				91D61E115C871733227FAD5C /* MediaAttachmentChip.swift in Sources */,
 				8F33A92B39E10DD1D8ABFFC8 /* MediaStore.swift in Sources */,
 				6E1FA5B90AA16E31A6BE0B25 /* ModelContainerFactory.swift in Sources */,
+				00E147D8126C3F4D59F1A6F5 /* ModelPickerSheet.swift in Sources */,
 				FF2A21AF219047C7418CFDEB /* NoteTextView.swift in Sources */,
 				8BE44CD4CC1CA46EE557F6F3 /* OpenAICompatibleClient.swift in Sources */,
 				A0A22F6EFB44787D4C52F57D /* PhotoCarousel.swift in Sources */,

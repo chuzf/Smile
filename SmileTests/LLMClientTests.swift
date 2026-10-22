@@ -230,4 +230,93 @@ struct LLMClientTests {
         var noModel = AIProvider.make(preset: .kimi); noModel.model = ""
         #expect(throws: LLMError.notConfigured) { try LLMClientFactory.make(provider: noModel, apiKey: "sk") }
     }
+
+    // MARK: Model list
+
+    private final class Recorder {
+        var urls: [URL] = []
+    }
+
+    @Test(arguments: [
+        ("https://api.example.com/v1", "https://api.example.com/v1/models"),
+        ("https://api.example.com/v1/", "https://api.example.com/v1/models"),
+        ("https://api.example.com/v1/chat/completions", "https://api.example.com/v1/models"),
+        ("https://api.example.com/v1/models", "https://api.example.com/v1/models"),
+    ])
+    func openAIModelsEndpoint(base: String, expected: String) {
+        #expect(openAI(base).modelsEndpoint?.absoluteString == expected)
+    }
+
+    @Test func openAIListsModels() async throws {
+        respond(200, #"{"object":"list","data":[{"id":"kimi-k3"},{"id":" kimi-k2.6 "},{"id":"kimi-k3"},{"id":""}]}"#)
+        let models = try await openAI().listModels()
+        #expect(models == ["kimi-k3", "kimi-k2.6"])
+        let request = try #require(StubURLProtocol.lastRequest)
+        #expect(request.httpMethod == "GET")
+        #expect(request.url?.absoluteString == "https://api.example.com/v1/models")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer sk-1")
+    }
+
+    @Test(arguments: [
+        ("https://api.anthropic.com", "https://api.anthropic.com/v1/models"),
+        ("https://gw.example.com/api/v1/", "https://gw.example.com/api/v1/models"),
+        ("https://gw.example.com/api/v1/messages", "https://gw.example.com/api/v1/models"),
+    ])
+    func anthropicModelsEndpoint(base: String, expected: String) {
+        #expect(anthropic(base).modelsEndpoint?.absoluteString == expected)
+    }
+
+    @Test func anthropicPagesThroughModels() async throws {
+        let recorder = Recorder()
+        StubURLProtocol.handler = { request in
+            recorder.urls.append(request.url!)
+            let page = recorder.urls.count == 1
+                ? #"{"data":[{"id":"claude-opus-5"}],"has_more":true,"last_id":"claude-opus-5"}"#
+                : #"{"data":[{"id":"claude-sonnet-5"}],"has_more":false,"last_id":"claude-sonnet-5"}"#
+            return (200, Data(page.utf8))
+        }
+        let models = try await anthropic().listModels()
+        #expect(models == ["claude-opus-5", "claude-sonnet-5"])
+        #expect(recorder.urls.map(\.absoluteString) == [
+            "https://api.anthropic.com/v1/models?limit=1000",
+            "https://api.anthropic.com/v1/models?limit=1000&after_id=claude-opus-5",
+        ])
+        let request = try #require(StubURLProtocol.lastRequest)
+        #expect(request.httpMethod == "GET")
+        #expect(request.value(forHTTPHeaderField: "x-api-key") == "sk-ant")
+        #expect(request.value(forHTTPHeaderField: "anthropic-version") == AnthropicClient.apiVersion)
+    }
+
+    @Test func anthropicStopsAfterMaxPages() async throws {
+        let recorder = Recorder()
+        StubURLProtocol.handler = { request in
+            recorder.urls.append(request.url!)
+            return (200, Data(#"{"data":[{"id":"m"}],"has_more":true,"last_id":"m"}"#.utf8))
+        }
+        #expect(try await anthropic().listModels() == ["m"])
+        #expect(recorder.urls.count == AnthropicClient.maxModelPages)
+    }
+
+    @Test func listModelsMapsErrors() async {
+        respond(401, "{}")
+        await #expect(throws: LLMError.unauthorized) { try await openAI().listModels() }
+        respond(200, "not json")
+        await #expect(throws: LLMError.emptyResponse) { try await openAI().listModels() }
+    }
+
+    @Test func factoryListModelsValidatesInput() async throws {
+        var p = AIProvider.make(preset: .custom)   // 模型为空也能拉取
+        p.baseURL = "http://insecure.example.com"
+        await #expect(throws: LLMError.invalidURL) { try await LLMClientFactory.listModels(provider: p, apiKey: "sk") }
+        p.baseURL = "https://api.example.com/v1"
+        await #expect(throws: LLMError.notConfigured) { try await LLMClientFactory.listModels(provider: p, apiKey: " ") }
+        respond(200, #"{"data":[{"id":"m1"}]}"#)
+        let models = try await LLMClientFactory.listModels(provider: p, apiKey: "sk", session: StubURLProtocol.session())
+        #expect(models == ["m1"])
+    }
+
+    @Test func detailedMessageAppendsHTTPBody() {
+        #expect(LLMError.http(400, "bad model").detailedMessage == LLMError.http(400, "").userMessage + "\nbad model")
+        #expect(LLMError.unauthorized.detailedMessage == LLMError.unauthorized.userMessage)
+    }
 }

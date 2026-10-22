@@ -29,6 +29,12 @@ extension LLMError {
         case .truncated: return "整理结果过长被截断，请缩短内容或换个模型"
         }
     }
+
+    /// 设置页用：http 错误附上响应体，方便排查模型名、参数等问题；响应体里不含 Key
+    var detailedMessage: String {
+        if case .http(_, let body) = self, !body.isEmpty { return userMessage + "\n" + body }
+        return userMessage
+    }
 }
 
 /// 两种协议共用的请求构造与发送
@@ -56,6 +62,42 @@ enum LLMHTTP {
         for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         request.httpBody = try JSONEncoder().encode(body)
         return request
+    }
+
+    /// 列模型很快，不用等整理文字那么久
+    static let modelListTimeout: TimeInterval = 30
+
+    static func makeGetRequest(url: URL, headers: [String: String]) -> URLRequest {
+        var request = URLRequest(url: url, timeoutInterval: modelListTimeout)
+        request.httpMethod = "GET"
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
+        return request
+    }
+
+    /// 两种协议列模型的响应都是 data[].id；Anthropic 另有分页字段
+    struct ModelPage: Decodable {
+        struct Item: Decodable { let id: String }
+        let data: [Item]
+        let hasMore: Bool?
+        let lastId: String?
+
+        enum CodingKeys: String, CodingKey {
+            case data
+            case hasMore = "has_more"
+            case lastId = "last_id"
+        }
+    }
+
+    static func decodeModelPage(_ data: Data) throws -> ModelPage {
+        guard let page = try? JSONDecoder().decode(ModelPage.self, from: data) else { throw LLMError.emptyResponse }
+        return page
+    }
+
+    /// 去掉首尾空白和空串，按首次出现去重，保持服务商返回的顺序
+    static func normalizedModelIDs(_ ids: [String]) -> [String] {
+        var seen = Set<String>()
+        return ids.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
     }
 
     /// 非 2xx 映射为 LLMError；任务取消时抛 CancellationError

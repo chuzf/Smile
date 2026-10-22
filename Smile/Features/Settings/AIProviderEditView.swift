@@ -16,6 +16,7 @@ struct AIProviderEditView: View {
     @State private var testState: TestState = .idle
     @State private var confirmingDelete = false
     @State private var deleteError: String?
+    @State private var modelPicker: ModelPickerRequest?
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -25,6 +26,12 @@ struct AIProviderEditView: View {
     private enum TestState: Equatable {
         case idle, testing, success
         case failure(String)
+    }
+
+    private struct ModelPickerRequest: Identifiable {
+        let id = UUID()
+        let provider: AIProvider
+        let apiKey: String?
     }
 
     private var exists: Bool { settings.providers.contains { $0.id == providerID } }
@@ -72,10 +79,14 @@ struct AIProviderEditView: View {
                 if !provider.baseURL.isEmpty && provider.validatedBaseURL == nil {
                     Text("请填写以 https:// 开头的地址").font(.footnote).foregroundStyle(.red)
                 }
-                TextField("模型", text: providerBinding.model)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($focusedField, equals: .model)
+                HStack {
+                    TextField("模型", text: providerBinding.model)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .model)
+                    Button("选择", action: openModelPicker)
+                        .buttonStyle(.borderless)
+                }
                 if provider.preset == .doubao {
                     Text("填写方舟控制台中的模型 ID 或接入点 ID").font(.footnote).foregroundStyle(.secondary)
                 }
@@ -142,6 +153,11 @@ struct AIProviderEditView: View {
         } message: {
             Text("这个服务商的 API Key 也会一并删除。")
         }
+        .sheet(item: $modelPicker) { request in
+            ModelPickerSheet(provider: request.provider, apiKey: request.apiKey) { model in
+                providerBinding.wrappedValue.model = model
+            }
+        }
     }
 
     @ViewBuilder
@@ -194,6 +210,13 @@ struct AIProviderEditView: View {
         }
     }
 
+    private func openModelPicker() {
+        focusedField = nil
+        // 先存好刚输入的 Key，同测试连接；写入失败时 Key 区已显示错误，不弹出
+        guard saveKeyIfNeeded() else { return }
+        modelPicker = ModelPickerRequest(provider: provider, apiKey: store.loadAPIKey(for: providerID))
+    }
+
     private func deleteProvider() {
         do {
             settings = try store.removeProvider(id: providerID, from: settings)
@@ -221,12 +244,8 @@ struct AIProviderEditView: View {
             _ = try await client.complete(system: "只回复 OK", user: "ping")
             result = .success
         } catch let error as LLMError {
-            // 测试连接时附上响应体，方便排查模型名、参数等 400 错误；响应体里不含 Key
-            if case .http(_, let body) = error, !body.isEmpty {
-                result = .failure(error.userMessage + "\n" + body)
-            } else {
-                result = .failure(error.userMessage)
-            }
+            // 测试连接时附上响应体，方便排查模型名、参数等 400 错误
+            result = .failure(error.detailedMessage)
         } catch {
             result = .failure(LLMError.network(error.localizedDescription).userMessage)
         }

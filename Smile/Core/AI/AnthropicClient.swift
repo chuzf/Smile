@@ -4,6 +4,8 @@ import Foundation
 struct AnthropicClient: LLMClient {
     static let apiVersion = "2023-06-01"
     static let maxTokens = 16000
+    /// 列模型最多翻几页，防止网关一直返回 has_more
+    static let maxModelPages = 5
 
     let baseURL: URL
     let model: String
@@ -97,5 +99,33 @@ struct AnthropicClient: LLMClient {
         let text = decoded.content.filter { $0.type == "text" }.compactMap(\.text).joined()
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw LLMError.emptyResponse }
         return text
+    }
+
+    /// base 已以 /v1 结尾时只拼 /models；填的是 /v1/messages 完整端点时换成同级的 /models
+    var modelsEndpoint: URL? {
+        var base = LLMHTTP.trimmedBase(baseURL)
+        if base.hasSuffix("/v1/messages") { base.removeLast("/messages".count) }
+        return URL(string: base.hasSuffix("/v1") ? base + "/models" : base + "/v1/models")
+    }
+
+    func listModels() async throws -> [String] {
+        guard let endpoint = modelsEndpoint,
+              var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
+            throw LLMError.invalidURL
+        }
+        var ids: [String] = []
+        var afterID: String?
+        for _ in 0..<Self.maxModelPages {
+            var query = [URLQueryItem(name: "limit", value: "1000")]
+            if let afterID { query.append(URLQueryItem(name: "after_id", value: afterID)) }
+            components.queryItems = query
+            guard let url = components.url else { throw LLMError.invalidURL }
+            let data = try await LLMHTTP.send(LLMHTTP.makeGetRequest(url: url, headers: headers), session: session)
+            let page = try LLMHTTP.decodeModelPage(data)
+            ids += page.data.map(\.id)
+            guard page.hasMore == true, let last = page.lastId else { break }
+            afterID = last
+        }
+        return LLMHTTP.normalizedModelIDs(ids)
     }
 }

@@ -51,4 +51,19 @@ struct OpenAICompatibleClient: LLMClient {
         else { throw LLMError.emptyResponse }
         return content
     }
+
+    /// 用户填了完整的 /chat/completions 端点时，换成同级的 /models
+    var modelsEndpoint: URL? {
+        var base = LLMHTTP.trimmedBase(baseURL)
+        if base.hasSuffix("/chat/completions") { base.removeLast("/chat/completions".count) }
+        guard let url = URL(string: base) else { return nil }
+        return LLMHTTP.endpoint(url, path: "/models")
+    }
+
+    func listModels() async throws -> [String] {
+        guard let url = modelsEndpoint else { throw LLMError.invalidURL }
+        let request = LLMHTTP.makeGetRequest(url: url, headers: ["Authorization": "Bearer \(apiKey)"])
+        let page = try LLMHTTP.decodeModelPage(try await LLMHTTP.send(request, session: session))
+        return LLMHTTP.normalizedModelIDs(page.data.map(\.id))
+    }
 }
