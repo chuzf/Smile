@@ -31,10 +31,10 @@ struct AIConfigTests {
 
     // MARK: 默认值与预设
 
-    @Test func defaultHasFourPresetsWithKimiActive() {
+    @Test func defaultHasPresetProvidersWithKimiActive() {
         let s = AISettings.default
-        #expect(s.providers.map(\.preset) == [.kimi, .deepseek, .doubao, .anthropic])
-        #expect(s.providers.map(\.name) == ["Kimi", "DeepSeek", "豆包", "Anthropic"])
+        #expect(s.providers.map(\.preset) == [.kimi, .deepseek, .doubao, .openAI, .anthropic])
+        #expect(s.providers.map(\.name) == ["Kimi", "DeepSeek", "豆包", "OpenAI", "Anthropic"])
         #expect(s.activeProvider?.preset == .kimi)
         #expect(s.style == .light)
         #expect(AISettings.default == AISettings.default)   // 预置项 ID 固定
@@ -53,6 +53,11 @@ struct AIConfigTests {
         let doubao = AIProvider.make(preset: .doubao)
         #expect(doubao.baseURL == "https://ark.cn-beijing.volces.com/api/v3")
         #expect(doubao.model == "")
+
+        let openAI = AIProvider.make(preset: .openAI)
+        #expect(openAI.apiProtocol == .openAI)
+        #expect(openAI.baseURL == "https://api.openai.com/v1")
+        #expect(openAI.model == "gpt-6-luna")
 
         let anthropic = AIProvider.make(preset: .anthropic)
         #expect(anthropic.apiProtocol == .anthropic)
@@ -133,7 +138,7 @@ struct AIConfigTests {
         let kimi = s.providers[0], deepseek = s.providers[1]
 
         let other = s.removingProvider(id: deepseek.id)
-        #expect(other.providers.count == 3)
+        #expect(other.providers.count == 4)
         #expect(other.activeProviderID == kimi.id)
 
         let active = s.removingProvider(id: kimi.id)
@@ -228,7 +233,7 @@ struct AIConfigTests {
 
         let s = store.load()
         let kimi = s.providers[0]
-        #expect(s.providers.count == 4)
+        #expect(s.providers.count == 5)
         #expect(s.activeProviderID == kimi.id)
         #expect(kimi.model == "kimi-k2.6")
         #expect(s.style == .formal)
@@ -245,9 +250,9 @@ struct AIConfigTests {
         try keychain.set(AIConfigStore.legacyAPIKeyAccount, value: "sk-old")
 
         let s = store.load()
-        #expect(s.providers.count == 5)
+        #expect(s.providers.count == 6)
         let custom = try #require(s.activeProvider)
-        #expect(custom.id == s.providers[4].id)
+        #expect(custom.id == s.providers[5].id)
         #expect(custom.preset == .custom)
         #expect(custom.apiProtocol == .anthropic)
         #expect(custom.baseURL == "https://gw.example.com/api")

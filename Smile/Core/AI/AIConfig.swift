@@ -14,7 +14,7 @@ enum AIProtocol: String, Codable, CaseIterable, Identifiable {
 }
 
 enum AIPreset: String, Codable, CaseIterable, Identifiable {
-    case kimi, deepseek, doubao, anthropic, custom
+    case kimi, deepseek, doubao, openAI, anthropic, custom
 
     var id: String { rawValue }
 
@@ -23,6 +23,7 @@ enum AIPreset: String, Codable, CaseIterable, Identifiable {
         case .kimi: return "Kimi"
         case .deepseek: return "DeepSeek"
         case .doubao: return "豆包"
+        case .openAI: return "OpenAI"
         case .anthropic: return "Anthropic"
         case .custom: return "自定义"
         }
@@ -34,6 +35,7 @@ enum AIPreset: String, Codable, CaseIterable, Identifiable {
         case .kimi: return (.openAI, "https://api.moonshot.cn/v1", "kimi-k3")
         case .deepseek: return (.openAI, "https://api.deepseek.com", "deepseek-flash")
         case .doubao: return (.openAI, "https://ark.cn-beijing.volces.com/api/v3", "")
+        case .openAI: return (.openAI, "https://api.openai.com/v1", "gpt-6-luna")
         case .anthropic: return (.anthropic, "https://api.anthropic.com", "claude-opus-5")
         case .custom: return nil
         }
@@ -127,6 +129,7 @@ struct AISettings: Codable, Equatable {
         (.kimi, "6B1D3C2E-0001-4A7E-9C1A-5D3F2B8E0001"),
         (.deepseek, "6B1D3C2E-0002-4A7E-9C1A-5D3F2B8E0002"),
         (.doubao, "6B1D3C2E-0003-4A7E-9C1A-5D3F2B8E0003"),
+        (.openAI, "6B1D3C2E-0005-4A7E-9C1A-5D3F2B8E0005"),
         (.anthropic, "6B1D3C2E-0004-4A7E-9C1A-5D3F2B8E0004"),
     ]
 
