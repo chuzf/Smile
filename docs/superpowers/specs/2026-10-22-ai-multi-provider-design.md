@@ -10,7 +10,7 @@
 | 项 | 决定 |
 |----|------|
 | 页面结构 | AI 整理主页列出全部服务商，点一行切换启用；点 ⓘ 进入编辑页；底部「添加服务商」 |
-| 初始列表 | 预置 Kimi、DeepSeek、豆包、OpenAI、Anthropic 各一条，默认启用 Kimi |
+| 初始列表 | 预置 Kimi、DeepSeek、火山方舟（原名豆包，2026-10-22 改名）、OpenAI、Anthropic 各一条，默认启用 Kimi |
 | 同一预设 | 可添加多次（如两个 Kimi 账号），名称可改 |
 | 整理风格 | 全局一份，所有服务商共用，放在主页 |
 | Key 存储 | 每个服务商一条钥匙串记录，账号名 `ai_api_key.<服务商 ID>`；Key 不进 UserDefaults |
@@ -59,7 +59,7 @@ struct AISettings: Codable, Equatable {
 - `AIProvider.make(preset:)` 按预设生成一条：名称取 `preset.displayName`，协议、地址、模型取 `preset.defaults`；自定义预设的地址和模型为空、协议为 OpenAI 兼容。
 - `AIProvider.applyingPreset(_:)`：换预设时重新填入协议、地址、模型（自定义保留原值，与现在一致）；名称等于旧预设的 `displayName` 时改成新预设的，否则保留用户改过的名称。
 - `providerDisplayName`：名称去掉首尾空白后为空、或者是自定义预设且名称仍为「自定义」时，显示主机名（没有主机名时显示「自定义服务商」）；否则显示名称。
-- `AISettings.default`：预置 Kimi、DeepSeek、豆包、OpenAI、Anthropic 五条（OpenAI 为 2026-10-22 追加，固定 ID 为 …0005），启用 Kimi，风格轻度润色，提示词为空。
+- `AISettings.default`：预置 Kimi、DeepSeek、火山方舟、OpenAI、Anthropic 五条（OpenAI 为 2026-10-22 追加，固定 ID 为 …0005），启用 Kimi，风格轻度润色，提示词为空。
 - `AISettings.activeProvider`：按 `activeProviderID` 查找，找不到返回 nil。
 - `AISettings.isComplete(apiKey:)`：有启用中的服务商、该服务商完整，并且风格为自定义时提示词不为空。
 - `AISettings.removingProvider(id:)`：从列表移除；被删的是启用项时改为启用列表第一条，列表空了则为 nil。

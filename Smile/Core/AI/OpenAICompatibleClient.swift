@@ -1,6 +1,6 @@
 import Foundation
 
-/// OpenAI Chat Completions 兼容接口（Kimi、豆包方舟及多数第三方网关）
+/// OpenAI Chat Completions 兼容接口（Kimi、DeepSeek、火山方舟、OpenAI 及多数第三方网关）
 struct OpenAICompatibleClient: LLMClient {
     let baseURL: URL
     let model: String

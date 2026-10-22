@@ -34,7 +34,7 @@ struct AIConfigTests {
     @Test func defaultHasPresetProvidersWithKimiActive() {
         let s = AISettings.default
         #expect(s.providers.map(\.preset) == [.kimi, .deepseek, .doubao, .openAI, .anthropic])
-        #expect(s.providers.map(\.name) == ["Kimi", "DeepSeek", "豆包", "OpenAI", "Anthropic"])
+        #expect(s.providers.map(\.name) == ["Kimi", "DeepSeek", "火山方舟", "OpenAI", "Anthropic"])
         #expect(s.activeProvider?.preset == .kimi)
         #expect(s.style == .light)
         #expect(AISettings.default == AISettings.default)   // 预置项 ID 固定
@@ -260,6 +260,28 @@ struct AIConfigTests {
         #expect(s.customPrompt == "改成诗")
         #expect(store.loadAPIKey(for: custom.id) == "sk-old")
         try store.saveAPIKey("", for: custom.id)
+    }
+
+    @Test func renamesSavedDoubaoOnce() throws {
+        let (store, defaults, _) = makeStore()
+        var s = AISettings.default
+        s.providers[2].name = "豆包"
+        var renamedByUser = AIProvider.make(preset: .doubao); renamedByUser.name = "方舟工作"
+        var otherPreset = AIProvider.make(preset: .custom); otherPreset.name = "豆包"
+        s.providers += [renamedByUser, otherPreset]
+        store.save(s)
+
+        let loaded = store.load()
+        #expect(loaded.providers[2].name == "火山方舟")
+        #expect(loaded.providers[5].name == "方舟工作")
+        #expect(loaded.providers[6].name == "豆包")
+        #expect(defaults.bool(forKey: AIConfigStore.doubaoRenamedKey))
+
+        // 改过一次后，用户再起名叫「豆包」不会被改回
+        var again = loaded
+        again.providers[2].name = "豆包"
+        store.save(again)
+        #expect(store.load().providers[2].name == "豆包")
     }
 
     @Test func doesNotMigrateWhenSettingsExist() {

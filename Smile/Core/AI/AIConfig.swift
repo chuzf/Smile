@@ -22,7 +22,8 @@ enum AIPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .kimi: return "Kimi"
         case .deepseek: return "DeepSeek"
-        case .doubao: return "豆包"
+        // rawValue 仍为 doubao，已保存的设置按它解码；方舟上也有 DeepSeek、Kimi 等模型，按平台命名
+        case .doubao: return "火山方舟"
         case .openAI: return "OpenAI"
         case .anthropic: return "Anthropic"
         case .custom: return "自定义"
@@ -163,6 +164,8 @@ struct AIConfigStore {
     static let settingsKey = "ai_settings"
     static let legacyConfigKey = "ai_config"
     static let legacyAPIKeyAccount = "ai_api_key"
+    /// 豆包预设改名为火山方舟后，已保存的旧名称只改一次，之后用户再起名叫「豆包」不受影响
+    static let doubaoRenamedKey = "ai_doubao_renamed"
 
     static func apiKeyAccount(for id: UUID) -> String { "ai_api_key.\(id.uuidString)" }
 
@@ -176,7 +179,15 @@ struct AIConfigStore {
 
     func load() -> AISettings {
         if let data = defaults.data(forKey: Self.settingsKey),
-           let settings = try? JSONDecoder().decode(AISettings.self, from: data) {
+           var settings = try? JSONDecoder().decode(AISettings.self, from: data) {
+            if !defaults.bool(forKey: Self.doubaoRenamedKey) {
+                for i in settings.providers.indices
+                where settings.providers[i].preset == .doubao && settings.providers[i].name == "豆包" {
+                    settings.providers[i].name = AIPreset.doubao.displayName
+                }
+                save(settings)
+                defaults.set(true, forKey: Self.doubaoRenamedKey)
+            }
             return settings
         }
         return migrateLegacy() ?? .default
