@@ -436,16 +436,48 @@ struct AIConfigTests {
         #expect(keychain.items[AIConfigStore.legacyAPIKeyAccount] == nil)
     }
 
-    @Test func orphanedLegacyKeyMovesToActiveProviderWithoutKey() throws {
-        let (store, _, keychain) = makeFakeStore()
+    @Test func orphanedLegacyKeyIsDiscardedNotGuessed() throws {
+        let (store, defaults, keychain) = makeFakeStore()
         var s = AISettings.default
         s.activeProviderID = s.providers[1].id
         store.save(s)
         keychain.items[AIConfigStore.legacyAPIKeyAccount] = "sk-old"
 
         _ = store.load()
-        #expect(store.loadAPIKey(for: s.providers[1]) == "sk-old")
+        // 没记目标时不猜给哪一条，旧 Key 直接删掉，由用户重新填写
+        for provider in s.providers { #expect(store.loadAPIKey(for: provider) == nil) }
         #expect(keychain.items[AIConfigStore.legacyAPIKeyAccount] == nil)
+        #expect(defaults.bool(forKey: AIConfigStore.legacyKeyResolvedKey))
+    }
+
+    @Test func orphanedLegacyKeyNotSentToSwitchedActiveProvider() throws {
+        let (store, defaults, keychain) = makeFakeStore()
+        writeLegacy(legacyKimi, to: defaults)
+        keychain.items[AIConfigStore.legacyAPIKeyAccount] = "sk-kimi"
+        // 迁移时复制失败，且记下的目标丢失；之后用户切到了别的服务商
+        keychain.failWrites = true
+        var s = store.load()
+        defaults.removeObject(forKey: AIConfigStore.legacyKeyTargetKey)
+        let other = try #require(s.providers.first { $0.id != s.activeProviderID && $0.preset != .kimi })
+        s.activeProviderID = other.id
+        store.save(s)
+
+        keychain.failWrites = false
+        _ = store.load()
+        #expect(store.loadAPIKey(for: other) == nil)
+        for provider in s.providers { #expect(store.loadAPIKey(for: provider) == nil) }
+        #expect(keychain.items[AIConfigStore.legacyAPIKeyAccount] == nil)
+    }
+
+    @Test func orphanedLegacyKeyKeptWhenReadFails() {
+        let (store, defaults, keychain) = makeFakeStore()
+        store.save(.default)
+        keychain.items[AIConfigStore.legacyAPIKeyAccount] = "sk-old"
+        keychain.failReads = true
+
+        _ = store.load()
+        #expect(keychain.items[AIConfigStore.legacyAPIKeyAccount] == "sk-old")
+        #expect(!defaults.bool(forKey: AIConfigStore.legacyKeyResolvedKey))
     }
 
     @Test func legacyKeyDoesNotOverwriteNewKey() throws {

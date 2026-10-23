@@ -12,8 +12,9 @@ struct NoteTextView: UIViewRepresentable {
     let onChange: (String) -> Void
     /// 用户移动光标或输入时回报光标位置（UTF-16 偏移）
     var onCursorChange: (Int) -> Void = { _ in }
-    /// 为 false 时不能输入（口述进行中，识别结果会整段改写文字）
-    var isEditable: Bool = true
+    /// 为 false 时挡住用户输入（口述进行中，识别结果会整段改写文字）。
+    /// 不用 isEditable：关闭编辑会让文字块失去焦点、收起键盘，口述结束后焦点回不来，下一次口述也会落到别的文字块
+    var allowsInput: Bool = true
 
     static let titleFont = UIFont.systemFont(ofSize: 22, weight: .bold)
     static let bodyFont = UIFont.systemFont(ofSize: 16, weight: .regular)
@@ -27,7 +28,6 @@ struct NoteTextView: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.text = text
-        view.isEditable = isEditable
         context.coordinator.applyStyle(to: view)
         return view
     }
@@ -51,10 +51,12 @@ struct NoteTextView: UIViewRepresentable {
             coordinator.applyStyle(to: view)
         }
 
-        // 关闭编辑会让正在输入的文字块失去焦点并回调 textViewDidEndEditing（改 SwiftUI 状态），放到下一轮
-        if view.isEditable != isEditable {
+        // 开始挡住输入时还有未上屏的拼音：先确认上屏，否则组字期间外部改动不会写进来，识别结果显示不出来。
+        // unmarkText 会回调 textViewDidChange（改 SwiftUI 状态），放到下一轮
+        if !allowsInput, view.markedTextRange != nil {
             DispatchQueue.main.async {
-                view.isEditable = coordinator.parent.isEditable
+                guard !coordinator.parent.allowsInput, view.markedTextRange != nil else { return }
+                view.unmarkText()
             }
         }
 
@@ -116,6 +118,11 @@ struct NoteTextView: UIViewRepresentable {
         private func updateTypingAttributes(of view: UITextView) {
             let inTitle = titleRange(in: view.text as NSString).map { view.selectedRange.location <= NSMaxRange($0) } ?? false
             view.typingAttributes = attributes(title: inTitle)
+        }
+
+        /// 只拦用户输入（键入、删除、粘贴、剪切、输入法）；updateUIView 里直接设置 text 不经过这里，口述结果照常写入
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            parent.allowsInput
         }
 
         func textViewDidChange(_ view: UITextView) {

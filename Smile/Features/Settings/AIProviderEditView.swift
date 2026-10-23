@@ -20,6 +20,8 @@ struct AIProviderEditView: View {
     @State private var confirmingDelete = false
     @State private var deleteError: String?
     @State private var modelPicker: ModelPickerRequest?
+    /// 返回时输入的 Key 存不进去，询问继续编辑还是放弃
+    @State private var confirmingDiscardKey = false
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -38,6 +40,11 @@ struct AIProviderEditView: View {
     }
 
     private var exists: Bool { settings.providers.contains { $0.id == providerID } }
+
+    /// 输入了还没写入钥匙串的 Key
+    private var hasUnsavedKey: Bool {
+        exists && !keyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     /// 删除后返回前视图还会刷新，此时已找不到这一条，给个占位值
     private var provider: AIProvider {
@@ -136,7 +143,17 @@ struct AIProviderEditView: View {
         .navigationTitle(provider.providerDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
+        // 有未保存的 Key 时换成自己的返回按钮，先保存再离开；隐藏系统返回按钮也会关掉侧滑返回，免得 Key 悄悄丢掉
+        .navigationBarBackButtonHidden(hasUnsavedKey)
         .toolbar {
+            if hasUnsavedKey {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: goBack) {
+                        Image(systemName: "chevron.backward")
+                    }
+                    .accessibilityLabel("返回")
+                }
+            }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("完成") { focusedField = nil }
@@ -161,7 +178,21 @@ struct AIProviderEditView: View {
             // 不按回车直接离开 Key 输入框时也保存，否则要等退出页面才写入
             if oldValue == .apiKey { saveKeyIfNeeded() }
         }
+        // 兜底：被上层直接关掉等没经过返回按钮的情况
         .onDisappear { saveKeyIfNeeded() }
+        .alert("API Key 尚未保存", isPresented: $confirmingDiscardKey) {
+            Button("继续编辑", role: .cancel) {
+                // 地址无效时定位到地址栏，否则回到 Key 输入框
+                focusedField = provider.validatedBaseURL == nil ? .baseURL : .apiKey
+            }
+            Button("放弃 Key", role: .destructive) {
+                keyInput = ""
+                keyError = nil
+                dismiss()
+            }
+        } message: {
+            Text(keyError ?? "API Key 保存失败")
+        }
         .confirmationDialog("删除「\(provider.providerDisplayName)」？", isPresented: $confirmingDelete,
                             titleVisibility: .visible) {
             Button("删除", role: .destructive, action: deleteProvider)
@@ -215,6 +246,16 @@ struct AIProviderEditView: View {
         } catch {
             keyError = "API Key 保存失败，请重试"
             return false
+        }
+    }
+
+    /// 先保存输入的 Key，存不进去时提示，不直接离开
+    private func goBack() {
+        focusedField = nil
+        if saveKeyIfNeeded() {
+            dismiss()
+        } else {
+            confirmingDiscardKey = true
         }
     }
 

@@ -9,6 +9,8 @@ struct MeTabView: View {
 
     @State private var globalSearch = ""
     @State private var searchResults: [Entry] = []
+    /// 每次保存数据库加一：记录被编辑或删除后重新搜索，结果不会引用已删除的记录
+    @State private var dataVersion = 0
     @State private var searchNavEntry: Entry?
     @State private var editingGroup: Group? = nil
     @State private var deleteBlockedGroup: Group? = nil
@@ -29,7 +31,12 @@ struct MeTabView: View {
             .navigationDestination(item: $searchNavEntry) { entry in
                 EntryDetailView(entry: entry)
             }
-            .task(id: SearchKey(query: globalSearch, unlocked: lockSession.unlockedGroupIDs.union(lockSession.unlockedEntryIDs))) {
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+                dataVersion += 1
+            }
+            .task(id: SearchKey(query: globalSearch,
+                                unlocked: lockSession.unlockedGroupIDs.union(lockSession.unlockedEntryIDs),
+                                dataVersion: dataVersion)) {
                 // 不在 body 里搜：每次刷新都全量取一遍；输入停顿后再搜
                 try? await Task.sleep(for: .milliseconds(250))
                 guard !Task.isCancelled else { return }
@@ -89,7 +96,8 @@ struct MeTabView: View {
         }
         if !globalSearch.trimmingCharacters(in: .whitespaces).isEmpty {
             Section("搜索结果") {
-                let results = searchResults
+                // 重新搜索前的这一小段时间里，跳过刚被删除的记录，不读它的属性
+                let results = searchResults.filter { !$0.isDeleted && $0.modelContext != nil }
                 if results.isEmpty {
                     Text("没找到匹配的记录").foregroundStyle(AppColors.textSecondary)
                 } else {
@@ -222,6 +230,7 @@ struct MeTabView: View {
     private struct SearchKey: Equatable {
         let query: String
         let unlocked: Set<UUID>
+        let dataVersion: Int
     }
 
     private func handleSearchResultTap(_ entry: Entry) {

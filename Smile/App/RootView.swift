@@ -88,12 +88,20 @@ struct RootView: View {
             }
             let ext = url.pathExtension.lowercased()
             guard ext == "zip" || ext == "smilejar" else { return }
-            // 「在原处打开」时 url 就是用户的原文件（可能是唯一的备份），只在自己的副本上操作
-            if let copy = Self.makeImportCopy(of: url) {
-                if let old = inboxImportURL { Self.discardImportCopy(old) }
-                inboxImportURL = copy
-            } else {
-                importError = "无法读取该备份文件"
+            // 「在原处打开」时 url 就是用户的原文件（可能是唯一的备份），只在自己的副本上操作。
+            // 复制放到后台：备份可能有几百 MB，iCloud 里未下载的文件还要先下载
+            importing = true
+            Task {
+                let copy = await Task.detached(priority: .userInitiated) {
+                    Self.makeImportCopy(of: url)
+                }.value
+                importing = false
+                if let copy {
+                    if let old = inboxImportURL { Self.discardImportCopy(old) }
+                    inboxImportURL = copy
+                } else {
+                    importError = "无法读取该备份文件"
+                }
             }
         }
         .alert("发现备份文件", isPresented: Binding(
@@ -304,11 +312,13 @@ struct RootView: View {
     private func reshowInboxPasswordAlert() {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
+            // 期间用户已取消或换了别的文件，就不再弹
+            guard pendingEncryptedURL != nil else { return }
             showInboxPasswordAlert = true
         }
     }
 
-    static func discardImportCopy(_ url: URL) {
+    nonisolated static func discardImportCopy(_ url: URL) {
         let dir = url.deletingLastPathComponent()
         guard dir.lastPathComponent.hasPrefix("incoming-backup-") else { return }
         try? FileManager.default.removeItem(at: dir)
@@ -316,17 +326,25 @@ struct RootView: View {
 
     /// 把外部传入的备份复制到临时目录。原文件属于用户，绝不删除；
     /// 只有系统投递到本 App Documents/Inbox 的副本（AirDrop、邮件等）复制后顺手清掉
-    static func makeImportCopy(of url: URL) -> URL? {
+    nonisolated static func makeImportCopy(of url: URL) -> URL? {
         let fm = FileManager.default
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
 
         let dir = fm.temporaryDirectory.appendingPathComponent("incoming-backup-\(UUID().uuidString)")
         let copy = dir.appendingPathComponent(url.lastPathComponent)
-        do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-            try fm.copyItem(at: url, to: copy)
-        } catch {
+        var copyError: Error?
+        var coordError: NSError?
+        // 协调读取：iCloud 里还没下载到本机的文件会先下载，也不会读到正在写入的半个文件
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { readURL in
+            do {
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                try fm.copyItem(at: readURL, to: copy)
+            } catch {
+                copyError = error
+            }
+        }
+        if coordError != nil || copyError != nil {
             try? fm.removeItem(at: dir)
             return nil
         }

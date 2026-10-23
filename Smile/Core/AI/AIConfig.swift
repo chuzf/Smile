@@ -350,10 +350,10 @@ struct AIConfigStore {
         do { legacyKey = try keychain.read(Self.legacyAPIKeyAccount) } catch { return }
         var copied = false
         if let legacyKey {
-            // 没记目标的是早先迁移时复制失败的，那时迁移的一条被设为启用
+            // 只复制到迁移时记下的那一条；没记目标时不猜（用户可能已切换启用的服务商，
+            // 猜错会把旧 Key 发到别家主机），直接删掉旧 Key，让用户重新填写
             let targetID = defaults.string(forKey: Self.legacyKeyTargetKey).flatMap(UUID.init(uuidString:))
-                ?? settings.activeProviderID
-            if let target = settings.providers.first(where: { $0.id == targetID }) {
+            if let targetID, let target = settings.providers.first(where: { $0.id == targetID }) {
                 do {
                     // 用户已给这一条填过新 Key 时不覆盖
                     if try keychain.read(Self.apiKeyAccount(for: target.id)) == nil {

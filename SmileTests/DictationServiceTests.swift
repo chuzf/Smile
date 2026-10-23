@@ -103,4 +103,40 @@ struct DictationServiceTests {
         #expect(service.isActive == false)
         #expect(service.isStarting == false)
     }
+
+    @Test("等待权限期间 isInProgress 为 true：此时再点麦克风应当取消，而不是开始新的一轮")
+    func isInProgress_duringPermissionWait_isTrue() async {
+        var micContinuation: CheckedContinuation<Bool, Never>?
+        let service = DictationService(
+            requestMicPermission: {
+                await withCheckedContinuation { micContinuation = $0 }
+            },
+            requestSpeechAuthorization: { .authorized }
+        )
+        #expect(service.isInProgress == false)
+
+        let startTask = Task { @MainActor in
+            try await service.start(onPartial: { _ in }, onFinal: { _ in })
+        }
+        while micContinuation == nil { await Task.yield() }
+        // 编辑器的口述按钮按 isInProgress 判断：还没打开麦克风（isActive 为 false）也要当作「停止」
+        #expect(service.isActive == false)
+        #expect(service.isInProgress == true)
+
+        // 第二次点按：取消启动
+        service.stop()
+        micContinuation?.resume(returning: true)
+        var cancelled = false
+        do { try await startTask.value } catch is CancellationError { cancelled = true } catch {}
+        #expect(cancelled)
+        #expect(service.isInProgress == false)
+    }
+
+    @Test("输入格式采样率或声道数为 0（麦克风被占用）时不可用于 installTap")
+    func isUsableInputFormat_rejectsZeroRateOrChannels() {
+        #expect(DictationService.isUsableInputFormat(sampleRate: 48_000, channelCount: 1))
+        #expect(!DictationService.isUsableInputFormat(sampleRate: 0, channelCount: 1))
+        #expect(!DictationService.isUsableInputFormat(sampleRate: 48_000, channelCount: 0))
+        #expect(!DictationService.isUsableInputFormat(sampleRate: 0, channelCount: 0))
+    }
 }

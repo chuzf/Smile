@@ -38,7 +38,11 @@ enum ImportService {
 
     private static let supportedVersion = 1
 
-    enum MediaAction { case copy, replace, fillMissing }
+    enum MediaAction {
+        case copy, replace
+        /// 只补本地缺失、且记录仍在引用的文件（文件名）
+        case fillMissing(Set<String>)
+    }
 
     @MainActor
     static func importBackup(
@@ -89,7 +93,7 @@ enum ImportService {
                     updatedCount += 1
                 } else {
                     // 记录已是最新，但上次导入可能有文件没复制成功：只补缺失的文件
-                    mediaToCopy.append((dto.id, .fillMissing))
+                    mediaToCopy.append((dto.id, .fillMissing(referencedMediaNames(of: existing))))
                     skippedCount += 1
                 }
             } else {
@@ -118,8 +122,8 @@ enum ImportService {
                     try copyMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
                 case .replace:
                     try replaceMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
-                case .fillMissing:
-                    try fillMissingMedia(entryID: entryID, from: mediaDir, mediaStore: mediaStore)
+                case .fillMissing(let names):
+                    try fillMissingMedia(entryID: entryID, names: names, from: mediaDir, mediaStore: mediaStore)
                 }
             } catch {
                 mediaFailures += 1
@@ -181,9 +185,11 @@ enum ImportService {
         existing: [Group],
         context: ModelContext
     ) -> ([UUID: Group], Int) {
-        let builtInByName = Dictionary(
-            existing.filter(\.isBuiltIn).map { ($0.name, $0) },
-            uniquingKeysWith: { first, _ in first })
+        let builtIns = existing.filter(\.isBuiltIn)
+        let builtInByID = Dictionary(builtIns.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let builtInByName = Dictionary(builtIns.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        // 内置分组可以改名，名称对不上时按固定的位置（sortOrder 0/1）对应，免得多出一个删不掉的内置罐
+        let builtInBySortOrder = Dictionary(builtIns.map { ($0.sortOrder, $0) }, uniquingKeysWith: { first, _ in first })
         let customByID = Dictionary(
             existing.filter { !$0.isBuiltIn }.map { ($0.id, $0) },
             uniquingKeysWith: { first, _ in first })
@@ -193,7 +199,7 @@ enum ImportService {
 
         for dto in dtos {
             if dto.isBuiltIn {
-                if let match = builtInByName[dto.name] {
+                if let match = builtInByID[dto.id] ?? builtInByName[dto.name] ?? builtInBySortOrder[dto.sortOrder] {
                     map[dto.id] = match
                 } else {
                     let g = Group(id: dto.id, name: dto.name,
@@ -292,7 +298,8 @@ enum ImportService {
         entry.titleSourceRaw = dto.titleSource
         entry.bodyText = dto.bodyText
         entry.updatedAt = dto.updatedAt
-        entry.isLocked = dto.isLocked
+        // 切换加锁不更新 updatedAt，较新的备份可能还是未加锁状态：本地已加锁的保持加锁，不让导入悄悄解锁
+        entry.isLocked = entry.isLocked || dto.isLocked
         entry.group = dto.groupID.flatMap { groupMap[$0] }
         entry.tags = dto.tagNames.compactMap { tagMap[$0] }
 
@@ -321,13 +328,28 @@ enum ImportService {
             && !parts[1].isEmpty && parts[1] != "." && parts[1] != ".."
     }
 
-    /// 只复制本地缺失的文件，已有的不动
-    static func fillMissingMedia(entryID: UUID, from mediaDir: URL, mediaStore: MediaStore) throws {
+    /// 记录当前引用的媒体文件名：附件行，加上正文里的照片（自动保存只写正文、不建附件行）
+    @MainActor
+    static func referencedMediaNames(of entry: Entry) -> Set<String> {
+        var paths = entry.attachments.map(\.relativePath)
+        if let segs = iOSNoteEditorModel.decodeBodySegments(from: entry.bodyText) {
+            paths += segs.compactMap(\.path)
+        }
+        return Set(paths.compactMap { path -> String? in
+            guard isValidAttachmentPath(path, entryID: entry.id) else { return nil }
+            return path.split(separator: "/").last.map(String.init)
+        })
+    }
+
+    /// 只复制本地缺失、且记录仍在引用的文件；用户删掉的照片不会被拷回来
+    static func fillMissingMedia(entryID: UUID, names: Set<String>, from mediaDir: URL, mediaStore: MediaStore) throws {
         let fm = FileManager.default
         let src = mediaDir.appendingPathComponent(entryID.uuidString)
-        guard let names = try? fm.contentsOfDirectory(atPath: src.path), !names.isEmpty else { return }
         let dst = mediaStore.directoryURL(for: entryID)
-        let missing = names.filter { !fm.fileExists(atPath: dst.appendingPathComponent($0).path) }
+        let missing = names.filter {
+            fm.fileExists(atPath: src.appendingPathComponent($0).path)
+                && !fm.fileExists(atPath: dst.appendingPathComponent($0).path)
+        }
         guard !missing.isEmpty else { return }
         try fm.createDirectory(at: dst, withIntermediateDirectories: true)
         for name in missing {

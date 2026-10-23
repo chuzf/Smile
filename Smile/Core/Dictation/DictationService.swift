@@ -48,6 +48,9 @@ import Speech
     private var isStartCancelled = false
     /// tap 是否已安装；引擎启动失败时引擎没在运行，但 tap 仍在，必须单独记录才能移除
     private var isTapInstalled = false
+
+    /// 口述进行中或正在启动（等待权限）。此时再点麦克风应当停止 / 取消，而不是开始新的一轮
+    var isInProgress: Bool { isActive || isStarting }
     private var currentSession: UUID?
 
     private let requestMicPermission: @MainActor () async -> Bool
@@ -110,6 +113,11 @@ import Speech
         let capturedRequest = request
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        // 麦克风被通话或其它 App 占用时输入格式的采样率 / 声道数为 0，用它 installTap 会抛 Objective-C 异常直接崩溃
+        guard Self.isUsableInputFormat(sampleRate: format.sampleRate, channelCount: format.channelCount) else {
+            cleanupAudio()
+            throw DictationError.recognizerUnavailable
+        }
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
             capturedRequest.append(buffer)
         }
@@ -160,6 +168,11 @@ import Speech
         guard isActive else { return }
         cleanupAudio()
         isActive = false
+    }
+
+    /// 输入格式能否用于 installTap：采样率和声道数都必须大于 0
+    nonisolated static func isUsableInputFormat(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
+        sampleRate > 0 && channelCount > 0
     }
 
     private func checkStartCancelled() throws {

@@ -47,8 +47,8 @@ struct iOSNoteEditorView: View {
     @State private var isStartingNewEntryFromShare = false
     /// 弹窗标题用的张数；点按钮后 incomingPhotoURLs 会立刻变 nil，避免标题闪成「收到 0 张照片」
     @State private var shareChoiceCount = 0
-    /// 防止重复 onAppear 让 shareCenter 的打开编辑器计数多加
-    @State private var isRegisteredWithShareCenter = false
+    /// 在 shareCenter 的「打开编辑器」登记；防止重复 onAppear 多加计数，视图状态释放时也会补做注销
+    @State private var shareRegistration = ShareCenterRegistration()
     /// 已开始关闭（dismiss 已调用）；此后不再接收分享照片、不再自动保存、不再写入照片
     @State private var isClosing = false
     /// 已排队或正在进行的 insertPhotos 调用数；编码期间 model 还没更新，编辑器看起来仍是空白
@@ -125,10 +125,7 @@ struct iOSNoteEditorView: View {
             }
         }
         .onAppear {
-            if !isRegisteredWithShareCenter {
-                isRegisteredWithShareCenter = true
-                shareCenter.editorDidAppear()
-            }
+            shareRegistration.register(with: shareCenter)
             if !hasInitialized {
                 hasInitialized = true
                 initialize()
@@ -145,9 +142,10 @@ struct iOSNoteEditorView: View {
         .onDisappear {
             // 相机是全屏呈现，盖住编辑器时也会触发 onDisappear，但编辑器并没有关闭：不能清空草稿、删照片。
             // 相机期间编辑器被一起关掉的极端情况下不补做清理——无法可靠判断编辑器是否还在屏幕上，
-            // 误判会清空正在编辑的草稿；代价最多是留下几个没被引用的草稿照片文件
+            // 误判会清空正在编辑的草稿；代价最多是留下几个没被引用的草稿照片文件。
+            // shareCenter 的登记不受影响：视图状态释放时 shareRegistration 的 deinit 会注销
             if showCamera { return }
-            performCloseCleanup(shareCenter: shareCenter, context: context)
+            performCloseCleanup(context: context)
         }
         .shareHandling(self)
         .formattingHandling(self)
@@ -257,7 +255,7 @@ struct iOSNoteEditorView: View {
                 onChange: { model.updateText($0, for: id) },
                 onCursorChange: { model.insertionPoint = InsertionPoint(segmentID: id, offset: $0) },
                 // 口述期间每次识别结果都会整段改写目标文字块（基准文字 + 识别结果），此时不允许手动输入，否则输入会被覆盖
-                isEditable: !(dictationService.isActive || dictationService.isStarting)
+                allowsInput: !dictationService.isInProgress
             )
             .padding(.horizontal, 21)
             .padding(.vertical, 4)
@@ -355,20 +353,20 @@ struct iOSNoteEditorView: View {
     private var toolbarRow: some View {
         HStack(spacing: 0) {
             toolbarButton("相册", systemImage: "photo.on.rectangle") { showPhotoPicker = true }
-                .disabled(dictationService.isActive)
+                .disabled(dictationService.isInProgress)
             toolbarButton("拍摄", systemImage: "camera") { showCamera = true }
-                .disabled(dictationService.isActive)
-            if dictationService.isActive {
+                .disabled(dictationService.isInProgress)
+            if dictationService.isInProgress {
                 toolbarButton("停止", systemImage: "mic.fill", tint: .red) { handleDictationTap() }
             } else {
                 toolbarButton("口述", systemImage: "mic") { handleDictationTap() }
             }
             toolbarButton("录音", systemImage: "mic.badge.plus") { showVoiceRecorder = true }
-                .disabled(dictationService.isActive)
+                .disabled(dictationService.isInProgress)
             toolbarButton("标签", systemImage: "number") { showTagPicker = true }
-                .disabled(dictationService.isActive)
+                .disabled(dictationService.isInProgress)
             toolbarButton("整理", systemImage: "wand.and.stars") { startFormatting() }
-                .disabled(dictationService.isActive || isFormatting || pendingPhotoInserts > 0 || !model.canFormat)
+                .disabled(dictationService.isInProgress || isFormatting || pendingPhotoInserts > 0 || !model.canFormat)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
@@ -495,6 +493,10 @@ struct iOSNoteEditorView: View {
         if dictationService.isActive {
             dictationService.stop()
             model.finalizeDictation()
+        } else if dictationService.isStarting {
+            // 还在等待权限：取消这次启动。start 醒来后抛出 CancellationError，由下面的 catch 复位口述目标；
+            // 不能当作新的一次口述，否则会改掉口述目标和基准文字
+            dictationService.stop()
         } else {
             let targetID: UUID?
             if let focused = focusedSegmentID {
@@ -600,28 +602,40 @@ struct iOSNoteEditorView: View {
         }
     }
 
-    /// 编辑器真正关闭时的清理。shareCenter / context 由调用方传入：补做清理时编辑器可能已不在界面上，不能再读环境值
-    private func performCloseCleanup(shareCenter: ShareInboxCenter, context: ModelContext) {
+    /// 编辑器真正关闭时的清理。context 由调用方传入：补做清理时编辑器可能已不在界面上，不能再读环境值
+    private func performCloseCleanup(context: ModelContext) {
         formattingTask?.cancel()
         // 还在等待权限的口述也要取消，否则权限回来后会在没人能停止的情况下打开麦克风
-        if dictationService.isActive || dictationService.isStarting {
+        if dictationService.isInProgress {
             dictationService.stop()
             // finalizeDictation keeps any partial text already written — intentional,
             // so the user doesn't lose words they already spoke before dismissing.
             model.finalizeDictation()
         }
         if !isClosing {
-            // 下滑关闭（仅在没有未保存修改时允许）不经过 close()/discardAndClose()：停止正在写入的照片，并清理没有记录引用的草稿照片
+            // 不是经 close()/discardAndClose() 的关闭（下滑关闭，或应用锁遮罩「返回首页」把详情页连同编辑器一起退掉）：
+            // 停止正在写入的照片，保存或撤销草稿
             isClosing = true
-            discardUnsavedDraftMedia(context: context)
+            model.cancelAutoSave()
+            persistOrDiscardOnImplicitClose(context: context)
         }
         model.reset()
         thumbnails.removeAll()
         hasInitialized = false
-        if isRegisteredWithShareCenter {
-            isRegisteredWithShareCenter = false
-            shareCenter.editorDidDisappear()
+        shareRegistration.unregister()
+    }
+
+    /// 非用户操作的关闭：有未保存修改或自动保存已写过库时，按「保存」同样的逻辑把当前草稿写入记录——
+    /// 用户的内容不丢，自动保存写进正文的照片、录音也都还在。
+    /// 写不进去（没有内容、没选分组、写库失败）时先撤销自动保存，确认记录不再引用本次新增的附件后才删文件；
+    /// 撤销也没写进库时宁可留下没被引用的文件，也不能让记录引用已删除的文件
+    private func persistOrDiscardOnImplicitClose(context: ModelContext) {
+        if (model.isDirty || hasAutosaved) && model.hasContent,
+           persistDraft(context: context) != nil {
+            return
         }
+        guard revertAutosave(context: context) else { return }
+        discardUnsavedDraftMedia(context: context)
     }
 
     private func handleBack() {
@@ -647,14 +661,17 @@ struct iOSNoteEditorView: View {
         dismiss()
     }
 
-    /// 新记录：删掉自动保存建出的记录；已有记录：恢复成打开编辑器时的内容
-    private func revertAutosave() {
-        guard hasAutosaved else { return }
+    /// 新记录：删掉自动保存建出的记录；已有记录：恢复成打开编辑器时的内容。
+    /// 返回 false 表示库里可能仍是自动保存写入的内容（无法恢复或写库失败），此时不能删本次新增的附件文件
+    @discardableResult
+    private func revertAutosave(context: ModelContext? = nil) -> Bool {
+        let context = context ?? self.context
+        guard hasAutosaved else { return true }
         if let editID = editingEntryID {
-            guard let original = originalEntryState else { return }
+            guard let original = originalEntryState else { return false }
             var descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { $0.persistentModelID == editID })
             descriptor.fetchLimit = 1
-            guard let entry = try? context.fetch(descriptor).first else { return }
+            guard let entry = try? context.fetch(descriptor).first else { return true }
             entry.title = original.title
             entry.bodyText = original.bodyText
             entry.updatedAt = original.updatedAt
@@ -664,11 +681,16 @@ struct iOSNoteEditorView: View {
             let draftID = entryDraftID
             var descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == draftID })
             descriptor.fetchLimit = 1
-            guard let entry = try? context.fetch(descriptor).first else { return }
+            guard let entry = try? context.fetch(descriptor).first else { return true }
             context.delete(entry)
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            return false
+        }
         hasAutosaved = false
+        return true
     }
 
     private func handleComplete() { Task { await save() } }
@@ -681,10 +703,23 @@ struct iOSNoteEditorView: View {
         while pendingPhotoInserts > 0 {
             try? await Task.sleep(for: .milliseconds(100))
         }
-        guard let groupID = model.selectedGroupID,
-              let group = allGroups.first(where: { $0.persistentModelID == groupID }) else {
+        guard let saved = persistDraft(context: context) else {
             showSaveError = true
             return false
+        }
+        onSaved?(saved.groupID, saved.entryID)
+        close()
+        return true
+    }
+
+    /// 把当前草稿（标题、正文、分组、标签、附件）写入记录，成功后删掉编辑时移除的附件文件。
+    /// 同步执行，不弹窗、不关闭编辑器：非用户操作的关闭（onDisappear）也用它保存。
+    /// 缺少分组或写库失败时返回 nil；写库失败会丢掉这次没写进去的改动，重试时从 model 重新写
+    @MainActor
+    private func persistDraft(context: ModelContext) -> (groupID: UUID, entryID: UUID)? {
+        guard let groupID = model.selectedGroupID,
+              let group = allGroups.first(where: { $0.persistentModelID == groupID }) else {
+            return nil
         }
 
         model.isSaving = true
@@ -756,18 +791,17 @@ struct iOSNoteEditorView: View {
         do {
             try context.save()
         } catch {
-            showSaveError = true
-            return false
+            // 不留在 context 里：否则之后撤销自动保存时会被一起再写一次
+            context.rollback()
+            return nil
         }
         // 记录已不再引用，删掉编辑时移除的附件文件（含没有附件行、只在正文里引用的照片）
         let mediaStore = MediaStore.production()
         for path in Set(removedPaths + removedExistingPaths) { try? mediaStore.delete(relativePath: path) }
         removedExistingPaths.removeAll()
-        onSaved?(group.id, entry.id)
         model.isDirty = false
         hasAutosaved = false
-        close()
-        return true
+        return (group.id, entry.id)
     }
 
     @MainActor
@@ -912,7 +946,7 @@ struct iOSNoteEditorView: View {
 
     private func presentSharePromptsIfNeeded() {
         // 已关闭/正在关闭的编辑器（onDisappear 后 model 被 reset，看起来是空白的）不能接收照片
-        guard isRegisteredWithShareCenter, !isClosing,
+        guard shareRegistration.isRegistered, !isClosing,
               !isPresentingOther, !showShareChoice, !isStartingNewEntryFromShare else { return }
         if shareCenter.hasUnreportedReadFailure {
             shareCenter.clearReadFailure()
@@ -1077,6 +1111,38 @@ struct iOSNoteEditorView: View {
                 .background(current == align ? AppColors.warmOrange : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
+    }
+}
+
+// MARK: - shareCenter 登记
+
+/// 编辑器在 shareCenter「打开编辑器」计数里的登记，由 @State 持有。
+/// 相机全屏期间编辑器被一起关掉时 onDisappear 不做清理，计数会一直多 1（RootView 之后不再为分享自动打开编辑器）；
+/// 视图状态释放时 deinit 补做注销，保证登记与注销成对（同 PrivacyShield 的 LockedContentRegistration）
+final class ShareCenterRegistration {
+    private weak var center: ShareInboxCenter?
+    private(set) var isRegistered = false
+
+    @MainActor
+    func register(with center: ShareInboxCenter) {
+        guard !isRegistered else { return }
+        isRegistered = true
+        self.center = center
+        center.editorDidAppear()
+    }
+
+    @MainActor
+    func unregister() {
+        guard isRegistered else { return }
+        isRegistered = false
+        center?.editorDidDisappear()
+        center = nil
+    }
+
+    deinit {
+        guard isRegistered else { return }
+        let center = center
+        Task { @MainActor in center?.editorDidDisappear() }
     }
 }
 

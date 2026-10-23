@@ -123,16 +123,19 @@ enum ExportService {
         let salt = data[encryptedFileMagic.count ..< headerSize]
         let combined = data[headerSize...]
         let key = deriveKey(from: password, salt: Data(salt))
+        // 结构解析失败说明文件损坏；认证失败按密码错误处理（AES-GCM 无法区分密码错误和密文被篡改/截断）。
+        // 写盘失败（如空间不足）原样抛出，不再误报成密码错误
+        guard let box = try? AES.GCM.SealedBox(combined: combined) else { throw CryptoError.invalidFormat }
+        let zipData: Data
         do {
-            let box = try AES.GCM.SealedBox(combined: combined)
-            let zipData = try AES.GCM.open(box, using: key)
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString + ".zip")
-            try zipData.write(to: tempURL)
-            return tempURL
+            zipData = try AES.GCM.open(box, using: key)
         } catch {
             throw CryptoError.wrongPassword
         }
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".zip")
+        try zipData.write(to: tempURL)
+        return tempURL
     }
 
     enum CryptoError: LocalizedError {

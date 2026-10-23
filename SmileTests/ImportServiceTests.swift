@@ -211,6 +211,7 @@ struct ImportServiceTests {
         let newDate = Date(timeIntervalSince1970: 2000)
         let entry = Entry(id: UUID(), title: "旧标题", bodyText: "旧内容",
                           updatedAt: oldDate)
+        entry.isLocked = true   // 本地加锁（加锁不改 updatedAt），备份里是未加锁
         ctx.insert(entry)
         try ctx.save()
 
@@ -229,6 +230,44 @@ struct ImportServiceTests {
         #expect(entry.title == "新标题")
         #expect(entry.bodyText == "新内容")
         #expect(entry.updatedAt == newDate)
+        #expect(entry.isLocked)
+    }
+
+    @MainActor
+    @Test func renamedBuiltInGroupMatchedBySortOrder() throws {
+        let container = try ModelContainerFactory.makeInMemory()
+        let ctx = container.mainContext
+        ModelContainerFactory.seedIfNeeded(context: ctx)
+        let existing = try ctx.fetch(FetchDescriptor<Group>())
+        let local = existing.first { $0.isBuiltIn && $0.sortOrder == 0 }!
+        local.name = "改过名的罐"
+
+        let src = Group(id: UUID(), name: "微笑储蓄罐", iconSymbol: "x", colorHex: "#000",
+                        isBuiltIn: true, sortOrder: 0)
+        let (map, newCount) = ImportService.buildGroupMap(
+            dtos: [ExportService.GroupDTO(src)], existing: existing, context: ctx)
+
+        #expect(newCount == 0)
+        #expect(map[src.id]?.id == local.id)
+    }
+
+    @Test func openedBackupIsCopiedAndOriginalKept() throws {
+        let original = FileManager.default.temporaryDirectory
+            .appendingPathComponent("user-backup-\(UUID()).smilejar")
+        try Data("backup".utf8).write(to: original)
+        defer { try? FileManager.default.removeItem(at: original) }
+
+        let copy = try #require(RootView.makeImportCopy(of: original))
+        #expect(copy != original)
+        #expect(try Data(contentsOf: copy) == Data("backup".utf8))
+
+        RootView.discardImportCopy(copy)
+        #expect(!FileManager.default.fileExists(atPath: copy.path))
+        #expect(FileManager.default.fileExists(atPath: original.path))
+
+        // 不是副本的路径，discardImportCopy 一律不删
+        RootView.discardImportCopy(original)
+        #expect(FileManager.default.fileExists(atPath: original.path))
     }
 
     // MARK: - Media helpers
@@ -326,15 +365,19 @@ struct ImportServiceTests {
         try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
         try Data("backup".utf8).write(to: srcDir.appendingPathComponent("a.jpg"))
         try Data("b".utf8).write(to: srcDir.appendingPathComponent("b.m4a"))
+        // 用户已删除、记录不再引用的照片
+        try Data("deleted".utf8).write(to: srcDir.appendingPathComponent("c.jpg"))
         defer {
             try? FileManager.default.removeItem(at: storeRoot)
             try? FileManager.default.removeItem(at: mediaDir)
         }
 
-        try ImportService.fillMissingMedia(entryID: entryID, from: mediaDir, mediaStore: store)
+        try ImportService.fillMissingMedia(entryID: entryID, names: ["a.jpg", "b.m4a"],
+                                           from: mediaDir, mediaStore: store)
 
         #expect(try Data(contentsOf: dstDir.appendingPathComponent("a.jpg")) == Data("local".utf8))
         #expect(try Data(contentsOf: dstDir.appendingPathComponent("b.m4a")) == Data("b".utf8))
+        #expect(!FileManager.default.fileExists(atPath: dstDir.appendingPathComponent("c.jpg").path))
     }
 
     @Test func attachmentPathMustBelongToEntry() {
@@ -395,6 +438,33 @@ struct ImportServiceTests {
         #expect(dstEntries[0].title == "美好的一天")
         #expect(dstEntries[0].group?.name == srcBuiltIn.name)
         #expect(dstEntries[0].tags.map(\.name).contains("快乐"))
+    }
+
+    @MainActor
+    @Test func importDropsAttachmentsPointingAtOtherEntries() throws {
+        let srcContainer = try ModelContainerFactory.makeInMemory()
+        let srcCtx = srcContainer.mainContext
+        let victimID = UUID()
+        let entry = Entry(id: UUID(), title: "篡改", bodyText: "")
+        srcCtx.insert(entry)
+        srcCtx.insert(MediaAttachment(kind: .photo, relativePath: "\(entry.id.uuidString)/ok.jpg", entry: entry))
+        srcCtx.insert(MediaAttachment(kind: .photo, relativePath: "\(victimID.uuidString)/x.jpg", entry: entry))
+        try srcCtx.save()
+
+        let srcStore = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("src-tamper-\(UUID())"))
+        let zipURL = try ExportService.exportAll(context: srcCtx, mediaStore: srcStore)
+        defer { try? FileManager.default.removeItem(at: zipURL) }
+
+        let dstContainer = try ModelContainerFactory.makeInMemory()
+        let dstCtx = dstContainer.mainContext
+        let dstStore = MediaStore(rootURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("dst-tamper-\(UUID())"))
+        defer { try? FileManager.default.removeItem(at: dstStore.rootURL) }
+        _ = try ImportService.importBackup(from: zipURL, context: dstCtx, mediaStore: dstStore)
+
+        let imported = try dstCtx.fetch(FetchDescriptor<Entry>()).first
+        #expect(imported?.attachments.map(\.relativePath) == ["\(entry.id.uuidString)/ok.jpg"])
     }
 
     @MainActor

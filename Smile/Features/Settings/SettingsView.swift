@@ -12,7 +12,8 @@ struct SettingsView: View {
     @Environment(LockSessionManager.self) private var lockSession
 
     // Export state
-    @State private var exportURL: URL?
+    /// 导出完成后生成一次并保持不变：sheet 的 id 不能随刷新变化，否则面板会被关掉重开，文件被提前删除
+    @State private var exportFile: ExportFileWrapper?
     @State private var exporting = false
     @State private var exportError: String?
     @State private var showExportRiskAlert = false
@@ -28,6 +29,9 @@ struct SettingsView: View {
     @State private var showImportPasswordAlert = false
     @State private var importPassword = ""
     @State private var pendingImportURL: URL?
+    /// 密码为空或错误时在密码框里提示，文件保留可重试
+    @State private var importPasswordHint: String?
+    @State private var pendingExportCleanup: [URL] = []
 
     @AppStorage(ArticleStyle.storageKey) private var articleStyleRaw = ArticleStyle.default.rawValue
 
@@ -82,14 +86,11 @@ struct SettingsView: View {
         .navigationTitle("设置")
 
         // MARK: Share sheet（导出完成后分享文件）
-        .sheet(item: Binding<ExportFileWrapper?>(
-            get: { exportURL.map { ExportFileWrapper(url: $0) } },
-            set: { _ in
-                // 分享完就删：备份含加锁内容，不能一直留在临时目录
-                if let url = exportURL { try? FileManager.default.removeItem(at: url) }
-                exportURL = nil
-            }
-        )) { w in
+        .sheet(item: $exportFile, onDismiss: {
+            // 面板完全关闭后再删：备份含加锁内容，不能一直留在临时目录
+            for url in pendingExportCleanup { try? FileManager.default.removeItem(at: url) }
+            pendingExportCleanup.removeAll()
+        }) { w in
             ShareSheetForURL(url: w.url)
         }
 
@@ -140,18 +141,24 @@ struct SettingsView: View {
                 guard let url = pendingImportURL else { return }
                 let pwd = importPassword
                 importPassword = ""
+                guard !pwd.isEmpty else {
+                    importPasswordHint = "请输入密码"
+                    reshowImportPasswordAlert()
+                    return
+                }
                 pendingImportURL = nil
                 Task { await doImport(from: url, password: pwd) }
             }
             Button("取消", role: .cancel) {
                 importPassword = ""
+                importPasswordHint = nil
                 if let url = pendingImportURL {
                     try? FileManager.default.removeItem(at: url)
                     pendingImportURL = nil
                 }
             }
         } message: {
-            Text("此备份文件已加密，请输入创建备份时设置的密码")
+            Text(importPasswordHint ?? "此备份文件已加密，请输入创建备份时设置的密码")
         }
 
         // MARK: 结果 / 错误提示
@@ -201,8 +208,10 @@ struct SettingsView: View {
         exporting = true
         defer { exporting = false }
         do {
-            exportURL = try ExportService.exportAll(
+            let url = try ExportService.exportAll(
                 context: context, mediaStore: .production(), password: password)
+            pendingExportCleanup.append(url)
+            exportFile = ExportFileWrapper(url: url)
         } catch {
             exportError = error.localizedDescription
         }
@@ -230,6 +239,7 @@ struct SettingsView: View {
 
             if ExportService.isEncryptedBackup(tempURL) {
                 pendingImportURL = tempURL
+                importPasswordHint = nil
                 showImportPasswordAlert = true
             } else {
                 Task { await doImport(from: tempURL, password: nil) }
@@ -249,6 +259,12 @@ struct SettingsView: View {
             do {
                 decryptedURL = try ExportService.decryptBackup(url: url, password: pwd)
                 importURL = decryptedURL!
+            } catch ExportService.CryptoError.wrongPassword {
+                // 保留临时副本，让用户重新输入，不必重新选文件
+                pendingImportURL = url
+                importPasswordHint = "密码错误，请重新输入"
+                reshowImportPasswordAlert()
+                return
             } catch {
                 try? FileManager.default.removeItem(at: url)
                 importError = error.localizedDescription
@@ -266,6 +282,15 @@ struct SettingsView: View {
                 from: importURL, context: context, mediaStore: .production())
         } catch {
             importError = error.localizedDescription
+        }
+    }
+
+    /// 上一个 alert 关闭后再弹，否则 SwiftUI 会忽略这次弹出
+    private func reshowImportPasswordAlert() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard pendingImportURL != nil else { return }
+            showImportPasswordAlert = true
         }
     }
 }
